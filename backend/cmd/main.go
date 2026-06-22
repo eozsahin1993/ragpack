@@ -2,38 +2,63 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 
 	"ragpack/pkg/api"
+	"ragpack/pkg/config"
 	lancedbpkg "ragpack/pkg/db/lancedb"
+	"ragpack/pkg/embedder"
 	sqlitemeta "ragpack/pkg/meta/sqlite"
 )
 
 func main() {
-	ms, err := sqlitemeta.New("./ragpack.db")
+	cfg := config.Load()
+
+	ms, err := sqlitemeta.New(cfg.SqlitePath)
 	if err != nil {
 		log.Fatalf("meta store: %v", err)
 	}
 	defer ms.Close()
 
 	vec := lancedbpkg.New()
-	if err := vec.Connect(context.Background(), "./lancedb_data"); err != nil {
+	if err := vec.Connect(context.Background(), cfg.LanceDBPath); err != nil {
 		log.Fatalf("vector store: %v", err)
 	}
+
+	emb, err := buildEmbedder(cfg)
+	if err != nil {
+		log.Fatalf("embedder: %v", err)
+	}
+	_ = emb // will be passed to ingester
 
 	app := fiber.New(fiber.Config{
 		AppName: "RagPack Engine v1.0",
 	})
-
 	app.Use(logger.New())
 
 	api.Register(app, ms, vec)
 
-	log.Println("RagPack server starting on :9000")
-	if err := app.Listen(":9000"); err != nil {
+	log.Printf("RagPack server starting on :%s", cfg.Port)
+	if err := app.Listen(fmt.Sprintf(":%s", cfg.Port)); err != nil {
 		log.Fatalf("server: %v", err)
+	}
+}
+
+func buildEmbedder(cfg config.Config) (embedder.Embedder, error) {
+	ctx := context.Background()
+	switch cfg.EmbedProvider {
+	case "openai":
+		if cfg.OpenAI.APIKey == "" {
+			return nil, fmt.Errorf("OPENAI_API_KEY is required when EMBED_PROVIDER=openai")
+		}
+		return embedder.NewOpenAI(ctx, cfg.OpenAI.APIKey, cfg.OpenAI.Model)
+	case "ollama":
+		return embedder.NewOllama(ctx, cfg.Ollama.BaseURL, cfg.Ollama.Model)
+	default:
+		return nil, fmt.Errorf("unknown EMBED_PROVIDER %q (supported: openai, ollama)", cfg.EmbedProvider)
 	}
 }

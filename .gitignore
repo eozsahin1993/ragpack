@@ -1,0 +1,14 @@
+# Environment
+.env
+.env.local
+
+# Storage (runtime data)
+*.db
+lancedb_data/
+uploads/
+
+# Go
+backend/bin/
+
+# macOS
+.DS_Store
