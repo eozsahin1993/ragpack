@@ -35,7 +35,7 @@ type MetaStore struct {
 }
 
 func New(path string) (*MetaStore, error) {
-	db, err := sqlx.Open("sqlite", path)
+	db, err := sqlx.Open("sqlite", path+"?_foreign_keys=on")
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: open failed: %w", err)
 	}

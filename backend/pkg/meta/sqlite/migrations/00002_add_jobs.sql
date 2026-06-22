@@ -1,7 +1,7 @@
 -- +goose Up
 CREATE TABLE jobs (
     id            TEXT PRIMARY KEY,
-    collection_id TEXT NOT NULL REFERENCES collections(id),
+    collection_id TEXT NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
     file_uri      TEXT NOT NULL,
     mime_type     TEXT NOT NULL,
     status        TEXT NOT NULL DEFAULT 'pending',

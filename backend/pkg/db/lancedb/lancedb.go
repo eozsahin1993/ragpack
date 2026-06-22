@@ -28,6 +28,13 @@ func (l *VectorDb) Connect(ctx context.Context, connectionUrl string) error {
 	return nil
 }
 
+func (l *VectorDb) DropTable(ctx context.Context, name string) error {
+	if err := l.conn.DropTable(ctx, name); err != nil {
+		return fmt.Errorf("lancedb: drop table %s: %w", name, err)
+	}
+	return nil
+}
+
 func (l *VectorDb) CreateTable(ctx context.Context, name string) error {
 	schema, err := sdk.NewSchema(chunkArrowSchema(l.vectorDim))
 	if err != nil {
