@@ -12,7 +12,7 @@ setup:
 	cd $(LANCEDB_MODULE) && bash scripts/download-artifacts.sh v0.1.2
 
 build:
-	go build ./backend/...
+	cd backend && go build ./...
 
 run:
-	go run ./backend/cmd/main.go
+	cd backend && go run ./cmd/main.go

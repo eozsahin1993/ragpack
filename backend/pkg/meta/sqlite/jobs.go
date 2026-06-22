@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"ragpack/backend/pkg/meta"
+	"ragpack/pkg/meta"
 )
 
 func (s *MetaStore) CreateJob(ctx context.Context, collectionID, fileUri, mimeType string) (meta.Job, error) {

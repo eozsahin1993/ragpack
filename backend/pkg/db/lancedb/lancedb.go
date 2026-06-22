@@ -7,7 +7,7 @@ import (
 	"github.com/lancedb/lancedb-go/pkg/contracts"
 	sdk "github.com/lancedb/lancedb-go/pkg/lancedb"
 
-	"ragpack/backend/pkg/db"
+	"ragpack/pkg/db"
 )
 
 type VectorDb struct {

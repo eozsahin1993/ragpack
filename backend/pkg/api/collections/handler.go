@@ -3,8 +3,8 @@ package collections
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"ragpack/backend/pkg/db"
-	"ragpack/backend/pkg/meta"
+	"ragpack/pkg/db"
+	"ragpack/pkg/meta"
 )
 
 type Handler struct {

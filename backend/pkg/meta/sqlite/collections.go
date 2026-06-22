@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"ragpack/backend/pkg/meta"
+	"ragpack/pkg/meta"
 )
 
 func (s *MetaStore) CreateCollection(ctx context.Context, name, embedModel string, vectorDim int) (meta.Collection, error) {

@@ -3,12 +3,12 @@ package api
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"ragpack/backend/pkg/api/collections"
-	"ragpack/backend/pkg/api/ingest"
-	"ragpack/backend/pkg/api/jobs"
-	"ragpack/backend/pkg/api/query"
-	"ragpack/backend/pkg/db"
-	"ragpack/backend/pkg/meta"
+	"ragpack/pkg/api/collections"
+	"ragpack/pkg/api/ingest"
+	"ragpack/pkg/api/jobs"
+	"ragpack/pkg/api/query"
+	"ragpack/pkg/db"
+	"ragpack/pkg/meta"
 )
 
 func Register(app *fiber.App, ms meta.MetaStore, vec db.VectorDb) {

@@ -8,7 +8,7 @@ import (
 	"github.com/apache/arrow/go/v17/arrow/array"
 	"github.com/apache/arrow/go/v17/arrow/memory"
 
-	"ragpack/backend/pkg/db"
+	"ragpack/pkg/db"
 )
 
 // Column names for the ChunkDbRecord Arrow schema.

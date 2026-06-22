@@ -7,9 +7,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 
-	"ragpack/backend/pkg/api"
-	lancedbpkg "ragpack/backend/pkg/db/lancedb"
-	sqlitemeta "ragpack/backend/pkg/meta/sqlite"
+	"ragpack/pkg/api"
+	lancedbpkg "ragpack/pkg/db/lancedb"
+	sqlitemeta "ragpack/pkg/meta/sqlite"
 )
 
 func main() {

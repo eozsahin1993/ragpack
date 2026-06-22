@@ -3,7 +3,7 @@ package jobs
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"ragpack/backend/pkg/meta"
+	"ragpack/pkg/meta"
 )
 
 type Handler struct {
