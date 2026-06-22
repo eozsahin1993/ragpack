@@ -25,7 +25,7 @@ type ChunkDbRecord struct {
 
 type VectorDb interface {
 	connect(ctx context.Context, connectionUrl string) error
-	createTable(ctx context.Context, name string)
-	insertRecord(ctx context.Context, tableName string, record ChunkDbRecord)
-	querySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int) []ChunkDbRecord
+	createTable(ctx context.Context, name string) error
+	insertRecord(ctx context.Context, tableName string, record ChunkDbRecord) error
+	querySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int) ([]ChunkDbRecord, error)
 }
