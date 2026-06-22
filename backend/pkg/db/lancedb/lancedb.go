@@ -11,12 +11,11 @@ import (
 )
 
 type VectorDb struct {
-	conn      contracts.IConnection
-	vectorDim int
+	conn contracts.IConnection
 }
 
-func New(vectorDim int) *VectorDb {
-	return &VectorDb{vectorDim: vectorDim}
+func New() *VectorDb {
+	return &VectorDb{}
 }
 
 func (l *VectorDb) Connect(ctx context.Context, connectionUrl string) error {
@@ -35,8 +34,8 @@ func (l *VectorDb) DropTable(ctx context.Context, name string) error {
 	return nil
 }
 
-func (l *VectorDb) CreateTable(ctx context.Context, name string) error {
-	schema, err := sdk.NewSchema(chunkArrowSchema(l.vectorDim))
+func (l *VectorDb) CreateTable(ctx context.Context, name string, vectorDim int) error {
+	schema, err := sdk.NewSchema(chunkArrowSchema(vectorDim))
 	if err != nil {
 		return fmt.Errorf("lancedb: schema build failed: %w", err)
 	}
@@ -55,7 +54,7 @@ func (l *VectorDb) InsertRecord(ctx context.Context, tableName string, record db
 	}
 	defer tbl.Close()
 
-	arrowRecord, err := chunkToArrowRecord(record, l.vectorDim)
+	arrowRecord, err := chunkToArrowRecord(record, len(record.Vector))
 	if err != nil {
 		return fmt.Errorf("lancedb: failed to build arrow record: %w", err)
 	}
