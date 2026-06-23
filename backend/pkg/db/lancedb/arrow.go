@@ -216,11 +216,14 @@ func extractInt32(row map[string]interface{}, key string) (int32, error) {
 	if !ok {
 		return 0, fmt.Errorf("missing field %q", key)
 	}
-	n, ok := v.(int32)
-	if !ok {
+	switch n := v.(type) {
+	case int32:
+		return n, nil
+	case float64:
+		return int32(n), nil
+	default:
 		return 0, fmt.Errorf("field %q: expected int32, got %T", key, v)
 	}
-	return n, nil
 }
 
 func extractInt64(row map[string]interface{}, key string) (int64, error) {
@@ -228,11 +231,14 @@ func extractInt64(row map[string]interface{}, key string) (int64, error) {
 	if !ok {
 		return 0, fmt.Errorf("missing field %q", key)
 	}
-	n, ok := v.(int64)
-	if !ok {
+	switch n := v.(type) {
+	case int64:
+		return n, nil
+	case float64:
+		return int64(n), nil
+	default:
 		return 0, fmt.Errorf("field %q: expected int64, got %T", key, v)
 	}
-	return n, nil
 }
 
 func extractFloat32Slice(row map[string]interface{}, key string) ([]float32, error) {
