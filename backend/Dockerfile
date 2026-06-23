@@ -18,8 +18,9 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY . .
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    LANCEDB_LIB=$(find /go/pkg/mod/github.com/lancedb/lancedb-go@v0.1.2/lib -name "liblancedb_go.a" | head -1) && \
-    if [ -z "$LANCEDB_LIB" ]; then echo "ERROR: liblancedb_go.a not found"; exit 1; fi && \
+    ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') && \
+    LANCEDB_LIB="/go/pkg/mod/github.com/lancedb/lancedb-go@v0.1.2/lib/linux_${ARCH}/liblancedb_go.a" && \
+    if [ ! -f "$LANCEDB_LIB" ]; then echo "ERROR: liblancedb_go.a not found at $LANCEDB_LIB"; exit 1; fi && \
     echo "Using: $LANCEDB_LIB" && \
     CGO_CFLAGS="-I/go/pkg/mod/github.com/lancedb/lancedb-go@v0.1.2/include" \
     CGO_LDFLAGS="$LANCEDB_LIB -lpthread -ldl -lm" \
