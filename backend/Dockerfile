@@ -3,18 +3,15 @@ FROM ghcr.io/eozsahin1993/ragpack-builder:latest AS builder
 
 WORKDIR /app
 
+# Download app dependencies alongside lancedb-go already in base image
 COPY go.mod go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod \
-    go mod download
+RUN go mod download
 
 COPY . .
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    LANCEDB_MODULE="$(go env GOPATH)/pkg/mod/github.com/lancedb/lancedb-go@v0.1.2" && \
-    LANCEDB_LIB="$LANCEDB_MODULE/lib/linux_amd64/liblancedb_go.a" && \
-    if [ ! -f "$LANCEDB_LIB" ]; then echo "ERROR: liblancedb_go.a not found"; exit 1; fi && \
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    LANCEDB_MODULE="$(go env GOPATH)/pkg/mod/github.com/eozsahin1993/lancedb-go@v0.1.3" && \
     CGO_CFLAGS="-I$LANCEDB_MODULE/include" \
-    CGO_LDFLAGS="$LANCEDB_LIB -lpthread -ldl -lm" \
+    CGO_LDFLAGS="$LANCEDB_MODULE/lib/linux_amd64/liblancedb_go.a -lpthread -ldl -lm" \
     go build -o /ragpack ./cmd/main.go
 
 FROM debian:bookworm-slim

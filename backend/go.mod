@@ -10,7 +10,7 @@ require (
 	github.com/gofiber/fiber/v2 v2.52.13
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/lancedb/lancedb-go v0.1.2
+	github.com/eozsahin1993/lancedb-go v0.1.3
 	github.com/pressly/goose/v3 v3.27.1
 	modernc.org/sqlite v1.53.0
 )
@@ -71,5 +71,3 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
-
-replace github.com/lancedb/lancedb-go => github.com/eozsahin1993/lancedb-go v0.1.2-arm64

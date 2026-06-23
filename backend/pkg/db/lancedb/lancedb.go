@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lancedb/lancedb-go/pkg/contracts"
-	sdk "github.com/lancedb/lancedb-go/pkg/lancedb"
+	"github.com/eozsahin1993/lancedb-go/pkg/contracts"
+	sdk "github.com/eozsahin1993/lancedb-go/pkg/lancedb"
 
 	"ragpack/pkg/db"
 )
