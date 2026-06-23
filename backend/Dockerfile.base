@@ -2,11 +2,21 @@
 # Pre-built builder base image with Go + LanceDB native library.
 # Published to ghcr.io/eozsahin1993/ragpack-builder as a multi-platform image.
 # Rebuild when upgrading Go or lancedb-go versions.
-FROM golang:1.26-noble
+FROM ubuntu:24.04
 
 ARG TARGETARCH
+ARG GO_VERSION=1.26.0
 
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y curl ca-certificates gcc && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz" -o /tmp/go.tar.gz && \
+    tar -C /usr/local -xzf /tmp/go.tar.gz && \
+    rm /tmp/go.tar.gz
+
+ENV PATH=/usr/local/go/bin:$PATH
+ENV GOPATH=/go
+ENV PATH=$GOPATH/bin:$PATH
 
 # Download a throwaway Go module just to pull lancedb-go into the cache
 WORKDIR /tmp/bootstrap
