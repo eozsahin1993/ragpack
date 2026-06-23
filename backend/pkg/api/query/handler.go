@@ -1,6 +1,8 @@
 package query
 
 import (
+	"log"
+
 	"github.com/gofiber/fiber/v2"
 
 	"ragpack/pkg/api/validate"
@@ -45,7 +47,8 @@ func (h *Handler) Query(c *fiber.Ctx) error {
 
 	results, err := h.vectorDb.QuerySimilarVectors(c.Context(), collection.TableName, vectors[0], req.TopK)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "query failed"})
+		log.Printf("query error: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	return c.JSON(fiber.Map{"results": results})
