@@ -8,6 +8,7 @@ import (
 	"ragpack/pkg/meta"
 )
 
+
 type Handler struct {
 	meta meta.MetaStore
 	vec  db.VectorDb
@@ -37,11 +38,19 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 }
 
 func (h *Handler) List(c *fiber.Ctx) error {
-	cols, err := h.meta.ListCollections(c.Context())
+	limit, offset := validate.Pagination(c)
+
+	cols, err := h.meta.ListCollections(c.Context(), limit, offset)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(fiber.Map{"collections": cols})
+
+	total, err := h.meta.CountCollections(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{"collections": cols, "total": total, "limit": limit, "offset": offset})
 }
 
 func (h *Handler) GetByID(c *fiber.Ctx) error {
@@ -88,6 +97,7 @@ func (h *Handler) DeleteBySlug(c *fiber.Ctx) error {
 	}
 	return h.deleteCollection(c, col)
 }
+
 
 func (h *Handler) deleteCollection(c *fiber.Ctx, col meta.Collection) error {
 	if err := h.vec.DropTable(c.Context(), col.TableName); err != nil {

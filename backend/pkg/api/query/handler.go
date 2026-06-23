@@ -45,7 +45,7 @@ func (h *Handler) Query(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to embed query"})
 	}
 
-	results, err := h.vectorDb.QuerySimilarVectors(c.Context(), collection.TableName, vectors[0], req.TopK)
+	results, err := h.vectorDb.QuerySimilarVectors(c.Context(), collection.TableName, embedder.Normalize(vectors[0]), req.TopK)
 	if err != nil {
 		log.Printf("query error: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})

@@ -56,17 +56,27 @@ func (s *MetaStore) GetCollectionByID(ctx context.Context, id string) (meta.Coll
 	return c, nil
 }
 
-func (s *MetaStore) ListCollections(ctx context.Context) ([]meta.Collection, error) {
+func (s *MetaStore) ListCollections(ctx context.Context, limit, offset int) ([]meta.Collection, error) {
 	var collections []meta.Collection
 	err := s.db.SelectContext(ctx, &collections, `
 		SELECT id, name, slug, table_name, embed_model, vector_dim, created_at
 		FROM collections
 		ORDER BY created_at DESC
-	`)
+		LIMIT ? OFFSET ?
+	`, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list collections: %w", err)
 	}
 	return collections, nil
+}
+
+func (s *MetaStore) CountCollections(ctx context.Context) (int, error) {
+	var count int
+	err := s.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM collections`)
+	if err != nil {
+		return 0, fmt.Errorf("sqlite: count collections: %w", err)
+	}
+	return count, nil
 }
 
 func (s *MetaStore) UpdateCollectionName(ctx context.Context, id, name string) (meta.Collection, error) {

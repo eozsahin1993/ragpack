@@ -18,7 +18,8 @@ type Collection struct {
 type CollectionReader interface {
 	GetCollectionByID(ctx context.Context, id string) (Collection, error)
 	GetCollectionBySlug(ctx context.Context, slug string) (Collection, error)
-	ListCollections(ctx context.Context) ([]Collection, error)
+	ListCollections(ctx context.Context, limit, offset int) ([]Collection, error)
+	CountCollections(ctx context.Context) (int, error)
 }
 
 type CollectionWriter interface {

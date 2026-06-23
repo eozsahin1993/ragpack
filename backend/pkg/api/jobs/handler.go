@@ -3,6 +3,7 @@ package jobs
 import (
 	"github.com/gofiber/fiber/v2"
 
+	"ragpack/pkg/api/validate"
 	"ragpack/pkg/meta"
 )
 
@@ -20,6 +21,8 @@ func (h *Handler) GetJobsByCollection(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "collection not found"})
 	}
 
+	limit, offset := validate.Pagination(c)
+
 	if statusParam := c.Query("status"); statusParam != "" {
 		status := meta.JobStatus(statusParam)
 		switch status {
@@ -27,21 +30,31 @@ func (h *Handler) GetJobsByCollection(c *fiber.Ctx) error {
 		default:
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid status"})
 		}
-		js, err := h.meta.ListJobsByCollectionAndStatus(c.Context(), collection.ID, status)
+		js, err := h.meta.ListJobsByCollectionAndStatus(c.Context(), collection.ID, status, limit, offset)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
-		return c.JSON(fiber.Map{"jobs": js})
+		total, err := h.meta.CountJobsByCollectionAndStatus(c.Context(), collection.ID, status)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(fiber.Map{"jobs": js, "total": total, "limit": limit, "offset": offset})
 	}
 
-	js, err := h.meta.ListJobsByCollection(c.Context(), collection.ID)
+	js, err := h.meta.ListJobsByCollection(c.Context(), collection.ID, limit, offset)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(fiber.Map{"jobs": js})
+	total, err := h.meta.CountJobsByCollection(c.Context(), collection.ID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"jobs": js, "total": total, "limit": limit, "offset": offset})
 }
 
 func (h *Handler) GetAllJobs(c *fiber.Ctx) error {
+	limit, offset := validate.Pagination(c)
+
 	if statusParam := c.Query("status"); statusParam != "" {
 		status := meta.JobStatus(statusParam)
 		switch status {
@@ -49,18 +62,26 @@ func (h *Handler) GetAllJobs(c *fiber.Ctx) error {
 		default:
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid status"})
 		}
-		js, err := h.meta.ListJobsByStatus(c.Context(), status)
+		js, err := h.meta.ListJobsByStatus(c.Context(), status, limit, offset)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
-		return c.JSON(fiber.Map{"jobs": js})
+		total, err := h.meta.CountJobsByStatus(c.Context(), status)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(fiber.Map{"jobs": js, "total": total, "limit": limit, "offset": offset})
 	}
 
-	js, err := h.meta.ListAllJobs(c.Context())
+	js, err := h.meta.ListAllJobs(c.Context(), limit, offset)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(fiber.Map{"jobs": js})
+	total, err := h.meta.CountAllJobs(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"jobs": js, "total": total, "limit": limit, "offset": offset})
 }
 
 func (h *Handler) GetJob(c *fiber.Ctx) error {

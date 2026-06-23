@@ -28,10 +28,14 @@ type Job struct {
 
 type JobReader interface {
 	GetJob(ctx context.Context, id string) (Job, error)
-	ListAllJobs(ctx context.Context) ([]Job, error)
-	ListJobsByCollection(ctx context.Context, collectionID string) ([]Job, error)
-	ListJobsByCollectionAndStatus(ctx context.Context, collectionID string, status JobStatus) ([]Job, error)
-	ListJobsByStatus(ctx context.Context, status JobStatus) ([]Job, error)
+	ListAllJobs(ctx context.Context, limit, offset int) ([]Job, error)
+	ListJobsByCollection(ctx context.Context, collectionID string, limit, offset int) ([]Job, error)
+	ListJobsByCollectionAndStatus(ctx context.Context, collectionID string, status JobStatus, limit, offset int) ([]Job, error)
+	ListJobsByStatus(ctx context.Context, status JobStatus, limit, offset int) ([]Job, error)
+	CountAllJobs(ctx context.Context) (int, error)
+	CountJobsByCollection(ctx context.Context, collectionID string) (int, error)
+	CountJobsByCollectionAndStatus(ctx context.Context, collectionID string, status JobStatus) (int, error)
+	CountJobsByStatus(ctx context.Context, status JobStatus) (int, error)
 }
 
 type JobWriter interface {

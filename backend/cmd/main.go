@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 
 	"ragpack/pkg/api"
@@ -45,6 +46,11 @@ func main() {
 		AppName: "RagPack Engine v1.0",
 	})
 	app.Use(logger.New())
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowHeaders: "Origin, Content-Type, Accept",
+		AllowMethods: "GET, POST, PATCH, DELETE, OPTIONS",
+	}))
 
 	api.Register(app, ms, vec, registry, ing)
 

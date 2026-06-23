@@ -15,6 +15,7 @@ import (
 // Keep in sync with json tags on db.ChunkDbRecord.
 const (
 	colID         = "id"
+	colDocumentID = "document_id"
 	colChunkHash  = "chunk_hash"
 	colChunkIndex = "chunk_index"
 	colVector     = "vector"
@@ -31,6 +32,7 @@ const (
 func chunkArrowSchema(vectorDim int) *arrow.Schema {
 	return arrow.NewSchema([]arrow.Field{
 		{Name: colID, Type: arrow.BinaryTypes.String, Nullable: false},
+		{Name: colDocumentID, Type: arrow.BinaryTypes.String, Nullable: false},
 		{Name: colChunkHash, Type: arrow.BinaryTypes.String, Nullable: false},
 		{Name: colChunkIndex, Type: arrow.PrimitiveTypes.Int32, Nullable: false},
 		{Name: colVector, Type: arrow.FixedSizeListOf(int32(vectorDim), arrow.PrimitiveTypes.Float32), Nullable: false},
@@ -53,6 +55,11 @@ func chunkToArrowRecord(r db.ChunkDbRecord, vectorDim int) (arrow.Record, error)
 	idB.Append(r.ID)
 	idArr := idB.NewArray()
 	defer idArr.Release()
+
+	docIDB := array.NewStringBuilder(pool)
+	docIDB.Append(r.DocumentID)
+	docIDArr := docIDB.NewArray()
+	defer docIDArr.Release()
 
 	hashB := array.NewStringBuilder(pool)
 	hashB.Append(r.ChunkHash)
@@ -112,7 +119,7 @@ func chunkToArrowRecord(r db.ChunkDbRecord, vectorDim int) (arrow.Record, error)
 	defer extraArr.Release()
 
 	return array.NewRecord(schema, []arrow.Array{
-		idArr, hashArr, idxArr, vecArr, createdArr, updatedArr,
+		idArr, docIDArr, hashArr, idxArr, vecArr, createdArr, updatedArr,
 		mimeArr, fileUriArr, srcNameArr,
 		chunkTextArr, extIdArr, extraArr,
 	}, 1), nil
@@ -159,6 +166,9 @@ func rowToChunk(row map[string]interface{}) (db.ChunkDbRecord, error) {
 	var err error
 
 	if rec.ID, err = extractString(row, colID); err != nil {
+		return rec, err
+	}
+	if rec.DocumentID, err = extractString(row, colDocumentID); err != nil {
 		return rec, err
 	}
 	if rec.ChunkHash, err = extractString(row, colChunkHash); err != nil {

@@ -95,7 +95,7 @@ func (wp *WorkerPool) requeue(ctx context.Context, includeProcessing bool) {
 
 	var jobs []meta.Job
 	for _, status := range statuses {
-		js, err := wp.metaStore.ListJobsByStatus(ctx, status)
+		js, err := wp.metaStore.ListJobsByStatus(ctx, status, 10_000, 0)
 		if err != nil {
 			log.Printf("ingester: requeue list %s jobs: %v", status, err)
 			continue
