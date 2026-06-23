@@ -1,22 +1,24 @@
 # syntax=docker/dockerfile:1
 # Pre-built builder base image with Go + LanceDB native library.
-# Published to ghcr.io/eozsahin1993/ragpack-builder:latest via GitHub Actions.
-# Rebuild this image when upgrading Go or lancedb-go versions.
+# Published to ghcr.io/eozsahin1993/ragpack-builder as a multi-platform image.
+# Rebuild when upgrading Go or lancedb-go versions.
 FROM golang:1.26-bookworm
+
+ARG TARGETARCH
 
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Download a throwaway Go module just to pull the lancedb-go module into the cache
+# Download a throwaway Go module just to pull lancedb-go into the cache
 WORKDIR /tmp/bootstrap
 RUN go mod init bootstrap && \
     go get github.com/eozsahin1993/lancedb-go@v0.1.3 && \
     go mod download
 
-# Download and link the LanceDB native library
-RUN LANCEDB_MODULE="$(go env GOPATH)/pkg/mod/github.com/lancedb/lancedb-go@v0.1.3" && \
+# Download LanceDB native library for the target platform
+RUN LANCEDB_MODULE="$(go env GOPATH)/pkg/mod/github.com/eozsahin1993/lancedb-go@v0.1.3" && \
     chmod -R u+w "$LANCEDB_MODULE" && \
     cd "$LANCEDB_MODULE" && \
-    bash scripts/download-artifacts.sh v0.1.2 && \
+    bash scripts/download-artifacts.sh v0.1.3 && \
     echo "=== downloaded libs ===" && \
     find lib -type f
 
