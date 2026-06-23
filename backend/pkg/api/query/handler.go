@@ -51,5 +51,16 @@ func (h *Handler) Query(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	return c.JSON(fiber.Map{"results": results})
+	items := make([]QueryResultItem, len(results))
+	for i, r := range results {
+		items[i] = QueryResultItem{
+			Source:     r.SourceName,
+			ChunkIndex: r.ChunkIndex,
+			ChunkText:  r.ChunkText,
+			Distance:   r.Distance,
+			Similarity: r.Similarity,
+		}
+	}
+
+	return c.JSON(fiber.Map{"results": items})
 }

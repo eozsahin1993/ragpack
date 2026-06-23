@@ -126,14 +126,30 @@ func appendOptionalString(b *array.StringBuilder, v *string) {
 	}
 }
 
-func mapResultsToChunks(rows []map[string]interface{}) ([]db.ChunkDbRecord, error) {
-	results := make([]db.ChunkDbRecord, 0, len(rows))
+func mapResultsToChunks(rows []map[string]interface{}) ([]db.ChunkQueryResult, error) {
+	results := make([]db.ChunkQueryResult, 0, len(rows))
 	for i, row := range rows {
 		rec, err := rowToChunk(row)
 		if err != nil {
 			return nil, fmt.Errorf("row %d: %w", i, err)
 		}
-		results = append(results, rec)
+		var distance float32
+		if d, ok := row["_distance"]; ok {
+			if f, ok := d.(float64); ok {
+				distance = float32(f)
+			}
+		}
+		// L2 distance with unit vectors: cosine_sim = 1 - d²/2, clipped to [0, 1]
+		cosineSim := float32(1) - (distance*distance)/2
+		if cosineSim < 0 {
+			cosineSim = 0
+		}
+		similarity := cosineSim * 100
+		results = append(results, db.ChunkQueryResult{
+			ChunkDbRecord: rec,
+			Distance:      distance,
+			Similarity:    similarity,
+		})
 	}
 	return results, nil
 }

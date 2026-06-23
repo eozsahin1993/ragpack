@@ -21,10 +21,16 @@ type ChunkDbRecord struct {
 	ExtraJSON  *string `json:"extra_json"`
 }
 
+type ChunkQueryResult struct {
+	ChunkDbRecord
+	Distance   float32 `json:"distance"`
+	Similarity float32 `json:"similarity"` // 0-100, cosine-based
+}
+
 type VectorDb interface {
 	Connect(ctx context.Context, connectionUrl string) error
 	CreateTable(ctx context.Context, name string, vectorDim int) error
 	DropTable(ctx context.Context, name string) error
 	InsertRecord(ctx context.Context, tableName string, record ChunkDbRecord) error
-	QuerySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int) ([]ChunkDbRecord, error)
+	QuerySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int) ([]ChunkQueryResult, error)
 }

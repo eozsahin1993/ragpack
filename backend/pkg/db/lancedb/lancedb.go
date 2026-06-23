@@ -66,7 +66,7 @@ func (l *VectorDb) InsertRecord(ctx context.Context, tableName string, record db
 	return nil
 }
 
-func (l *VectorDb) QuerySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int) ([]db.ChunkDbRecord, error) {
+func (l *VectorDb) QuerySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int) ([]db.ChunkQueryResult, error) {
 	tbl, err := l.conn.OpenTable(ctx, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("lancedb: open query table failed %s: %w", tableName, err)
