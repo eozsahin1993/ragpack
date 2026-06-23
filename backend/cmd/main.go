@@ -31,7 +31,7 @@ func main() {
 
 	emb, err := buildEmbedder(cfg)
 	if err != nil {
-		log.Fatalf("embedder: %v", err)
+		log.Printf("warning: embedder unavailable (%v) — ingest will fail until resolved", err)
 	}
 	_ = emb // will be passed to ingester
 

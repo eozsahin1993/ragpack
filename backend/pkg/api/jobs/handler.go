@@ -15,7 +15,7 @@ func NewHandler(ms meta.MetaStore) *Handler {
 }
 
 func (h *Handler) ListByCollection(c *fiber.Ctx) error {
-	col, err := h.meta.GetCollectionByName(c.Context(), c.Params("name"))
+	col, err := h.meta.GetCollectionBySlug(c.Context(), c.Params("slug"))
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "collection not found"})
 	}

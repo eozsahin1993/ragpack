@@ -13,6 +13,7 @@ func (s *MetaStore) CreateCollection(ctx context.Context, name, embedModel strin
 	c := meta.Collection{
 		ID:         id,
 		Name:       name,
+		Slug:       slugify(name + "_" + embedModel),
 		TableName:  tableName,
 		EmbedModel: embedModel,
 		VectorDim:  vectorDim,
@@ -20,8 +21,8 @@ func (s *MetaStore) CreateCollection(ctx context.Context, name, embedModel strin
 	}
 
 	_, err := s.db.NamedExecContext(ctx, `
-		INSERT INTO collections (id, name, table_name, embed_model, vector_dim, created_at)
-		VALUES (:id, :name, :table_name, :embed_model, :vector_dim, :created_at)
+		INSERT INTO collections (id, name, slug, table_name, embed_model, vector_dim, created_at)
+		VALUES (:id, :name, :slug, :table_name, :embed_model, :vector_dim, :created_at)
 	`, c)
 	if err != nil {
 		return meta.Collection{}, fmt.Errorf("sqlite: create collection %q: %w", name, err)
@@ -29,15 +30,15 @@ func (s *MetaStore) CreateCollection(ctx context.Context, name, embedModel strin
 	return c, nil
 }
 
-func (s *MetaStore) GetCollectionByName(ctx context.Context, name string) (meta.Collection, error) {
+func (s *MetaStore) GetCollectionBySlug(ctx context.Context, slug string) (meta.Collection, error) {
 	var c meta.Collection
 	err := s.db.GetContext(ctx, &c, `
-		SELECT id, name, table_name, embed_model, vector_dim, created_at
+		SELECT id, name, slug, table_name, embed_model, vector_dim, created_at
 		FROM collections
-		WHERE name = ?
-	`, name)
+		WHERE slug = ?
+	`, slug)
 	if err != nil {
-		return meta.Collection{}, fmt.Errorf("sqlite: get collection by name %q: %w", name, err)
+		return meta.Collection{}, fmt.Errorf("sqlite: get collection by slug %q: %w", slug, err)
 	}
 	return c, nil
 }
@@ -45,7 +46,7 @@ func (s *MetaStore) GetCollectionByName(ctx context.Context, name string) (meta.
 func (s *MetaStore) GetCollectionByID(ctx context.Context, id string) (meta.Collection, error) {
 	var c meta.Collection
 	err := s.db.GetContext(ctx, &c, `
-		SELECT id, name, table_name, embed_model, vector_dim, created_at
+		SELECT id, name, slug, table_name, embed_model, vector_dim, created_at
 		FROM collections
 		WHERE id = ?
 	`, id)
@@ -58,7 +59,7 @@ func (s *MetaStore) GetCollectionByID(ctx context.Context, id string) (meta.Coll
 func (s *MetaStore) ListCollections(ctx context.Context) ([]meta.Collection, error) {
 	var collections []meta.Collection
 	err := s.db.SelectContext(ctx, &collections, `
-		SELECT id, name, table_name, embed_model, vector_dim, created_at
+		SELECT id, name, slug, table_name, embed_model, vector_dim, created_at
 		FROM collections
 		ORDER BY created_at DESC
 	`)
@@ -68,13 +69,29 @@ func (s *MetaStore) ListCollections(ctx context.Context) ([]meta.Collection, err
 	return collections, nil
 }
 
-func (s *MetaStore) DeleteCollection(ctx context.Context, name string) error {
-	_, err := s.db.ExecContext(ctx, `
-		DELETE FROM collections
-		WHERE name = ?
-	`, name)
+func (s *MetaStore) UpdateCollectionName(ctx context.Context, id, name string) (meta.Collection, error) {
+	var embedModel string
+	err := s.db.GetContext(ctx, &embedModel, `SELECT embed_model FROM collections WHERE id = ?`, id)
 	if err != nil {
-		return fmt.Errorf("sqlite: delete collection %q: %w", name, err)
+		return meta.Collection{}, fmt.Errorf("sqlite: update collection name %q: %w", id, err)
+	}
+	newSlug := slugify(name + "_" + embedModel)
+
+	_, err = s.db.ExecContext(ctx, `
+		UPDATE collections SET name = ?, slug = ? WHERE id = ?
+	`, name, newSlug, id)
+	if err != nil {
+		return meta.Collection{}, fmt.Errorf("sqlite: update collection name %q: %w", id, err)
+	}
+	return s.GetCollectionByID(ctx, id)
+}
+
+func (s *MetaStore) DeleteCollection(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `
+		DELETE FROM collections WHERE id = ?
+	`, id)
+	if err != nil {
+		return fmt.Errorf("sqlite: delete collection %q: %w", id, err)
 	}
 	return nil
 }

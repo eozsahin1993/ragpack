@@ -3,6 +3,7 @@ package collections
 import (
 	"github.com/gofiber/fiber/v2"
 
+	"ragpack/pkg/api/validate"
 	"ragpack/pkg/db"
 	"ragpack/pkg/meta"
 )
@@ -16,19 +17,10 @@ func NewHandler(ms meta.MetaStore, vec db.VectorDb) *Handler {
 	return &Handler{meta: ms, vec: vec}
 }
 
-type createRequest struct {
-	Name       string `json:"name"`
-	EmbedModel string `json:"embed_model"`
-	VectorDim  int    `json:"vector_dim"`
-}
-
 func (h *Handler) Create(c *fiber.Ctx) error {
-	var req createRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
-	}
-	if req.Name == "" || req.EmbedModel == "" || req.VectorDim <= 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "name, embed_model, and vector_dim are required"})
+	var req CreateRequest
+	if err := validate.Body(c, &req); err != nil {
+		return err
 	}
 
 	col, err := h.meta.CreateCollection(c.Context(), req.Name, req.EmbedModel, req.VectorDim)
@@ -37,7 +29,7 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	}
 
 	if err := h.vec.CreateTable(c.Context(), col.TableName, col.VectorDim); err != nil {
-		_ = h.meta.DeleteCollection(c.Context(), col.Name)
+		_ = h.meta.DeleteCollection(c.Context(), col.ID)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
@@ -60,20 +52,25 @@ func (h *Handler) GetByID(c *fiber.Ctx) error {
 	return c.JSON(col)
 }
 
-func (h *Handler) GetByName(c *fiber.Ctx) error {
-	col, err := h.meta.GetCollectionByName(c.Context(), c.Params("name"))
+func (h *Handler) GetBySlug(c *fiber.Ctx) error {
+	col, err := h.meta.GetCollectionBySlug(c.Context(), c.Params("slug"))
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "collection not found"})
 	}
 	return c.JSON(col)
 }
 
-func (h *Handler) Delete(c *fiber.Ctx) error {
-	col, err := h.meta.GetCollectionByName(c.Context(), c.Params("name"))
-	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "collection not found"})
+func (h *Handler) PatchCollection(c *fiber.Ctx) error {
+	var req PatchRequest
+	if err := validate.Body(c, &req); err != nil {
+		return err
 	}
-	return h.deleteCollection(c, col)
+
+	col, err := h.meta.UpdateCollectionName(c.Context(), c.Params("id"), req.Name)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(col)
 }
 
 func (h *Handler) DeleteByID(c *fiber.Ctx) error {
@@ -84,11 +81,19 @@ func (h *Handler) DeleteByID(c *fiber.Ctx) error {
 	return h.deleteCollection(c, col)
 }
 
+func (h *Handler) DeleteBySlug(c *fiber.Ctx) error {
+	col, err := h.meta.GetCollectionBySlug(c.Context(), c.Params("slug"))
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "collection not found"})
+	}
+	return h.deleteCollection(c, col)
+}
+
 func (h *Handler) deleteCollection(c *fiber.Ctx, col meta.Collection) error {
 	if err := h.vec.DropTable(c.Context(), col.TableName); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	if err := h.meta.DeleteCollection(c.Context(), col.Name); err != nil {
+	if err := h.meta.DeleteCollection(c.Context(), col.ID); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(fiber.StatusNoContent)

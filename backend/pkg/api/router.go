@@ -21,7 +21,7 @@ func Register(app *fiber.App, ms meta.MetaStore, vec db.VectorDb) {
 	collGroup := v1.Group("/collections")
 	collections.Register(collGroup, collections.NewHandler(ms, vec))
 
-	nameGroup := collGroup.Group("/:name")
+	nameGroup := collGroup.Group("/:slug")
 	jobs.Register(nameGroup, jobs.NewHandler(ms))
 	ingest.Register(nameGroup, ingest.NewHandler(ms, vec))
 	query.Register(nameGroup, query.NewHandler(ms, vec))
