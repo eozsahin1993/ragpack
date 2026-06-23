@@ -1,4 +1,4 @@
-FROM golang:1.26-bookworm AS builder
+FROM --platform=linux/amd64 golang:1.26-bookworm AS builder
 
 WORKDIR /app
 
@@ -26,7 +26,7 @@ RUN LANCEDB_MODULE="$(go env GOPATH)/pkg/mod/github.com/lancedb/lancedb-go@v0.1.
     CGO_LDFLAGS="$LANCEDB_LIB -lpthread -ldl -lm" \
     go build -o /ragpack ./cmd/main.go
 
-FROM debian:bookworm-slim
+FROM --platform=linux/amd64 debian:bookworm-slim
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /ragpack /ragpack
