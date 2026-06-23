@@ -34,8 +34,8 @@ func chunkArrowSchema(vectorDim int) *arrow.Schema {
 		{Name: colChunkHash, Type: arrow.BinaryTypes.String, Nullable: false},
 		{Name: colChunkIndex, Type: arrow.PrimitiveTypes.Int32, Nullable: false},
 		{Name: colVector, Type: arrow.FixedSizeListOf(int32(vectorDim), arrow.PrimitiveTypes.Float32), Nullable: false},
-		{Name: colCreatedAt, Type: &arrow.TimestampType{Unit: arrow.Second, TimeZone: "UTC"}, Nullable: false},
-		{Name: colUpdatedAt, Type: &arrow.TimestampType{Unit: arrow.Second, TimeZone: "UTC"}, Nullable: false},
+		{Name: colCreatedAt, Type: arrow.PrimitiveTypes.Int64, Nullable: false},
+		{Name: colUpdatedAt, Type: arrow.PrimitiveTypes.Int64, Nullable: false},
 		{Name: colMimeType, Type: arrow.BinaryTypes.String, Nullable: false},
 		{Name: colFileUri, Type: arrow.BinaryTypes.String, Nullable: false},
 		{Name: colSourceName, Type: arrow.BinaryTypes.String, Nullable: false},
@@ -71,13 +71,13 @@ func chunkToArrowRecord(r db.ChunkDbRecord, vectorDim int) (arrow.Record, error)
 	vecArr := vecB.NewArray()
 	defer vecArr.Release()
 
-	createdB := array.NewTimestampBuilder(pool, &arrow.TimestampType{Unit: arrow.Second, TimeZone: "UTC"})
-	createdB.Append(arrow.Timestamp(r.CreatedAt.Unix()))
+	createdB := array.NewInt64Builder(pool)
+	createdB.Append(r.CreatedAt.Unix())
 	createdArr := createdB.NewArray()
 	defer createdArr.Release()
 
-	updatedB := array.NewTimestampBuilder(pool, &arrow.TimestampType{Unit: arrow.Second, TimeZone: "UTC"})
-	updatedB.Append(arrow.Timestamp(r.UpdatedAt.Unix()))
+	updatedB := array.NewInt64Builder(pool)
+	updatedB.Append(r.UpdatedAt.Unix())
 	updatedArr := updatedB.NewArray()
 	defer updatedArr.Release()
 
@@ -236,16 +236,7 @@ func extractInt64(row map[string]interface{}, key string) (int64, error) {
 		return n, nil
 	case float64:
 		return int64(n), nil
-	case string:
-		t, err := time.Parse(time.RFC3339, n)
-		if err != nil {
-			t, err = time.Parse("2006-01-02 15:04:05 +0000 UTC", n)
-			if err != nil {
-				return 0, fmt.Errorf("field %q: cannot parse timestamp %q", key, n)
-			}
-		}
-		return t.Unix(), nil
-	default:
+default:
 		return 0, fmt.Errorf("field %q: expected int64, got %T", key, v)
 	}
 }
