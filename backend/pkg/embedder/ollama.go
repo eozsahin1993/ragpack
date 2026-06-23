@@ -16,20 +16,12 @@ type OllamaEmbedder struct {
 	client  *http.Client
 }
 
-func NewOllama(ctx context.Context, baseURL, model string) (*OllamaEmbedder, error) {
-	e := &OllamaEmbedder{
+func NewOllama(_ context.Context, baseURL, model string) (*OllamaEmbedder, error) {
+	return &OllamaEmbedder{
 		baseURL: baseURL,
 		model:   model,
 		client:  &http.Client{Timeout: 60 * time.Second},
-	}
-
-	vecs, err := e.Embed(ctx, []string{"probe"})
-	if err != nil {
-		return nil, fmt.Errorf("ollama embedder: probe call failed: %w", err)
-	}
-	e.dims = len(vecs[0])
-
-	return e, nil
+	}, nil
 }
 
 func (e *OllamaEmbedder) Dimensions() int { return e.dims }
