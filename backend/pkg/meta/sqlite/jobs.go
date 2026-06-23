@@ -45,6 +45,19 @@ func (s *MetaStore) GetJob(ctx context.Context, id string) (meta.Job, error) {
 	return j, nil
 }
 
+func (s *MetaStore) ListAllJobs(ctx context.Context) ([]meta.Job, error) {
+	var jobs []meta.Job
+	err := s.db.SelectContext(ctx, &jobs, `
+		SELECT id, collection_id, file_uri, mime_type, status, error, executed_at, created_at, updated_at
+		FROM jobs
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: list all jobs: %w", err)
+	}
+	return jobs, nil
+}
+
 func (s *MetaStore) ListJobsByCollection(ctx context.Context, collectionID string) ([]meta.Job, error) {
 	var jobs []meta.Job
 	err := s.db.SelectContext(ctx, &jobs, `
@@ -55,6 +68,20 @@ func (s *MetaStore) ListJobsByCollection(ctx context.Context, collectionID strin
 	`, collectionID)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list jobs for collection %q: %w", collectionID, err)
+	}
+	return jobs, nil
+}
+
+func (s *MetaStore) ListJobsByCollectionAndStatus(ctx context.Context, collectionID string, status meta.JobStatus) ([]meta.Job, error) {
+	var jobs []meta.Job
+	err := s.db.SelectContext(ctx, &jobs, `
+		SELECT id, collection_id, file_uri, mime_type, status, error, executed_at, created_at, updated_at
+		FROM jobs
+		WHERE collection_id = ? AND status = ?
+		ORDER BY created_at DESC
+	`, collectionID, status)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: list jobs for collection %q with status %q: %w", collectionID, status, err)
 	}
 	return jobs, nil
 }

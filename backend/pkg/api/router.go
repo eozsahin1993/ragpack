@@ -19,11 +19,15 @@ func Register(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, ing ingester.I
 		return c.JSON(fiber.Map{"status": "healthy", "engine": "Go + Fiber"})
 	})
 
+	jobHandler := jobs.NewHandler(ms)
+	v1.Get("/jobs", jobHandler.GetAllJobs)
+	v1.Get("/jobs/:id", jobHandler.GetJob)
+
 	collGroup := v1.Group("/collections")
 	collections.Register(collGroup, collections.NewHandler(ms, vec))
 
 	nameGroup := collGroup.Group("/:slug")
-	jobs.Register(nameGroup, jobs.NewHandler(ms))
+	jobs.Register(nameGroup, jobHandler)
 	ingest.Register(nameGroup, ingest.NewHandler(ms, ing))
 	query.Register(nameGroup, query.NewHandler(ms, vec))
 }

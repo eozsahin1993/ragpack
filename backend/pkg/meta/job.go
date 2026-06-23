@@ -28,7 +28,9 @@ type Job struct {
 
 type JobReader interface {
 	GetJob(ctx context.Context, id string) (Job, error)
+	ListAllJobs(ctx context.Context) ([]Job, error)
 	ListJobsByCollection(ctx context.Context, collectionID string) ([]Job, error)
+	ListJobsByCollectionAndStatus(ctx context.Context, collectionID string, status JobStatus) ([]Job, error)
 	ListJobsByStatus(ctx context.Context, status JobStatus) ([]Job, error)
 }
 
