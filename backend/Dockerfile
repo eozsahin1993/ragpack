@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM --platform=linux/amd64 ghcr.io/eozsahin1993/ragpack-builder:latest AS builder
+FROM ghcr.io/eozsahin1993/ragpack-builder:latest AS builder
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_LDFLAGS="$LANCEDB_LIB -lpthread -ldl -lm" \
     go build -o /ragpack ./cmd/main.go
 
-FROM --platform=linux/amd64 debian:bookworm-slim
+FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /ragpack /ragpack

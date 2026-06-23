@@ -2,7 +2,7 @@
 # Pre-built builder base image with Go + LanceDB native library.
 # Published to ghcr.io/eozsahin1993/ragpack-builder:latest via GitHub Actions.
 # Rebuild this image when upgrading Go or lancedb-go versions.
-FROM --platform=linux/amd64 golang:1.26-bookworm
+FROM golang:1.26-bookworm
 
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
