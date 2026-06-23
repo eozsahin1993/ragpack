@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -12,6 +15,7 @@ import (
 	"ragpack/pkg/config"
 	lancedbpkg "ragpack/pkg/db/lancedb"
 	"ragpack/pkg/embedder"
+	"ragpack/pkg/ingester"
 	sqlitemeta "ragpack/pkg/meta/sqlite"
 )
 
@@ -33,14 +37,30 @@ func main() {
 	if err != nil {
 		log.Printf("warning: embedder unavailable (%v) — ingest will fail until resolved", err)
 	}
-	_ = emb // will be passed to ingester
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ing := ingester.New(ms, vec, emb, cfg.Ingester.WorkerCount, cfg.Ingester.EmbedRateLimit)
+	ing.Start(ctx, cfg.Ingester.WorkerCount)
 
 	app := fiber.New(fiber.Config{
 		AppName: "RagPack Engine v1.0",
 	})
 	app.Use(logger.New())
 
-	api.Register(app, ms, vec)
+	api.Register(app, ms, vec, ing)
+
+	// graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-quit
+		log.Println("shutting down...")
+		cancel()
+		ing.Stop()
+		app.Shutdown()
+	}()
 
 	log.Printf("RagPack server starting on :%s", cfg.Port)
 	if err := app.Listen(fmt.Sprintf(":%s", cfg.Port)); err != nil {
