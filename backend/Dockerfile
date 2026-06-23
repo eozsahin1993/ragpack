@@ -10,7 +10,7 @@ RUN go mod download
 
 COPY . .
 RUN --mount=type=cache,target=/root/.cache/go-build \
-    LANCEDB_MODULE="$(go env GOPATH)/pkg/mod/github.com/eozsahin1993/lancedb-go@v0.1.3" && \
+    LANCEDB_MODULE="$(go env GOPATH)/pkg/mod/github.com/eozsahin1993/lancedb-go@v0.1.4" && \
     CGO_CFLAGS="-I$LANCEDB_MODULE/include" \
     CGO_LDFLAGS="$LANCEDB_MODULE/lib/linux_${TARGETARCH}/liblancedb_go.a -lpthread -ldl -lm" \
     go build -o /ragpack ./cmd/main.go

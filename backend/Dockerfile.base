@@ -11,14 +11,14 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 # Download a throwaway Go module just to pull lancedb-go into the cache
 WORKDIR /tmp/bootstrap
 RUN go mod init bootstrap && \
-    go get github.com/eozsahin1993/lancedb-go@v0.1.3 && \
+    go get github.com/eozsahin1993/lancedb-go@v0.1.4 && \
     go mod download
 
 # Download LanceDB native library for the target platform
-RUN LANCEDB_MODULE="$(go env GOPATH)/pkg/mod/github.com/eozsahin1993/lancedb-go@v0.1.3" && \
+RUN LANCEDB_MODULE="$(go env GOPATH)/pkg/mod/github.com/eozsahin1993/lancedb-go@v0.1.4" && \
     chmod -R u+w "$LANCEDB_MODULE" && \
     cd "$LANCEDB_MODULE" && \
-    bash scripts/download-artifacts.sh v0.1.3 && \
+    bash scripts/download-artifacts.sh v0.1.4 && \
     echo "=== downloaded libs ===" && \
     find lib -type f
 
