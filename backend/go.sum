@@ -69,8 +69,8 @@ github.com/docker/go-units v0.5.0 h1:69rxXcBk27SvSaaxTtLh/8llcHD8vYHT7WSdRZ/jvr4
 github.com/docker/go-units v0.5.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
-github.com/eozsahin1993/lancedb-go v1.0.4 h1:pXTh37UXQMZF5lOQ9OIYCQPwSbupUB10TDjB5S/Ib/Y=
-github.com/eozsahin1993/lancedb-go v1.0.4/go.mod h1:zKL7mWL0C1LP/TlfzeSX3gOrdkkOSDUV4ftMQ1IwjVY=
+github.com/eozsahin1993/lancedb-go v0.1.4 h1:Qsq+pxghBpgwQXV3cC/wfvZ8oKSt331YFcWdFRiz6TY=
+github.com/eozsahin1993/lancedb-go v0.1.4/go.mod h1:zKL7mWL0C1LP/TlfzeSX3gOrdkkOSDUV4ftMQ1IwjVY=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
 github.com/felixge/httpsnoop v1.0.4/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
 github.com/gabriel-vasile/mimetype v1.4.13 h1:46nXokslUBsAJE/wMsp5gtO500a4F3Nkz9Ufpk2AcUM=
