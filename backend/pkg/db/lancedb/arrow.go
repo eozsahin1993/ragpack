@@ -236,6 +236,15 @@ func extractInt64(row map[string]interface{}, key string) (int64, error) {
 		return n, nil
 	case float64:
 		return int64(n), nil
+	case string:
+		t, err := time.Parse(time.RFC3339, n)
+		if err != nil {
+			t, err = time.Parse("2006-01-02 15:04:05 +0000 UTC", n)
+			if err != nil {
+				return 0, fmt.Errorf("field %q: cannot parse timestamp %q", key, n)
+			}
+		}
+		return t.Unix(), nil
 	default:
 		return 0, fmt.Errorf("field %q: expected int64, got %T", key, v)
 	}
