@@ -246,9 +246,20 @@ func extractFloat32Slice(row map[string]interface{}, key string) ([]float32, err
 	if !ok {
 		return nil, fmt.Errorf("missing field %q", key)
 	}
-	f, ok := v.([]float32)
-	if !ok {
+	switch f := v.(type) {
+	case []float32:
+		return f, nil
+	case []interface{}:
+		out := make([]float32, len(f))
+		for i, elem := range f {
+			n, ok := elem.(float64)
+			if !ok {
+				return nil, fmt.Errorf("field %q: element %d expected float64, got %T", key, i, elem)
+			}
+			out[i] = float32(n)
+		}
+		return out, nil
+	default:
 		return nil, fmt.Errorf("field %q: expected []float32, got %T", key, v)
 	}
-	return f, nil
 }
