@@ -34,8 +34,8 @@ func chunkArrowSchema(vectorDim int) *arrow.Schema {
 		{Name: colChunkHash, Type: arrow.BinaryTypes.String, Nullable: false},
 		{Name: colChunkIndex, Type: arrow.PrimitiveTypes.Int32, Nullable: false},
 		{Name: colVector, Type: arrow.FixedSizeListOf(int32(vectorDim), arrow.PrimitiveTypes.Float32), Nullable: false},
-		{Name: colCreatedAt, Type: arrow.FixedWidthTypes.Timestamp_s, Nullable: false},
-		{Name: colUpdatedAt, Type: arrow.FixedWidthTypes.Timestamp_s, Nullable: false},
+		{Name: colCreatedAt, Type: &arrow.TimestampType{Unit: arrow.Second, TimeZone: "UTC"}, Nullable: false},
+		{Name: colUpdatedAt, Type: &arrow.TimestampType{Unit: arrow.Second, TimeZone: "UTC"}, Nullable: false},
 		{Name: colMimeType, Type: arrow.BinaryTypes.String, Nullable: false},
 		{Name: colFileUri, Type: arrow.BinaryTypes.String, Nullable: false},
 		{Name: colSourceName, Type: arrow.BinaryTypes.String, Nullable: false},
@@ -71,12 +71,12 @@ func chunkToArrowRecord(r db.ChunkDbRecord, vectorDim int) (arrow.Record, error)
 	vecArr := vecB.NewArray()
 	defer vecArr.Release()
 
-	createdB := array.NewTimestampBuilder(pool, &arrow.TimestampType{Unit: arrow.Second})
+	createdB := array.NewTimestampBuilder(pool, &arrow.TimestampType{Unit: arrow.Second, TimeZone: "UTC"})
 	createdB.Append(arrow.Timestamp(r.CreatedAt.Unix()))
 	createdArr := createdB.NewArray()
 	defer createdArr.Release()
 
-	updatedB := array.NewTimestampBuilder(pool, &arrow.TimestampType{Unit: arrow.Second})
+	updatedB := array.NewTimestampBuilder(pool, &arrow.TimestampType{Unit: arrow.Second, TimeZone: "UTC"})
 	updatedB.Append(arrow.Timestamp(r.UpdatedAt.Unix()))
 	updatedArr := updatedB.NewArray()
 	defer updatedArr.Release()
