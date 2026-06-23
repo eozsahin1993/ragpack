@@ -2,7 +2,7 @@
 # Pre-built builder base image with Go + LanceDB native library.
 # Published to ghcr.io/eozsahin1993/ragpack-builder as a multi-platform image.
 # Rebuild when upgrading Go or lancedb-go versions.
-FROM golang:1.26-bookworm
+FROM golang:1.26-noble
 
 ARG TARGETARCH
 

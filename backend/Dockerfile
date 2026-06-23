@@ -15,7 +15,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_LDFLAGS="$LANCEDB_MODULE/lib/linux_${TARGETARCH}/liblancedb_go.a -lpthread -ldl -lm" \
     go build -o /ragpack ./cmd/main.go
 
-FROM debian:bookworm-slim
+FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /ragpack /ragpack
