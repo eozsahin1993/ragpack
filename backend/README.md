@@ -2,20 +2,49 @@
 
 Go + Fiber HTTP server for the RagPack engine. Uses LanceDB (via CGO) for vector storage and SQLite for metadata.
 
-## Requirements
+## Running with Docker (recommended)
 
-- Go 1.21+
-- macOS arm64 (darwin_arm64) — Linux support coming
-- curl (for downloading the LanceDB native library on first run)
+Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) running locally.
 
-## Start dev server
+**1. Copy and fill in your env file:**
+
+```bash
+cp .env.example .env
+```
+
+**2a. Using OpenAI embeddings:**
+
+Set `OPENAI_API_KEY` and `OPENAI_EMBED_MODEL` in `.env`, then:
+
+```bash
+docker compose up
+```
+
+**2b. Using Ollama (local, no API key):**
+
+```bash
+docker compose --profile ollama up
+
+# Pull the embedding model once (first time only):
+docker compose exec ollama ollama pull nomic-embed-text
+```
+
+Server starts on `http://localhost:9000`.
+
+Data (SQLite + LanceDB) is persisted in a Docker volume — it survives restarts.
+
+---
+
+## Running locally (macOS arm64 only)
 
 ```bash
 cd backend
 ./dev.sh
 ```
 
-That's it. On first run it downloads the LanceDB native library automatically. The server starts on `http://localhost:9000`.
+Downloads the LanceDB native library on first run, then starts the server.
+
+---
 
 ## API
 
@@ -30,12 +59,13 @@ GET /api/v1/health
 ### Collections
 
 ```
-POST   /api/v1/collections                  Create a collection
-GET    /api/v1/collections                  List all collections
-GET    /api/v1/collections/:name            Get by name
-GET    /api/v1/collections/id/:id           Get by ID
-DELETE /api/v1/collections/:name            Delete by name
-DELETE /api/v1/collections/id/:id           Delete by ID
+POST   /api/v1/collections              Create a collection
+GET    /api/v1/collections              List all collections
+GET    /api/v1/collections/:slug        Get by slug
+GET    /api/v1/collections/id/:id       Get by ID
+PATCH  /api/v1/collections/id/:id       Update name
+DELETE /api/v1/collections/:slug        Delete by slug
+DELETE /api/v1/collections/id/:id       Delete by ID
 ```
 
 **Create body:**
@@ -50,32 +80,40 @@ DELETE /api/v1/collections/id/:id           Delete by ID
 ### Jobs
 
 ```
-GET /api/v1/collections/:name/jobs                    List jobs for a collection
-GET /api/v1/collections/:name/jobs/status/:status     List by status (pending | processing | complete | failed)
-GET /api/v1/collections/:name/jobs/:id                Get a job
+GET /api/v1/jobs                                        All jobs (global)
+GET /api/v1/jobs?status=pending                         Global filter by status
+GET /api/v1/jobs/:id                                    Get a job by ID
+GET /api/v1/collections/:slug/jobs                      Jobs for a collection
+GET /api/v1/collections/:slug/jobs?status=pending       Filter by status
 ```
+
+Valid statuses: `pending`, `processing`, `complete`, `failed`
 
 ### Ingest
 
 ```
-POST /api/v1/collections/:name/ingest       (coming soon)
+POST /api/v1/collections/:slug/ingest
 ```
+
+**File upload (multipart):**
+```bash
+curl -X POST http://localhost:9000/api/v1/collections/my-wiki/ingest \
+  -F "file=@document.txt"
+```
+
+**URI-based (S3, HTTP, local):**
+```json
+{ "file_uri": "s3://my-bucket/doc.pdf", "mime_type": "application/pdf" }
+```
+
+Returns `202 Accepted` with the job object. Processing happens asynchronously.
 
 ### Query
 
 ```
-POST /api/v1/collections/:name/query        (coming soon)
+POST /api/v1/collections/:slug/query
 ```
 
-## Manual build
-
-If you want to build without `dev.sh`, export the CGO flags first:
-
-```bash
-LANCEDB_MODULE="$(go env GOPATH)/pkg/mod/github.com/lancedb/lancedb-go@v0.1.2"
-
-export CGO_CFLAGS="-I${LANCEDB_MODULE}/include"
-export CGO_LDFLAGS="${LANCEDB_MODULE}/lib/darwin_arm64/liblancedb_go.a -framework Security -framework CoreFoundation"
-
-go build ./...
+```json
+{ "query": "what is the refund policy?", "top_k": 10 }
 ```

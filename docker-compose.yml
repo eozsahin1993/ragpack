@@ -1,0 +1,29 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "9000:9000"
+    env_file:
+      - .env
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - ragpack_data:/data
+
+  ollama:
+    image: ollama/ollama
+    profiles: [ollama]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: "4g"
+
+volumes:
+  ragpack_data:
+  ollama_data:
