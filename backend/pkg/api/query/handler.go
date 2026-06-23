@@ -55,8 +55,11 @@ func (h *Handler) Query(c *fiber.Ctx) error {
 	for i, r := range results {
 		items[i] = QueryResultItem{
 			Source:     r.SourceName,
+			FileUri:    r.FileUri,
+			MimeType:   r.MimeType,
 			ChunkIndex: r.ChunkIndex,
 			ChunkText:  r.ChunkText,
+			ExtraJSON:  r.ExtraJSON,
 			Distance:   r.Distance,
 			Similarity: r.Similarity,
 		}

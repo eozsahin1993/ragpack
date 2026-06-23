@@ -9,7 +9,7 @@ Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) runni
 **1. Copy and fill in your env file:**
 
 ```bash
-cp .env.example .env
+cp ../.env.example ../.env
 ```
 
 **2a. Using OpenAI embeddings:**
