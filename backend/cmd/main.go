@@ -33,15 +33,12 @@ func main() {
 		log.Fatalf("vector store: %v", err)
 	}
 
-	emb, err := buildEmbedder(cfg)
-	if err != nil {
-		log.Printf("warning: embedder unavailable (%v) — ingest will fail until resolved", err)
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	ing := ingester.New(ms, vec, emb, cfg.Ingester.WorkerCount, cfg.Ingester.EmbedRateLimit)
+	registry := embedder.NewRegistryFromConfig(ctx, cfg)
+
+	ing := ingester.New(ms, vec, registry, cfg.Ingester.WorkerCount, cfg.Ingester.EmbedRateLimit)
 	ing.Start(ctx, cfg.Ingester.WorkerCount)
 
 	app := fiber.New(fiber.Config{
@@ -49,7 +46,7 @@ func main() {
 	})
 	app.Use(logger.New())
 
-	api.Register(app, ms, vec, ing)
+	api.Register(app, ms, vec, registry, ing)
 
 	// graceful shutdown
 	quit := make(chan os.Signal, 1)
@@ -68,17 +65,3 @@ func main() {
 	}
 }
 
-func buildEmbedder(cfg config.Config) (embedder.Embedder, error) {
-	ctx := context.Background()
-	switch cfg.EmbedProvider {
-	case "openai":
-		if cfg.OpenAI.APIKey == "" {
-			return nil, fmt.Errorf("OPENAI_API_KEY is required when EMBED_PROVIDER=openai")
-		}
-		return embedder.NewOpenAI(ctx, cfg.OpenAI.APIKey, cfg.OpenAI.Model)
-	case "ollama":
-		return embedder.NewOllama(ctx, cfg.Ollama.BaseURL, cfg.Ollama.Model)
-	default:
-		return nil, fmt.Errorf("unknown EMBED_PROVIDER %q (supported: openai, ollama)", cfg.EmbedProvider)
-	}
-}

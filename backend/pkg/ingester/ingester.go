@@ -32,21 +32,21 @@ type queueItem struct {
 }
 
 type WorkerPool struct {
-	queue     chan queueItem
+	queue    chan queueItem
 	metaStore meta.MetaStore
 	vectorDb  db.VectorDb
-	emb       embedder.Embedder
+	registry  *embedder.Registry
 	chunkCfg  chunker.Config
 	limiter   *rate.Limiter
 	wg        sync.WaitGroup
 }
 
-func New(metaStore meta.MetaStore, vectorDb db.VectorDb, emb embedder.Embedder, workers int, ratePerSec float64) Ingester {
+func New(metaStore meta.MetaStore, vectorDb db.VectorDb, registry *embedder.Registry, workers int, ratePerSec float64) Ingester {
 	return &WorkerPool{
 		queue:     make(chan queueItem, workers*10),
 		metaStore: metaStore,
 		vectorDb:  vectorDb,
-		emb:       emb,
+		registry:  registry,
 		chunkCfg:  chunker.DefaultConfig(),
 		limiter:   rate.NewLimiter(rate.Limit(ratePerSec), 1),
 	}

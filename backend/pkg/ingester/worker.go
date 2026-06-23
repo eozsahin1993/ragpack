@@ -58,6 +58,11 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem) error {
 		return fmt.Errorf("chunk: %w", err)
 	}
 
+	emb, err := wp.registry.Get(collection.EmbedModel)
+	if err != nil {
+		return fmt.Errorf("embedder: %w", err)
+	}
+
 	now := time.Now().UTC()
 
 	for i := 0; i < len(chunks); i += batchSize {
@@ -76,7 +81,7 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem) error {
 			return fmt.Errorf("rate limiter: %w", err)
 		}
 
-		vectors, err := wp.emb.Embed(ctx, texts)
+		vectors, err := emb.Embed(ctx, texts)
 		if err != nil {
 			return fmt.Errorf("embed batch starting at chunk %d: %w", i, err)
 		}

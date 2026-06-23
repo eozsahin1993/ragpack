@@ -8,11 +8,12 @@ import (
 	"ragpack/pkg/api/jobs"
 	"ragpack/pkg/api/query"
 	"ragpack/pkg/db"
+	"ragpack/pkg/embedder"
 	"ragpack/pkg/ingester"
 	"ragpack/pkg/meta"
 )
 
-func Register(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, ing ingester.Ingester) {
+func Register(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, ing ingester.Ingester) {
 	v1 := app.Group("/api/v1")
 
 	v1.Get("/health", func(c *fiber.Ctx) error {
@@ -29,5 +30,5 @@ func Register(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, ing ingester.I
 	nameGroup := collGroup.Group("/:slug")
 	jobs.Register(nameGroup, jobHandler)
 	ingest.Register(nameGroup, ingest.NewHandler(ms, ing))
-	query.Register(nameGroup, query.NewHandler(ms, vec))
+	query.Register(nameGroup, query.NewHandler(ms, vec, registry))
 }
