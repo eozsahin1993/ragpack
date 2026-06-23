@@ -71,3 +71,5 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
+
+replace github.com/lancedb/lancedb-go => github.com/eozsahin1993/lancedb-go v0.1.2-arm64
