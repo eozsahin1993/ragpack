@@ -60,7 +60,7 @@ export interface QueryResultItem {
 export const api = {
   collections: {
     list: () => req<{ collections: Collection[] }>("/api/v1/collections"),
-    create: (body: { name: string; embed_model: string }) =>
+    create: (body: { name: string }) =>
       req<Collection>("/api/v1/collections", { method: "POST", body: JSON.stringify(body) }),
     get: (slug: string) => req<Collection>(`/api/v1/collections/${slug}`),
     delete: (slug: string) =>

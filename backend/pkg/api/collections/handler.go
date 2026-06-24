@@ -11,12 +11,13 @@ import (
 
 
 type Handler struct {
-	meta meta.MetaStore
-	vec  db.VectorDb
+	meta     meta.MetaStore
+	vec      db.VectorDb
+	registry *embedder.Registry
 }
 
-func NewHandler(ms meta.MetaStore, vec db.VectorDb) *Handler {
-	return &Handler{meta: ms, vec: vec}
+func NewHandler(ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry) *Handler {
+	return &Handler{meta: ms, vec: vec, registry: registry}
 }
 
 func (h *Handler) Create(c *fiber.Ctx) error {
@@ -25,14 +26,23 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		return err
 	}
 
-	dim, ok := embedder.DimensionsForModel(req.EmbedModel)
+	model := req.EmbedModel
+	if model == "" {
+		var err error
+		model, _, err = h.registry.Default()
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+	}
+
+	dim, ok := embedder.DimensionsForModel(model)
 	if !ok {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "unknown embed_model: vector dimensions not found — add it to embedder.ModelDimensions",
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "vector dimensions unknown for model " + model + " — add it to embedder.ModelDimensions",
 		})
 	}
 
-	col, err := h.meta.CreateCollection(c.Context(), req.Name, req.EmbedModel, dim)
+	col, err := h.meta.CreateCollection(c.Context(), req.Name, model, dim)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

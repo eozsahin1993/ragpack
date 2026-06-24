@@ -28,7 +28,7 @@ export default function CollectionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", embed_model: "nomic-embed-text" });
+  const [form, setForm] = useState({ name: "" });
   const [creating, setCreating] = useState(false);
 
   async function load() {
@@ -49,11 +49,8 @@ export default function CollectionsPage() {
     setCreating(true);
     setError("");
     try {
-      await api.collections.create({
-        name: form.name,
-        embed_model: form.embed_model,
-      });
-      setForm({ name: "", embed_model: "nomic-embed-text" });
+      await api.collections.create({ name: form.name });
+      setForm({ name: "" });
       setOpen(false);
       await load();
     } catch (e: unknown) {
@@ -96,15 +93,6 @@ export default function CollectionsPage() {
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
                   placeholder="My documents"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Embed model</Label>
-                <Input
-                  required
-                  value={form.embed_model}
-                  onChange={e => setForm({ ...form, embed_model: e.target.value })}
-                  placeholder="nomic-embed-text"
                 />
               </div>
               {error && <p className="text-red-500 text-sm">{error}</p>}

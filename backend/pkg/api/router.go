@@ -26,7 +26,7 @@ func Register(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embe
 	v1.Get("/jobs/:id", jobHandler.GetJob)
 
 	collGroup := v1.Group("/collections")
-	collections.Register(collGroup, collections.NewHandler(ms, vec))
+	collections.Register(collGroup, collections.NewHandler(ms, vec, registry))
 
 	nameGroup := collGroup.Group("/:slug")
 	jobs.Register(nameGroup, jobHandler)

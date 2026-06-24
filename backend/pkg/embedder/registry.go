@@ -53,3 +53,18 @@ func (r *Registry) Get(model string) (Embedder, error) {
 	}
 	return emb, nil
 }
+
+// Default returns the single registered model name and embedder.
+// Returns an error if zero or more than one model is registered.
+func (r *Registry) Default() (string, Embedder, error) {
+	if len(r.embedders) == 0 {
+		return "", nil, fmt.Errorf("no embedder configured")
+	}
+	if len(r.embedders) > 1 {
+		return "", nil, fmt.Errorf("multiple embedders registered; specify embed_model explicitly")
+	}
+	for model, emb := range r.embedders {
+		return model, emb, nil
+	}
+	return "", nil, fmt.Errorf("no embedder configured")
+}
