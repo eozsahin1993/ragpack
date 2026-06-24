@@ -46,8 +46,11 @@ func (h *Handler) Ingest(c *fiber.Ctx) error {
 
 	// URI-based
 	var req URIRequest
-	if err := c.BodyParser(&req); err != nil || req.FileURI == "" || req.MimeType == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "provide a file upload or {file_uri, mime_type}"})
+	if err := c.BodyParser(&req); err != nil || req.FileURI == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "provide a file upload or {file_uri}"})
+	}
+	if req.MimeType == "" {
+		req.MimeType = detectMimeType(c.Context(), req.FileURI)
 	}
 
 	job, err := h.meta.CreateJob(c.Context(), col.ID, req.FileURI, req.MimeType)

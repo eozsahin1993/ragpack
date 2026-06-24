@@ -43,6 +43,16 @@ function friendlyUri(uri: string) {
   return uri.replace(/^upload:\/\//, "").replace(/^file:\/\//, "");
 }
 
+function guessMimeType(uri: string): string {
+  const path = uri.toLowerCase().split("?")[0];
+  if (path.endsWith(".pdf"))                          return "application/pdf";
+  if (path.endsWith(".md") || path.endsWith(".markdown")) return "text/markdown";
+  if (path.endsWith(".html") || path.endsWith(".htm")) return "text/html";
+  if (path.endsWith(".txt"))                          return "text/plain";
+  if (uri.startsWith("http://") || uri.startsWith("https://")) return "text/html";
+  return "text/plain";
+}
+
 export default function CollectionPage() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
@@ -176,7 +186,10 @@ export default function CollectionPage() {
             <Input
               required
               value={ingestForm.file_uri}
-              onChange={e => setIngestForm(f => ({ ...f, file_uri: e.target.value }))}
+              onChange={e => {
+                const uri = e.target.value;
+                setIngestForm(f => ({ ...f, file_uri: uri, mime_type: uri ? guessMimeType(uri) : f.mime_type }));
+              }}
               placeholder="https://… or s3://bucket/key (server-side paths only)"
             />
           </div>
