@@ -5,6 +5,7 @@ import (
 
 	"ragpack/pkg/api/validate"
 	"ragpack/pkg/db"
+	"ragpack/pkg/embedder"
 	"ragpack/pkg/meta"
 )
 
@@ -24,7 +25,14 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		return err
 	}
 
-	col, err := h.meta.CreateCollection(c.Context(), req.Name, req.EmbedModel, req.VectorDim)
+	dim, ok := embedder.DimensionsForModel(req.EmbedModel)
+	if !ok {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "unknown embed_model: vector dimensions not found — add it to embedder.ModelDimensions",
+		})
+	}
+
+	col, err := h.meta.CreateCollection(c.Context(), req.Name, req.EmbedModel, dim)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

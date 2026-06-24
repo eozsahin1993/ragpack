@@ -28,7 +28,7 @@ export default function CollectionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", embed_model: "nomic-embed-text", vector_dim: "768" });
+  const [form, setForm] = useState({ name: "", embed_model: "nomic-embed-text" });
   const [creating, setCreating] = useState(false);
 
   async function load() {
@@ -52,9 +52,8 @@ export default function CollectionsPage() {
       await api.collections.create({
         name: form.name,
         embed_model: form.embed_model,
-        vector_dim: parseInt(form.vector_dim),
       });
-      setForm({ name: "", embed_model: "nomic-embed-text", vector_dim: "768" });
+      setForm({ name: "", embed_model: "nomic-embed-text" });
       setOpen(false);
       await load();
     } catch (e: unknown) {
@@ -106,15 +105,6 @@ export default function CollectionsPage() {
                   value={form.embed_model}
                   onChange={e => setForm({ ...form, embed_model: e.target.value })}
                   placeholder="nomic-embed-text"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Vector dimensions</Label>
-                <Input
-                  required
-                  type="number"
-                  value={form.vector_dim}
-                  onChange={e => setForm({ ...form, vector_dim: e.target.value })}
                 />
               </div>
               {error && <p className="text-red-500 text-sm">{error}</p>}
