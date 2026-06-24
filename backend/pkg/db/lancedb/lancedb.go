@@ -79,6 +79,12 @@ func (l *VectorDb) DeleteChunksByDocument(ctx context.Context, tableName, docume
 	if err := tbl.Delete(ctx, fmt.Sprintf("document_id = '%s'", documentID)); err != nil {
 		return fmt.Errorf("lancedb: delete chunks for document %s: %w", documentID, err)
 	}
+
+	// Physically remove tombstoned rows so they don't leak into subsequent
+	// SelectWithFilter or VectorSearch results.
+	if _, err := tbl.Optimize(ctx); err != nil {
+		return fmt.Errorf("lancedb: optimize after delete on %s: %w", tableName, err)
+	}
 	return nil
 }
 
