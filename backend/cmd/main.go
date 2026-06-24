@@ -29,6 +29,8 @@ func main() {
 	}
 	defer ms.Close()
 
+	bootstrapAPIKey(context.Background(), ms, cfg)
+
 	vec := lancedbpkg.New()
 	if err := vec.Connect(context.Background(), cfg.LanceDBPath); err != nil {
 		log.Fatalf("vector store: %v", err)
@@ -53,7 +55,6 @@ func main() {
 	}))
 
 	api.Register(app, ms, vec, registry, ing)
-
 	// graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
@@ -70,4 +71,5 @@ func main() {
 		log.Fatalf("server: %v", err)
 	}
 }
+
 

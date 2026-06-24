@@ -10,6 +10,7 @@ import (
 
 type Config struct {
 	Port        string
+	DataPath    string
 	SqlitePath  string
 	LanceDBPath string
 
@@ -43,6 +44,7 @@ func Load() Config {
 
 	return Config{
 		Port:          getEnv("PORT", "9000"),
+		DataPath:      getEnv("DATA_PATH", "./data"),
 		SqlitePath:    getEnv("SQLITE_PATH", "./ragpack.db"),
 		LanceDBPath:   getEnv("LANCEDB_PATH", "./lancedb_data"),
 		EmbedProvider: getEnv("EMBED_PROVIDER", "ollama"),
