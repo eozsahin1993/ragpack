@@ -2,6 +2,7 @@ package fetcher
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"strings"
 )
@@ -19,6 +20,8 @@ func New(ctx context.Context, uri string) (Fetcher, error) {
 		return NewS3Fetcher(ctx)
 	case strings.HasPrefix(uri, "http://"), strings.HasPrefix(uri, "https://"):
 		return NewHTTPFetcher(), nil
+	case strings.HasPrefix(uri, "upload://"):
+		return nil, fmt.Errorf("uploaded files are streamed at ingest time and cannot be re-fetched; re-submit the file")
 	default:
 		return NewLocalFetcher(), nil
 	}

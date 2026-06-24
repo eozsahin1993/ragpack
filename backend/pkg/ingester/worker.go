@@ -9,6 +9,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"strings"
+
 	chunkerpkg "ragpack/pkg/chunker"
 	"ragpack/pkg/db"
 	"ragpack/pkg/embedder"
@@ -68,6 +70,9 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 
 	reader := item.reader
 	if reader == nil {
+		if strings.HasPrefix(job.FileUri, "upload://") {
+			return 0, fmt.Errorf("uploaded file is no longer available; please re-submit the file")
+		}
 		f, err := fetcher.New(ctx, job.FileUri)
 		if err != nil {
 			return 0, fmt.Errorf("build fetcher: %w", err)

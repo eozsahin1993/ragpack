@@ -31,6 +31,21 @@ export interface Job {
   updated_at: string;
 }
 
+export interface Document {
+  id: string;
+  collection_id: string;
+  job_id: string;
+  file_uri: string;
+  mime_type: string;
+  external_id?: string;
+  extra_json?: string;
+  chunk_count: number;
+  status: "ingesting" | "complete" | "failed";
+  error?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface QueryResultItem {
   source: string;
   file_uri: string;
@@ -60,10 +75,27 @@ export const api = {
   },
   ingest: {
     uri: (slug: string, body: { file_uri: string; mime_type: string }) =>
-      req<{ job_id: string }>(`/api/v1/collections/${slug}/ingest`, {
+      req<Job>(`/api/v1/collections/${slug}/ingest`, {
         method: "POST",
         body: JSON.stringify(body),
       }),
+    upload: async (slug: string, file: File): Promise<Job> => {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`${BASE}/api/v1/collections/${slug}/ingest`, {
+        method: "POST",
+        body: form,
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? res.statusText);
+      return body as Job;
+    },
+  },
+  documents: {
+    list: (slug: string, limit = 50, offset = 0) =>
+      req<{ documents: Document[]; total: number; limit: number; offset: number }>(
+        `/api/v1/collections/${slug}/documents?limit=${limit}&offset=${offset}`
+      ),
   },
   query: {
     run: (slug: string, body: { query: string; top_k: number }) =>

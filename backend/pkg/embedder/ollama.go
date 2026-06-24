@@ -20,7 +20,7 @@ func NewOllama(_ context.Context, baseURL, model string) (*OllamaEmbedder, error
 	return &OllamaEmbedder{
 		baseURL: baseURL,
 		model:   model,
-		client:  &http.Client{Timeout: 60 * time.Second},
+		client:  &http.Client{Timeout: 5 * time.Minute},
 	}, nil
 }
 

@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, Upload, Trash2, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Upload, Trash2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -23,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { api, Collection, Job } from "@/lib/api";
+import { api, Collection, Document } from "@/lib/api";
 
 const MIME_TYPES = [
   { label: "Plain text (.txt)", value: "text/plain" },
@@ -33,34 +32,46 @@ const MIME_TYPES = [
 ];
 
 const statusColors: Record<string, string> = {
-  complete: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  processing: "bg-amber-50 text-amber-700 border-amber-200",
-  failed: "bg-red-50 text-red-700 border-red-200",
-  queued: "bg-zinc-100 text-zinc-600 border-zinc-200",
+  complete:  "bg-emerald-50 text-emerald-700 border-emerald-200",
+  ingesting: "bg-amber-50 text-amber-700 border-amber-200",
+  failed:    "bg-red-50 text-red-700 border-red-200",
 };
+
+const PAGE_SIZE = 20;
+
+function friendlyUri(uri: string) {
+  return uri.replace(/^upload:\/\//, "").replace(/^file:\/\//, "");
+}
 
 export default function CollectionPage() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
 
   const [collection, setCollection] = useState<Collection | null>(null);
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [docs, setDocs] = useState<Document[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
   const [ingestForm, setIngestForm] = useState({ file_uri: "", mime_type: "text/plain" });
   const [ingesting, setIngesting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadJobs = useCallback(async () => {
+  const loadDocs = useCallback(async (p = page) => {
     try {
-      const data = await api.jobs.byCollection(slug);
-      setJobs(data.jobs ?? []);
+      const data = await api.documents.list(slug, PAGE_SIZE, p * PAGE_SIZE);
+      setDocs(data.documents ?? []);
+      setTotal(data.total);
     } catch { /* non-fatal */ }
-  }, [slug]);
+  }, [slug, page]);
 
   useEffect(() => {
     api.collections.get(slug).then(setCollection).catch(() => setError("Collection not found"));
-    loadJobs();
-  }, [slug, loadJobs]);
+    loadDocs(0);
+  }, [slug]);
+
+  useEffect(() => { loadDocs(page); }, [page]);
 
   async function handleIngest(e: React.FormEvent) {
     e.preventDefault();
@@ -69,11 +80,27 @@ export default function CollectionPage() {
     try {
       await api.ingest.uri(slug, { file_uri: ingestForm.file_uri, mime_type: ingestForm.mime_type });
       setIngestForm(f => ({ ...f, file_uri: "" }));
-      await loadJobs();
+      await loadDocs(page);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Ingest failed");
     } finally {
       setIngesting(false);
+    }
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      await api.ingest.upload(slug, file);
+      await loadDocs(page);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
@@ -88,6 +115,8 @@ export default function CollectionPage() {
       setDeleting(false);
     }
   }
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="space-y-8">
@@ -134,7 +163,7 @@ export default function CollectionPage() {
               required
               value={ingestForm.file_uri}
               onChange={e => setIngestForm(f => ({ ...f, file_uri: e.target.value }))}
-              placeholder="https://… or file:///path/to/file.txt"
+              placeholder="https://… or s3://bucket/key (server-side paths only)"
             />
           </div>
           <div className="w-52 space-y-1.5">
@@ -157,50 +186,117 @@ export default function CollectionPage() {
             {ingesting ? "Ingesting…" : "Ingest"}
           </Button>
         </form>
+
+        <div className="flex items-center gap-3">
+          <div className="flex-1 border-t border-zinc-100" />
+          <span className="text-xs text-zinc-400">or upload a file</span>
+          <div className="flex-1 border-t border-zinc-100" />
+        </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".txt,.md,.html,.pdf"
+          className="hidden"
+          onChange={handleFileUpload}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          disabled={uploading}
+          onClick={() => fileInputRef.current?.click()}
+          className="gap-2 w-full"
+        >
+          <Upload className="w-4 h-4" />
+          {uploading ? "Uploading…" : "Upload file (.txt, .md, .html, .pdf)"}
+        </Button>
       </div>
 
-      {/* Documents / Jobs */}
+      {/* Documents */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-medium">Indexed documents</h2>
-          <button onClick={loadJobs} className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-700">
+          <div>
+            <h2 className="font-medium">Documents</h2>
+            {total > 0 && (
+              <p className="text-xs text-zinc-400 mt-0.5">{total} total</p>
+            )}
+          </div>
+          <button
+            onClick={() => loadDocs(page)}
+            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-700"
+          >
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>
         </div>
+
         <div className="rounded-lg border bg-white overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="bg-zinc-50">
-                <TableHead>File URI</TableHead>
+                <TableHead>File</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Chunks</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Ingested</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {jobs.length === 0 ? (
+              {docs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-zinc-400 py-10">
-                    No documents ingested yet.
+                  <TableCell colSpan={5} className="text-center text-zinc-400 py-10">
+                    No documents yet.
                   </TableCell>
                 </TableRow>
-              ) : jobs.map(j => (
-                <TableRow key={j.id}>
-                  <TableCell className="font-mono text-xs text-zinc-600 max-w-xs truncate">{j.file_uri}</TableCell>
-                  <TableCell className="text-xs text-zinc-500">{j.mime_type}</TableCell>
+              ) : docs.map(d => (
+                <TableRow key={d.id}>
+                  <TableCell className="font-mono text-xs text-zinc-600 max-w-xs truncate">
+                    {friendlyUri(d.file_uri)}
+                  </TableCell>
+                  <TableCell className="text-xs text-zinc-500">{d.mime_type}</TableCell>
+                  <TableCell className="text-xs text-zinc-500">{d.chunk_count}</TableCell>
                   <TableCell>
-                    <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${statusColors[j.status] ?? statusColors.queued}`}>
-                      {j.status}
+                    <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${statusColors[d.status] ?? ""}`}>
+                      {d.status}
                     </span>
+                    {d.error && (
+                      <p className="text-xs text-red-400 mt-0.5 max-w-xs truncate" title={d.error}>{d.error}</p>
+                    )}
                   </TableCell>
                   <TableCell className="text-xs text-zinc-400">
-                    {new Date(j.created_at).toLocaleString()}
+                    {new Date(d.created_at).toLocaleString()}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between text-sm text-zinc-500">
+            <span>
+              {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total}
+            </span>
+            <div className="flex gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 0}
+                onClick={() => setPage(p => p - 1)}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages - 1}
+                onClick={() => setPage(p => p + 1)}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
