@@ -9,7 +9,6 @@ import (
 	"ragpack/pkg/meta"
 )
 
-
 type Handler struct {
 	meta     meta.MetaStore
 	vec      db.VectorDb
@@ -42,7 +41,17 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		})
 	}
 
-	col, err := h.meta.CreateCollection(c.Context(), req.Name, model, dim)
+	input := meta.CreateCollectionInput{
+		Name:       req.Name,
+		EmbedModel: model,
+		VectorDim:  dim,
+	}
+	if req.ChunkConfig != nil {
+		input.ChunkStrategy = req.ChunkConfig.Strategy
+		input.ChunkSize = req.ChunkConfig.Size
+		input.ChunkOverlap = req.ChunkConfig.Overlap
+	}
+	col, err := h.meta.CreateCollection(c.Context(), input)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -52,7 +61,7 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(col)
+	return c.Status(fiber.StatusCreated).JSON(toResponse(col))
 }
 
 func (h *Handler) List(c *fiber.Ctx) error {
@@ -68,7 +77,11 @@ func (h *Handler) List(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	return c.JSON(fiber.Map{"collections": cols, "total": total, "limit": limit, "offset": offset})
+	responses := make([]CollectionResponse, len(cols))
+	for i, col := range cols {
+		responses[i] = toResponse(col)
+	}
+	return c.JSON(fiber.Map{"collections": responses, "total": total, "limit": limit, "offset": offset})
 }
 
 func (h *Handler) GetByID(c *fiber.Ctx) error {
@@ -76,7 +89,7 @@ func (h *Handler) GetByID(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "collection not found"})
 	}
-	return c.JSON(col)
+	return c.JSON(toResponse(col))
 }
 
 func (h *Handler) GetBySlug(c *fiber.Ctx) error {
@@ -84,7 +97,7 @@ func (h *Handler) GetBySlug(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "collection not found"})
 	}
-	return c.JSON(col)
+	return c.JSON(toResponse(col))
 }
 
 func (h *Handler) PatchCollection(c *fiber.Ctx) error {
@@ -97,7 +110,7 @@ func (h *Handler) PatchCollection(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(col)
+	return c.JSON(toResponse(col))
 }
 
 func (h *Handler) DeleteByID(c *fiber.Ctx) error {
@@ -115,7 +128,6 @@ func (h *Handler) DeleteBySlug(c *fiber.Ctx) error {
 	}
 	return h.deleteCollection(c, col)
 }
-
 
 func (h *Handler) deleteCollection(c *fiber.Ctx, col meta.Collection) error {
 	if err := h.vec.DropTable(c.Context(), col.TableName); err != nil {

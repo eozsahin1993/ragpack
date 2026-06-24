@@ -41,13 +41,13 @@ type WorkerPool struct {
 	wg        sync.WaitGroup
 }
 
-func New(metaStore meta.MetaStore, vectorDb db.VectorDb, registry *embedder.Registry, workers int, ratePerSec float64) Ingester {
+func New(metaStore meta.MetaStore, vectorDb db.VectorDb, registry *embedder.Registry, workers int, ratePerSec float64, chunkCfg chunker.Config) Ingester {
 	return &WorkerPool{
 		queue:     make(chan queueItem, workers*10),
 		metaStore: metaStore,
 		vectorDb:  vectorDb,
 		registry:  registry,
-		chunkCfg:  chunker.DefaultConfig(),
+		chunkCfg:  chunkCfg,
 		limiter:   rate.NewLimiter(rate.Limit(ratePerSec), 1),
 	}
 }

@@ -14,14 +14,20 @@ type Chunk struct {
 	Index int
 }
 
+const (
+	StrategyAuto          = "auto"
+	StrategyUnit          = "unit"
+	StrategyParagraph     = "paragraph"
+	StrategySlidingWindow = "sliding_window"
+	StrategySection       = "section"
+	StrategyRowGroup      = "row_group"
+)
+
 // Config controls chunking behaviour.
 type Config struct {
-	ChunkSize int // max characters per chunk
-	Overlap   int // characters carried into the next chunk
-}
-
-func DefaultConfig() Config {
-	return Config{ChunkSize: 2000, Overlap: 200}
+	ChunkSize int    // max characters per chunk
+	Overlap   int    // characters carried into the next chunk
+	Strategy  string // "auto" (MIME-based) | "unit" | "paragraph" | "sliding_window" | "section" | "row_group"
 }
 
 // Chunker groups parser units into embeddable text chunks.
@@ -31,22 +37,48 @@ type Chunker interface {
 	Chunk(units iter.Seq2[parser.Unit, error]) iter.Seq2[Chunk, error]
 }
 
-// New returns the appropriate Chunker for the given MIME type.
+// New returns the appropriate Chunker. When cfg.Strategy is "auto" or empty,
+// the strategy is selected from the MIME type; otherwise the explicit strategy wins.
 func New(mimeType string, cfg Config) (Chunker, error) {
-	switch {
-	case mimeType == "text/markdown" || mimeType == "text/html":
+	strategy := cfg.Strategy
+	if strategy == "" || strategy == StrategyAuto {
+		strategy = mimeStrategy(mimeType)
+		if strategy == "" {
+			return nil, fmt.Errorf("chunker: unsupported mime type %q", mimeType)
+		}
+	}
+	switch strategy {
+	case StrategySection:
 		return &SectionChunker{cfg: cfg}, nil
-	case strings.HasPrefix(mimeType, "text/"):
+	case StrategyParagraph:
 		return &ParagraphChunker{cfg: cfg}, nil
-	case mimeType == "application/pdf":
+	case StrategySlidingWindow:
 		return &SlidingWindowChunker{cfg: cfg}, nil
-	case mimeType == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-		return &ParagraphChunker{cfg: cfg}, nil
-	case mimeType == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+	case StrategyUnit:
 		return &UnitChunker{cfg: cfg}, nil
-	case mimeType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+	case StrategyRowGroup:
 		return &RowGroupChunker{cfg: cfg}, nil
 	default:
-		return nil, fmt.Errorf("chunker: unsupported mime type %q", mimeType)
+		return nil, fmt.Errorf("chunker: unknown strategy %q", strategy)
+	}
+}
+
+// mimeStrategy maps a MIME type to the default strategy name.
+func mimeStrategy(mimeType string) string {
+	switch {
+	case mimeType == "text/markdown" || mimeType == "text/html":
+		return StrategySection
+	case strings.HasPrefix(mimeType, "text/"):
+		return StrategyParagraph
+	case mimeType == "application/pdf":
+		return StrategySlidingWindow
+	case mimeType == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+		return StrategyParagraph
+	case mimeType == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+		return StrategyUnit
+	case mimeType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+		return StrategyRowGroup
+	default:
+		return ""
 	}
 }

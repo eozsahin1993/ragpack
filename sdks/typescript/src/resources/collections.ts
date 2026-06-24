@@ -1,4 +1,4 @@
-import type { Collection } from "../types.js";
+import type { Collection, ChunkConfig } from "../types.js";
 import type { Requester } from "../requester.js";
 import { CollectionClient } from "../collection-client.js";
 
@@ -15,6 +15,8 @@ export class CollectionsResource {
    * Create a new collection and return a scoped client for it.
    * @param name - Display name for the collection.
    * @param options.embedModel - Embedding model to use. Defaults to the server's configured provider.
+   * @param options.chunkConfig - Override chunking behaviour for this collection.
+   *   Omit to use server defaults.
    *
    * @example
    * ```ts
@@ -22,10 +24,20 @@ export class CollectionsResource {
    * await collection.ingest(file);
    * ```
    */
-  async create(name: string, options?: { embedModel?: string }): Promise<CollectionClient> {
+  async create(
+    name: string,
+    options?: {
+      embedModel?: string;
+      chunkConfig?: ChunkConfig;
+    },
+  ): Promise<CollectionClient> {
     const col = await this.req<Collection>("/collections", {
       method: "POST",
-      body: JSON.stringify({ name, embed_model: options?.embedModel }),
+      body: JSON.stringify({
+        name,
+        embed_model: options?.embedModel,
+        chunk_config: options?.chunkConfig,
+      }),
     });
     return new CollectionClient(col.slug, this.req);
   }

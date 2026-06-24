@@ -94,7 +94,19 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 		return 0, fmt.Errorf("build parser: %w", err)
 	}
 
-	c, err := chunkerpkg.New(job.MimeType, wp.chunkCfg)
+	// Resolve chunk config: collection overrides take precedence over server defaults.
+	chunkCfg := wp.chunkCfg
+	if collection.ChunkStrategy != nil {
+		chunkCfg.Strategy = *collection.ChunkStrategy
+	}
+	if collection.ChunkSize != nil {
+		chunkCfg.ChunkSize = *collection.ChunkSize
+	}
+	if collection.ChunkOverlap != nil {
+		chunkCfg.Overlap = *collection.ChunkOverlap
+	}
+
+	c, err := chunkerpkg.New(job.MimeType, chunkCfg)
 	if err != nil {
 		return 0, fmt.Errorf("build chunker: %w", err)
 	}

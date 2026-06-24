@@ -13,6 +13,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 
 	"ragpack/pkg/api"
+	"ragpack/pkg/chunker"
 	"ragpack/pkg/config"
 	lancedbpkg "ragpack/pkg/db/lancedb"
 	"ragpack/pkg/embedder"
@@ -41,7 +42,12 @@ func main() {
 
 	registry := embedder.NewRegistryFromConfig(ctx, cfg)
 
-	ing := ingester.New(ms, vec, registry, cfg.Ingester.WorkerCount, cfg.Ingester.EmbedRateLimit)
+	chunkCfg := chunker.Config{
+		ChunkSize: cfg.Ingester.ChunkSize,
+		Overlap:   cfg.Ingester.ChunkOverlap,
+		Strategy:  cfg.Ingester.ChunkStrategy,
+	}
+	ing := ingester.New(ms, vec, registry, cfg.Ingester.WorkerCount, cfg.Ingester.EmbedRateLimit, chunkCfg)
 	ing.Start(ctx, cfg.Ingester.WorkerCount)
 
 	app := fiber.New(fiber.Config{

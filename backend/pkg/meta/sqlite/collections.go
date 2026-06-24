@@ -8,24 +8,29 @@ import (
 	"ragpack/pkg/meta"
 )
 
-func (s *MetaStore) CreateCollection(ctx context.Context, name, embedModel string, vectorDim int) (meta.Collection, error) {
-	id, tableName := newTableName(name)
+func (s *MetaStore) CreateCollection(ctx context.Context, input meta.CreateCollectionInput) (meta.Collection, error) {
+	id, tableName := newTableName(input.Name)
 	c := meta.Collection{
-		ID:         id,
-		Name:       name,
-		Slug:       slugify(name + "_" + embedModel),
-		TableName:  tableName,
-		EmbedModel: embedModel,
-		VectorDim:  vectorDim,
-		CreatedAt:  time.Now().UTC(),
+		ID:            id,
+		Name:          input.Name,
+		Slug:          slugify(input.Name + "_" + input.EmbedModel),
+		TableName:     tableName,
+		EmbedModel:    input.EmbedModel,
+		VectorDim:     input.VectorDim,
+		CreatedAt:     time.Now().UTC(),
+		ChunkStrategy: input.ChunkStrategy,
+		ChunkSize:     input.ChunkSize,
+		ChunkOverlap:  input.ChunkOverlap,
 	}
 
 	_, err := s.db.NamedExecContext(ctx, `
-		INSERT INTO collections (id, name, slug, table_name, embed_model, vector_dim, created_at)
-		VALUES (:id, :name, :slug, :table_name, :embed_model, :vector_dim, :created_at)
+		INSERT INTO collections
+			(id, name, slug, table_name, embed_model, vector_dim, created_at, chunk_strategy, chunk_size, chunk_overlap)
+		VALUES
+			(:id, :name, :slug, :table_name, :embed_model, :vector_dim, :created_at, :chunk_strategy, :chunk_size, :chunk_overlap)
 	`, c)
 	if err != nil {
-		return meta.Collection{}, fmt.Errorf("sqlite: create collection %q: %w", name, err)
+		return meta.Collection{}, fmt.Errorf("sqlite: create collection %q: %w", input.Name, err)
 	}
 	return c, nil
 }
@@ -33,7 +38,8 @@ func (s *MetaStore) CreateCollection(ctx context.Context, name, embedModel strin
 func (s *MetaStore) GetCollectionBySlug(ctx context.Context, slug string) (meta.Collection, error) {
 	var c meta.Collection
 	err := s.db.GetContext(ctx, &c, `
-		SELECT id, name, slug, table_name, embed_model, vector_dim, created_at
+		SELECT id, name, slug, table_name, embed_model, vector_dim, created_at,
+		       chunk_strategy, chunk_size, chunk_overlap
 		FROM collections
 		WHERE slug = ?
 	`, slug)
@@ -46,7 +52,8 @@ func (s *MetaStore) GetCollectionBySlug(ctx context.Context, slug string) (meta.
 func (s *MetaStore) GetCollectionByID(ctx context.Context, id string) (meta.Collection, error) {
 	var c meta.Collection
 	err := s.db.GetContext(ctx, &c, `
-		SELECT id, name, slug, table_name, embed_model, vector_dim, created_at
+		SELECT id, name, slug, table_name, embed_model, vector_dim, created_at,
+		       chunk_strategy, chunk_size, chunk_overlap
 		FROM collections
 		WHERE id = ?
 	`, id)
@@ -59,7 +66,8 @@ func (s *MetaStore) GetCollectionByID(ctx context.Context, id string) (meta.Coll
 func (s *MetaStore) ListCollections(ctx context.Context, limit, offset int) ([]meta.Collection, error) {
 	var collections []meta.Collection
 	err := s.db.SelectContext(ctx, &collections, `
-		SELECT id, name, slug, table_name, embed_model, vector_dim, created_at
+		SELECT id, name, slug, table_name, embed_model, vector_dim, created_at,
+		       chunk_strategy, chunk_size, chunk_overlap
 		FROM collections
 		ORDER BY created_at DESC
 		LIMIT ? OFFSET ?

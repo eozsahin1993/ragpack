@@ -33,8 +33,11 @@ type OllamaConfig struct {
 }
 
 type IngesterConfig struct {
-	WorkerCount   int
+	WorkerCount    int
 	EmbedRateLimit float64
+	ChunkSize      int
+	ChunkOverlap   int
+	ChunkStrategy  string
 }
 
 func Load() Config {
@@ -43,25 +46,28 @@ func Load() Config {
 	}
 
 	return Config{
-		Port:          getEnv("PORT", "9000"),
-		DataPath:      getEnv("DATA_PATH", "./data"),
-		SqlitePath:    getEnv("SQLITE_PATH", "./ragpack.db"),
-		LanceDBPath:   getEnv("LANCEDB_PATH", "./lancedb_data"),
-		EmbedProvider: getEnv("EMBED_PROVIDER", "ollama"),
+		Port:          getEnv("PORT", DefaultPort),
+		DataPath:      getEnv("DATA_PATH", DefaultDataPath),
+		SqlitePath:    getEnv("SQLITE_PATH", DefaultSqlitePath),
+		LanceDBPath:   getEnv("LANCEDB_PATH", DefaultLanceDBPath),
+		EmbedProvider: getEnv("EMBED_PROVIDER", DefaultEmbedProvider),
 
 		OpenAI: OpenAIConfig{
 			APIKey: getEnv("OPENAI_API_KEY", ""),
-			Model:  getEnv("OPENAI_EMBED_MODEL", "text-embedding-3-small"),
+			Model:  getEnv("OPENAI_EMBED_MODEL", DefaultOpenAIModel),
 		},
 
 		Ollama: OllamaConfig{
-			BaseURL: getEnv("OLLAMA_BASE_URL", "http://localhost:11434"),
-			Model:   getEnv("OLLAMA_EMBED_MODEL", "nomic-embed-text"),
+			BaseURL: getEnv("OLLAMA_BASE_URL", DefaultOllamaBaseURL),
+			Model:   getEnv("OLLAMA_EMBED_MODEL", DefaultOllamaModel),
 		},
 
 		Ingester: IngesterConfig{
-			WorkerCount:    getEnvInt("WORKER_COUNT", 5),
-			EmbedRateLimit: getEnvFloat("EMBED_RATE_LIMIT", 10),
+			WorkerCount:    getEnvInt("WORKER_COUNT", DefaultWorkerCount),
+			EmbedRateLimit: getEnvFloat("EMBED_RATE_LIMIT", DefaultEmbedRateLimit),
+			ChunkSize:      getEnvInt("CHUNK_SIZE", DefaultChunkSize),
+			ChunkOverlap:   getEnvInt("CHUNK_OVERLAP", DefaultChunkOverlap),
+			ChunkStrategy:  getEnv("CHUNK_STRATEGY", DefaultChunkStrategy),
 		},
 	}
 }

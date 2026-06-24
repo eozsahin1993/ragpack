@@ -6,13 +6,28 @@ import (
 )
 
 type Collection struct {
-	ID         string    `db:"id"           json:"id"`
-	Name       string    `db:"name"         json:"name"`
-	Slug       string    `db:"slug"         json:"slug"`
-	TableName  string    `db:"table_name"   json:"table_name"`
-	EmbedModel string    `db:"embed_model"  json:"embed_model"`
-	VectorDim  int       `db:"vector_dim"   json:"vector_dim"`
-	CreatedAt  time.Time `db:"created_at"   json:"created_at"`
+	ID         string    `db:"id"`
+	Name       string    `db:"name"`
+	Slug       string    `db:"slug"`
+	TableName  string    `db:"table_name"`
+	EmbedModel string    `db:"embed_model"`
+	VectorDim  int       `db:"vector_dim"`
+	CreatedAt  time.Time `db:"created_at"`
+
+	ChunkStrategy *string `db:"chunk_strategy"`
+	ChunkSize     *int    `db:"chunk_size"`
+	ChunkOverlap  *int    `db:"chunk_overlap"`
+}
+
+// CreateCollectionInput carries all parameters for creating a new collection.
+// Chunk fields are optional; nil means use the server defaults.
+type CreateCollectionInput struct {
+	Name          string
+	EmbedModel    string
+	VectorDim     int
+	ChunkStrategy *string
+	ChunkSize     *int
+	ChunkOverlap  *int
 }
 
 type CollectionReader interface {
@@ -23,7 +38,7 @@ type CollectionReader interface {
 }
 
 type CollectionWriter interface {
-	CreateCollection(ctx context.Context, name, embedModel string, vectorDim int) (Collection, error)
+	CreateCollection(ctx context.Context, input CreateCollectionInput) (Collection, error)
 	UpdateCollectionName(ctx context.Context, id, name string) (Collection, error)
 	DeleteCollection(ctx context.Context, id string) error
 }
