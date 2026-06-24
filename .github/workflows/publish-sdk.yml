@@ -2,7 +2,7 @@ name: Publish TypeScript SDK
 
 on:
   push:
-    tags: ['v*.*.*']
+    tags: ['sdk/v*.*.*']
 
 jobs:
   publish:
