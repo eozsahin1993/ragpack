@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Upload, Trash2, RefreshCw, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Upload, Trash2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -287,7 +287,7 @@ export default function CollectionPage() {
                       className="text-zinc-300 hover:text-red-500 transition-colors disabled:opacity-40"
                       title="Delete document"
                     >
-                      <X className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </TableCell>
                 </TableRow>
