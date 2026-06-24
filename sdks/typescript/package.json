@@ -1,0 +1,36 @@
+{
+  "name": "ragpack",
+  "version": "0.1.0",
+  "description": "TypeScript client for the Ragpack self-hosted RAG engine",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm run build"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.4",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.62.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module",
+  "license": "MIT"
+}
