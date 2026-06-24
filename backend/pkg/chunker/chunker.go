@@ -14,6 +14,20 @@ type Chunk struct {
 	Index int
 }
 
+// Strategy constants select how parser units are grouped into embeddable chunks.
+//
+//   - Auto:          picks the strategy below based on the file's MIME type.
+//   - Paragraph:     groups blank-line-separated paragraphs up to ChunkSize chars,
+//                    carrying Overlap chars of the previous group into the next.
+//                    Best for prose: plain text, DOCX.
+//   - SlidingWindow: fixed-size rolling window over raw text with Overlap chars
+//                    of carry-over. Best for dense continuous text: PDFs.
+//   - Section:       one chunk per heading section; oversized sections are split
+//                    with the sliding-window fallback. Best for Markdown, HTML.
+//   - Unit:          one chunk per parser unit (e.g. one slide). Oversized units
+//                    are split. Best for PPTX and other slide-based formats.
+//   - RowGroup:      groups spreadsheet rows up to ChunkSize chars, prepending
+//                    the header row to each group. Best for XLSX.
 const (
 	StrategyAuto          = "auto"
 	StrategyUnit          = "unit"
