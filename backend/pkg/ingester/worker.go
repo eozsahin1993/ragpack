@@ -5,17 +5,17 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
-
-	"strings"
 
 	chunkerpkg "ragpack/pkg/chunker"
 	"ragpack/pkg/db"
 	"ragpack/pkg/embedder"
 	"ragpack/pkg/fetcher"
 	"ragpack/pkg/meta"
+	parserpkg "ragpack/pkg/parser"
 )
 
 func (wp *WorkerPool) processJob(ctx context.Context, item queueItem) error {
@@ -82,21 +82,21 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 			return 0, fmt.Errorf("fetch: %w", err)
 		}
 	}
-	defer reader.Close()
+	// reader is closed by the parser inside Parse() — no defer here.
 
 	// Delete any chunks from a previous partial or failed attempt so retries are idempotent.
 	if err := wp.vectorDb.DeleteChunksByDocument(ctx, collection.TableName, documentID); err != nil {
 		return 0, fmt.Errorf("delete stale chunks: %w", err)
 	}
 
-	chunker, err := chunkerpkg.New(job.MimeType, wp.chunkCfg)
+	p, err := parserpkg.New(job.MimeType)
 	if err != nil {
-		return 0, fmt.Errorf("build chunker: %w", err)
+		return 0, fmt.Errorf("build parser: %w", err)
 	}
 
-	chunks, err := chunker.Chunk(ctx, reader)
+	c, err := chunkerpkg.New(job.MimeType, wp.chunkCfg)
 	if err != nil {
-		return 0, fmt.Errorf("chunk: %w", err)
+		return 0, fmt.Errorf("build chunker: %w", err)
 	}
 
 	emb, err := wp.registry.Get(collection.EmbedModel)
@@ -105,36 +105,34 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 	}
 
 	now := time.Now().UTC()
+	chunkCount := 0
 
-	for i := 0; i < len(chunks); i += batchSize {
-		end := i + batchSize
-		if end > len(chunks) {
-			end = len(chunks)
+	// Stream: parser → chunker → embed in batches → insert.
+	// Only batchSize chunks are in memory at once.
+	var batch []chunkerpkg.Chunk
+	flush := func() error {
+		if len(batch) == 0 {
+			return nil
 		}
-		batch := chunks[i:end]
-
 		texts := make([]string, len(batch))
-		for j, ch := range batch {
-			texts[j] = ch.Text
+		for i, ch := range batch {
+			texts[i] = ch.Text
 		}
-
 		if err := wp.limiter.Wait(ctx); err != nil {
-			return 0, fmt.Errorf("rate limiter: %w", err)
+			return fmt.Errorf("rate limiter: %w", err)
 		}
-
 		vectors, err := emb.Embed(ctx, texts)
 		if err != nil {
-			return 0, fmt.Errorf("embed batch starting at chunk %d: %w", i, err)
+			return fmt.Errorf("embed batch at chunk %d: %w", chunkCount, err)
 		}
-
-		for j, ch := range batch {
+		for i, ch := range batch {
 			hash := fmt.Sprintf("%x", sha256.Sum256([]byte(ch.Text)))
 			rec := db.ChunkDbRecord{
 				ID:         uuid.NewString(),
 				DocumentID: documentID,
 				ChunkHash:  hash,
 				ChunkIndex: ch.Index,
-				Vector:     embedder.Normalize(vectors[j]),
+				Vector:     embedder.Normalize(vectors[i]),
 				CreatedAt:  now,
 				UpdatedAt:  now,
 				MimeType:   job.MimeType,
@@ -143,10 +141,28 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 				ChunkText:  &ch.Text,
 			}
 			if err := wp.vectorDb.InsertRecord(ctx, collection.TableName, rec); err != nil {
-				return 0, fmt.Errorf("insert chunk %d: %w", ch.Index, err)
+				return fmt.Errorf("insert chunk %d: %w", ch.Index, err)
+			}
+		}
+		chunkCount += len(batch)
+		batch = batch[:0]
+		return nil
+	}
+
+	for chunk, err := range c.Chunk(p.Parse(ctx, reader)) {
+		if err != nil {
+			return 0, fmt.Errorf("chunk: %w", err)
+		}
+		batch = append(batch, chunk)
+		if len(batch) >= batchSize {
+			if err := flush(); err != nil {
+				return 0, err
 			}
 		}
 	}
+	if err := flush(); err != nil {
+		return 0, err
+	}
 
-	return len(chunks), nil
+	return chunkCount, nil
 }

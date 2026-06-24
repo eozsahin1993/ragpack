@@ -1,56 +1,51 @@
 package chunker
 
 import (
-	"context"
 	"fmt"
-	"io"
+	"iter"
 	"strings"
+
+	"ragpack/pkg/parser"
 )
 
+// Chunk is a fixed-size piece of text ready for embedding.
 type Chunk struct {
 	Text  string
 	Index int
 }
 
-type Chunker interface {
-	Chunk(ctx context.Context, r io.ReadCloser) ([]Chunk, error)
-}
-
+// Config controls chunking behaviour.
 type Config struct {
-	ChunkSize int // characters per chunk
-	Overlap   int // overlap between consecutive chunks
+	ChunkSize int // max characters per chunk
+	Overlap   int // characters carried into the next chunk
 }
 
 func DefaultConfig() Config {
-	return Config{
-		ChunkSize: 2000,
-		Overlap:   200,
-	}
+	return Config{ChunkSize: 2000, Overlap: 200}
+}
+
+// Chunker groups parser units into embeddable text chunks.
+// It receives a lazy stream of units and returns a lazy stream of chunks —
+// nothing is materialised until the caller iterates.
+type Chunker interface {
+	Chunk(units iter.Seq2[parser.Unit, error]) iter.Seq2[Chunk, error]
 }
 
 // New returns the appropriate Chunker for the given MIME type.
 func New(mimeType string, cfg Config) (Chunker, error) {
 	switch {
-	case mimeType == "text/markdown":
-		return &MarkdownChunker{cfg: cfg}, nil
-	case mimeType == "text/html":
-		return &HTMLChunker{cfg: cfg}, nil
+	case mimeType == "text/markdown" || mimeType == "text/html":
+		return &SectionChunker{cfg: cfg}, nil
 	case strings.HasPrefix(mimeType, "text/"):
-		return &TextChunker{cfg: cfg}, nil
+		return &ParagraphChunker{cfg: cfg}, nil
 	case mimeType == "application/pdf":
-		return &PDFChunker{cfg: cfg}, nil
+		return &SlidingWindowChunker{cfg: cfg}, nil
 	case mimeType == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-		return &DOCXChunker{cfg: cfg}, nil
+		return &ParagraphChunker{cfg: cfg}, nil
 	case mimeType == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-		return &PPTXChunker{cfg: cfg}, nil
+		return &UnitChunker{cfg: cfg}, nil
 	case mimeType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-		return &XLSXChunker{cfg: cfg}, nil
-	case strings.HasPrefix(mimeType, "audio/"):
-		return nil, fmt.Errorf("chunker: audio not yet supported")
-	case strings.HasPrefix(mimeType, "image/"):
-		return nil, fmt.Errorf("chunker: image not yet supported")
-	case strings.HasPrefix(mimeType, "video/"):
-		return nil, fmt.Errorf("chunker: video not yet supported")
+		return &RowGroupChunker{cfg: cfg}, nil
 	default:
 		return nil, fmt.Errorf("chunker: unsupported mime type %q", mimeType)
 	}

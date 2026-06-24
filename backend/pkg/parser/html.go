@@ -1,64 +1,60 @@
-package chunker
+package parser
 
 import (
 	"context"
-	"fmt"
 	"io"
+	"iter"
 	"strings"
 
 	"golang.org/x/net/html"
 )
 
+// HTMLParser converts HTML to Markdown and streams sections via MarkdownParser.
+type HTMLParser struct{}
+
 // skipTags are subtrees that contain no useful content for RAG.
 var skipTags = map[string]bool{
-	"script": true,
-	"style":  true,
-	"nav":    true,
-	"footer": true,
-	"aside":  true,
-	"header": true,
-	"form":   true,
-	"button": true,
-	"iframe": true,
+	"script": true, "style": true, "nav": true, "footer": true,
+	"aside": true, "header": true, "form": true, "button": true, "iframe": true,
 }
 
-type HTMLChunker struct {
-	cfg Config
-}
+func (p *HTMLParser) Parse(ctx context.Context, r io.ReadCloser) iter.Seq2[Unit, error] {
+	return func(yield func(Unit, error) bool) {
+		defer r.Close()
 
-func (c *HTMLChunker) Chunk(ctx context.Context, r io.ReadCloser) ([]Chunk, error) {
-	defer r.Close()
+		doc, err := html.Parse(r)
+		if err != nil {
+			yield(Unit{}, err)
+			return
+		}
 
-	doc, err := html.Parse(r)
-	if err != nil {
-		return nil, fmt.Errorf("html chunker: parse: %w", err)
+		var sb strings.Builder
+		htmlToMarkdown(doc, &sb, 0)
+		md := strings.TrimSpace(sb.String())
+		if md == "" {
+			return
+		}
+
+		mp := &MarkdownParser{}
+		for unit, err := range mp.Parse(ctx, io.NopCloser(strings.NewReader(md))) {
+			if !yield(unit, err) {
+				return
+			}
+		}
 	}
-
-	var sb strings.Builder
-	htmlToMarkdown(doc, &sb, 0)
-	md := strings.TrimSpace(sb.String())
-	if md == "" {
-		return nil, nil
-	}
-
-	mc := &MarkdownChunker{cfg: c.cfg}
-	return mc.Chunk(ctx, io.NopCloser(strings.NewReader(md)))
 }
 
 func htmlToMarkdown(n *html.Node, sb *strings.Builder, listDepth int) {
 	if n.Type == html.ElementNode && skipTags[n.Data] {
 		return
 	}
-
 	if n.Type == html.TextNode {
-		text := strings.TrimSpace(n.Data)
-		if text != "" {
+		if text := strings.TrimSpace(n.Data); text != "" {
 			sb.WriteString(text)
 			sb.WriteString(" ")
 		}
 		return
 	}
-
 	if n.Type != html.ElementNode {
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			htmlToMarkdown(c, sb, listDepth)
@@ -109,19 +105,17 @@ func htmlToMarkdown(n *html.Node, sb *strings.Builder, listDepth int) {
 		sb.WriteString("\n\n```\n")
 		var inner strings.Builder
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			collectText(c, &inner)
+			htmlCollectText(c, &inner)
 		}
 		sb.WriteString(strings.TrimSpace(inner.String()))
 		sb.WriteString("\n```\n\n")
 
 	case "code":
-		// Inline code — only wrap in backticks if not inside a <pre>.
 		var inner strings.Builder
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			collectText(c, &inner)
+			htmlCollectText(c, &inner)
 		}
-		text := strings.TrimSpace(inner.String())
-		if text != "" {
+		if text := strings.TrimSpace(inner.String()); text != "" {
 			sb.WriteString("`")
 			sb.WriteString(text)
 			sb.WriteString("`")
@@ -142,13 +136,11 @@ func htmlToMarkdown(n *html.Node, sb *strings.Builder, listDepth int) {
 		sb.WriteString("*")
 
 	case "a":
-		// Keep only the link text — href is noise for RAG.
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			htmlToMarkdown(c, sb, listDepth)
 		}
 
 	case "img":
-		// Use alt text if present.
 		for _, a := range n.Attr {
 			if a.Key == "alt" && strings.TrimSpace(a.Val) != "" {
 				sb.WriteString(strings.TrimSpace(a.Val))
@@ -183,13 +175,12 @@ func htmlToMarkdown(n *html.Node, sb *strings.Builder, listDepth int) {
 	}
 }
 
-// collectText extracts raw text content without any Markdown conversion.
-func collectText(n *html.Node, sb *strings.Builder) {
+func htmlCollectText(n *html.Node, sb *strings.Builder) {
 	if n.Type == html.TextNode {
 		sb.WriteString(n.Data)
 		return
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		collectText(c, sb)
+		htmlCollectText(c, sb)
 	}
 }
