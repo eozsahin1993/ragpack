@@ -137,9 +137,10 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 		if err != nil {
 			return fmt.Errorf("embed batch at chunk %d: %w", chunkCount, err)
 		}
+		records := make([]db.ChunkDbRecord, len(batch))
 		for i, ch := range batch {
 			hash := fmt.Sprintf("%x", sha256.Sum256([]byte(ch.Text)))
-			rec := db.ChunkDbRecord{
+			records[i] = db.ChunkDbRecord{
 				ID:         uuid.NewString(),
 				DocumentID: documentID,
 				ChunkHash:  hash,
@@ -152,9 +153,9 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 				SourceName: collection.Name,
 				ChunkText:  &ch.Text,
 			}
-			if err := wp.vectorDb.InsertRecord(ctx, collection.TableName, rec); err != nil {
-				return fmt.Errorf("insert chunk %d: %w", ch.Index, err)
-			}
+		}
+		if err := wp.vectorDb.InsertBatch(ctx, collection.TableName, records); err != nil {
+			return fmt.Errorf("insert batch at chunk %d: %w", chunkCount, err)
 		}
 		chunkCount += len(batch)
 		batch = batch[:0]

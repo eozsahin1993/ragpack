@@ -47,21 +47,24 @@ func (l *VectorDb) CreateTable(ctx context.Context, name string, vectorDim int) 
 	return nil
 }
 
-func (l *VectorDb) InsertRecord(ctx context.Context, tableName string, record db.ChunkDbRecord) error {
+func (l *VectorDb) InsertBatch(ctx context.Context, tableName string, records []db.ChunkDbRecord) error {
+	if len(records) == 0 {
+		return nil
+	}
 	tbl, err := l.conn.OpenTable(ctx, tableName)
 	if err != nil {
 		return fmt.Errorf("lancedb: unable to open target table %s: %w", tableName, err)
 	}
 	defer tbl.Close()
 
-	arrowRecord, err := chunkToArrowRecord(record, len(record.Vector))
+	arrowRecord, err := chunksToArrowRecord(records, len(records[0].Vector))
 	if err != nil {
 		return fmt.Errorf("lancedb: failed to build arrow record: %w", err)
 	}
 	defer arrowRecord.Release()
 
 	if err := tbl.Add(ctx, arrowRecord, nil); err != nil {
-		return fmt.Errorf("lancedb: record commit failed on table %s: %w", tableName, err)
+		return fmt.Errorf("lancedb: batch commit failed on table %s: %w", tableName, err)
 	}
 	return nil
 }

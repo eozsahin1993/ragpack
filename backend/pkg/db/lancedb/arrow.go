@@ -47,82 +47,72 @@ func chunkArrowSchema(vectorDim int) *arrow.Schema {
 	}, nil)
 }
 
+type chunkBuilders struct {
+	id, docID, hash, mime, fileUri, srcName, chunkText, extID, extra *array.StringBuilder
+	idx                                                               *array.Int32Builder
+	vec                                                               *array.FixedSizeListBuilder
+	created, updated                                                  *array.Int64Builder
+}
+
+func newChunkBuilders(pool memory.Allocator, vectorDim int) chunkBuilders {
+	vecB := array.NewFixedSizeListBuilder(pool, int32(vectorDim), arrow.PrimitiveTypes.Float32)
+	return chunkBuilders{
+		id: array.NewStringBuilder(pool), docID: array.NewStringBuilder(pool),
+		hash: array.NewStringBuilder(pool), mime: array.NewStringBuilder(pool),
+		fileUri: array.NewStringBuilder(pool), srcName: array.NewStringBuilder(pool),
+		chunkText: array.NewStringBuilder(pool), extID: array.NewStringBuilder(pool),
+		extra: array.NewStringBuilder(pool), idx: array.NewInt32Builder(pool),
+		vec: vecB, created: array.NewInt64Builder(pool), updated: array.NewInt64Builder(pool),
+	}
+}
+
+func (b chunkBuilders) append(r db.ChunkDbRecord) {
+	b.id.Append(r.ID)
+	b.docID.Append(r.DocumentID)
+	b.hash.Append(r.ChunkHash)
+	b.idx.Append(int32(r.ChunkIndex))
+	b.vec.Append(true)
+	b.vec.ValueBuilder().(*array.Float32Builder).AppendValues(r.Vector, nil)
+	b.created.Append(r.CreatedAt.Unix())
+	b.updated.Append(r.UpdatedAt.Unix())
+	b.mime.Append(r.MimeType)
+	b.fileUri.Append(r.FileUri)
+	b.srcName.Append(r.SourceName)
+	appendOptionalString(b.chunkText, r.ChunkText)
+	appendOptionalString(b.extID, r.ExternalId)
+	appendOptionalString(b.extra, r.ExtraJSON)
+}
+
+func (b chunkBuilders) finish(schema *arrow.Schema, n int64) arrow.Record {
+	cols := []arrow.Array{
+		b.id.NewArray(), b.docID.NewArray(), b.hash.NewArray(), b.idx.NewArray(),
+		b.vec.NewArray(), b.created.NewArray(), b.updated.NewArray(),
+		b.mime.NewArray(), b.fileUri.NewArray(), b.srcName.NewArray(),
+		b.chunkText.NewArray(), b.extID.NewArray(), b.extra.NewArray(),
+	}
+	for _, c := range cols {
+		defer c.Release()
+	}
+	return array.NewRecord(schema, cols, n)
+}
+
+func chunksToArrowRecord(records []db.ChunkDbRecord, vectorDim int) (arrow.Record, error) {
+	if len(records) == 0 {
+		return nil, fmt.Errorf("chunksToArrowRecord: empty batch")
+	}
+	pool := memory.NewGoAllocator()
+	b := newChunkBuilders(pool, vectorDim)
+	for _, r := range records {
+		b.append(r)
+	}
+	return b.finish(chunkArrowSchema(vectorDim), int64(len(records))), nil
+}
+
 func chunkToArrowRecord(r db.ChunkDbRecord, vectorDim int) (arrow.Record, error) {
 	pool := memory.NewGoAllocator()
-	schema := chunkArrowSchema(vectorDim)
-
-	idB := array.NewStringBuilder(pool)
-	idB.Append(r.ID)
-	idArr := idB.NewArray()
-	defer idArr.Release()
-
-	docIDB := array.NewStringBuilder(pool)
-	docIDB.Append(r.DocumentID)
-	docIDArr := docIDB.NewArray()
-	defer docIDArr.Release()
-
-	hashB := array.NewStringBuilder(pool)
-	hashB.Append(r.ChunkHash)
-	hashArr := hashB.NewArray()
-	defer hashArr.Release()
-
-	idxB := array.NewInt32Builder(pool)
-	idxB.Append(int32(r.ChunkIndex))
-	idxArr := idxB.NewArray()
-	defer idxArr.Release()
-
-	vecB := array.NewFixedSizeListBuilder(pool, int32(vectorDim), arrow.PrimitiveTypes.Float32)
-	vb := vecB.ValueBuilder().(*array.Float32Builder)
-	vecB.Append(true)
-	vb.AppendValues(r.Vector, nil)
-	vecArr := vecB.NewArray()
-	defer vecArr.Release()
-
-	createdB := array.NewInt64Builder(pool)
-	createdB.Append(r.CreatedAt.Unix())
-	createdArr := createdB.NewArray()
-	defer createdArr.Release()
-
-	updatedB := array.NewInt64Builder(pool)
-	updatedB.Append(r.UpdatedAt.Unix())
-	updatedArr := updatedB.NewArray()
-	defer updatedArr.Release()
-
-	mimeB := array.NewStringBuilder(pool)
-	mimeB.Append(r.MimeType)
-	mimeArr := mimeB.NewArray()
-	defer mimeArr.Release()
-
-	fileUriB := array.NewStringBuilder(pool)
-	fileUriB.Append(r.FileUri)
-	fileUriArr := fileUriB.NewArray()
-	defer fileUriArr.Release()
-
-	srcNameB := array.NewStringBuilder(pool)
-	srcNameB.Append(r.SourceName)
-	srcNameArr := srcNameB.NewArray()
-	defer srcNameArr.Release()
-
-	chunkTextB := array.NewStringBuilder(pool)
-	appendOptionalString(chunkTextB, r.ChunkText)
-	chunkTextArr := chunkTextB.NewArray()
-	defer chunkTextArr.Release()
-
-	extIdB := array.NewStringBuilder(pool)
-	appendOptionalString(extIdB, r.ExternalId)
-	extIdArr := extIdB.NewArray()
-	defer extIdArr.Release()
-
-	extraB := array.NewStringBuilder(pool)
-	appendOptionalString(extraB, r.ExtraJSON)
-	extraArr := extraB.NewArray()
-	defer extraArr.Release()
-
-	return array.NewRecord(schema, []arrow.Array{
-		idArr, docIDArr, hashArr, idxArr, vecArr, createdArr, updatedArr,
-		mimeArr, fileUriArr, srcNameArr,
-		chunkTextArr, extIdArr, extraArr,
-	}, 1), nil
+	b := newChunkBuilders(pool, vectorDim)
+	b.append(r)
+	return b.finish(chunkArrowSchema(vectorDim), 1), nil
 }
 
 func appendOptionalString(b *array.StringBuilder, v *string) {
