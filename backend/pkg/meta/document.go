@@ -37,6 +37,7 @@ type DocumentReader interface {
 type DocumentWriter interface {
 	CreateDocument(ctx context.Context, collectionID, jobID, fileUri, mimeType string) (Document, error)
 	UpdateDocumentStatus(ctx context.Context, id string, status DocumentStatus, chunkCount int, docError *string) error
+	DeleteDocument(ctx context.Context, id string) error
 	DeleteDocumentsByCollection(ctx context.Context, collectionID string) error
 }
 

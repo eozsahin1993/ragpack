@@ -101,6 +101,14 @@ func (s *MetaStore) UpdateDocumentStatus(ctx context.Context, id string, status 
 	return nil
 }
 
+func (s *MetaStore) DeleteDocument(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM documents WHERE id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("sqlite: delete document %q: %w", id, err)
+	}
+	return nil
+}
+
 func (s *MetaStore) DeleteDocumentsByCollection(ctx context.Context, collectionID string) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM documents WHERE collection_id = ?`, collectionID)
 	if err != nil {

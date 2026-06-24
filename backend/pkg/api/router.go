@@ -32,5 +32,5 @@ func Register(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embe
 	jobs.Register(nameGroup, jobHandler)
 	ingest.Register(nameGroup, ingest.NewHandler(ms, ing))
 	query.Register(nameGroup, query.NewHandler(ms, vec, registry))
-	documents.Register(nameGroup, documents.NewHandler(ms))
+	documents.Register(nameGroup, documents.NewHandler(ms, vec))
 }

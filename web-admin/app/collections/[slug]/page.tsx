@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Upload, Trash2, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Upload, Trash2, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,6 +54,7 @@ export default function CollectionPage() {
   const [ingestForm, setIngestForm] = useState({ file_uri: "", mime_type: "text/plain" });
   const [ingesting, setIngesting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -101,6 +102,19 @@ export default function CollectionPage() {
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleDeleteDocument(docId: string, label: string) {
+    if (!confirm(`Delete "${label}"? This removes all indexed chunks for this document.`)) return;
+    setDeletingDocId(docId);
+    try {
+      await api.documents.delete(slug, docId);
+      await loadDocs(page);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeletingDocId(null);
     }
   }
 
@@ -238,12 +252,13 @@ export default function CollectionPage() {
                 <TableHead>Chunks</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Ingested</TableHead>
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {docs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-zinc-400 py-10">
+                  <TableCell colSpan={6} className="text-center text-zinc-400 py-10">
                     No documents yet.
                   </TableCell>
                 </TableRow>
@@ -264,6 +279,16 @@ export default function CollectionPage() {
                   </TableCell>
                   <TableCell className="text-xs text-zinc-400">
                     {new Date(d.created_at).toLocaleString()}
+                  </TableCell>
+                  <TableCell>
+                    <button
+                      onClick={() => handleDeleteDocument(d.id, friendlyUri(d.file_uri))}
+                      disabled={deletingDocId === d.id}
+                      className="text-zinc-300 hover:text-red-500 transition-colors disabled:opacity-40"
+                      title="Delete document"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </TableCell>
                 </TableRow>
               ))}

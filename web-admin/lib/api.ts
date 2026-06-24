@@ -96,6 +96,8 @@ export const api = {
       req<{ documents: Document[]; total: number; limit: number; offset: number }>(
         `/api/v1/collections/${slug}/documents?limit=${limit}&offset=${offset}`
       ),
+    delete: (slug: string, id: string) =>
+      req<void>(`/api/v1/collections/${slug}/documents/${id}`, { method: "DELETE" }),
   },
   query: {
     run: (slug: string, body: { query: string; top_k: number }) =>

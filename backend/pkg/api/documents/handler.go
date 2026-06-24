@@ -4,15 +4,17 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"ragpack/pkg/api/validate"
+	"ragpack/pkg/db"
 	"ragpack/pkg/meta"
 )
 
 type Handler struct {
 	meta meta.MetaStore
+	vec  db.VectorDb
 }
 
-func NewHandler(ms meta.MetaStore) *Handler {
-	return &Handler{meta: ms}
+func NewHandler(ms meta.MetaStore, vec db.VectorDb) *Handler {
+	return &Handler{meta: ms, vec: vec}
 }
 
 func (h *Handler) List(c *fiber.Ctx) error {
@@ -47,4 +49,26 @@ func (h *Handler) Get(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "document not found"})
 	}
 	return c.JSON(doc)
+}
+
+func (h *Handler) Delete(c *fiber.Ctx) error {
+	doc, err := h.meta.GetDocument(c.Context(), c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "document not found"})
+	}
+
+	col, err := h.meta.GetCollectionByID(c.Context(), doc.CollectionID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "collection not found"})
+	}
+
+	if err := h.vec.DeleteChunksByDocument(c.Context(), col.TableName, doc.ID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	if err := h.meta.DeleteDocument(c.Context(), doc.ID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
 }
