@@ -1,6 +1,8 @@
 services:
   backend:
     image: ghcr.io/eozsahin1993/ragpack:latest
+    build:
+      context: ./backend
     ports:
       - "9000:9000"
     env_file:
