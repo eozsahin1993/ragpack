@@ -1,7 +1,6 @@
 services:
   backend:
-    build:
-      context: ./backend
+    image: ghcr.io/eozsahin1993/ragpack:latest
     ports:
       - "9000:9000"
     env_file:
@@ -18,6 +17,14 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:?OLLAMA_EMBED_MODEL is not set - add it to your .env file}
+    entrypoint: >
+      sh -c "echo \"[ollama] pulling model: $${OLLAMA_EMBED_MODEL}\" &&
+      ollama serve &
+      until ollama list > /dev/null 2>&1; do sleep 1; done &&
+      ollama pull $${OLLAMA_EMBED_MODEL} &&
+      wait"
     deploy:
       resources:
         limits:
@@ -28,7 +35,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-      start_period: 10s
+      start_period: 30s
 
 volumes:
   ragpack_data:
