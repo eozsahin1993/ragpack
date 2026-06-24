@@ -33,6 +33,8 @@ func New(mimeType string, cfg Config) (Chunker, error) {
 	switch {
 	case mimeType == "text/markdown":
 		return &MarkdownChunker{cfg: cfg}, nil
+	case mimeType == "text/html":
+		return &HTMLChunker{cfg: cfg}, nil
 	case strings.HasPrefix(mimeType, "text/"):
 		return &TextChunker{cfg: cfg}, nil
 	case mimeType == "application/pdf":
