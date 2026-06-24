@@ -34,7 +34,7 @@ func New(mimeType string, cfg Config) (Chunker, error) {
 	case strings.HasPrefix(mimeType, "text/"):
 		return &TextChunker{cfg: cfg}, nil
 	case mimeType == "application/pdf":
-		return nil, fmt.Errorf("chunker: PDF not yet supported")
+		return &PDFChunker{cfg: cfg}, nil
 	case strings.HasPrefix(mimeType, "audio/"):
 		return nil, fmt.Errorf("chunker: audio not yet supported")
 	case strings.HasPrefix(mimeType, "image/"):
