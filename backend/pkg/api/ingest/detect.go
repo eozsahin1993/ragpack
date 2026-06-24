@@ -14,6 +14,9 @@ var extMime = map[string]string{
 	".html":     "text/html",
 	".htm":      "text/html",
 	".txt":      "text/plain",
+	".docx":     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+	".pptx":     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+	".xlsx":     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
 
 // detectMimeType infers the MIME type for a URI.

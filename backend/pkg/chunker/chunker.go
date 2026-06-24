@@ -39,6 +39,12 @@ func New(mimeType string, cfg Config) (Chunker, error) {
 		return &TextChunker{cfg: cfg}, nil
 	case mimeType == "application/pdf":
 		return &PDFChunker{cfg: cfg}, nil
+	case mimeType == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+		return &DOCXChunker{cfg: cfg}, nil
+	case mimeType == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+		return &PPTXChunker{cfg: cfg}, nil
+	case mimeType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+		return &XLSXChunker{cfg: cfg}, nil
 	case strings.HasPrefix(mimeType, "audio/"):
 		return nil, fmt.Errorf("chunker: audio not yet supported")
 	case strings.HasPrefix(mimeType, "image/"):
