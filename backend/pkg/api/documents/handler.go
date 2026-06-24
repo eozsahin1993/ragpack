@@ -51,6 +51,25 @@ func (h *Handler) Get(c *fiber.Ctx) error {
 	return c.JSON(doc)
 }
 
+func (h *Handler) Chunks(c *fiber.Ctx) error {
+	doc, err := h.meta.GetDocument(c.Context(), c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "document not found"})
+	}
+
+	col, err := h.meta.GetCollectionByID(c.Context(), doc.CollectionID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "collection not found"})
+	}
+
+	chunks, err := h.vec.ListChunksByDocument(c.Context(), col.TableName, doc.ID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{"chunks": chunks, "total": len(chunks)})
+}
+
 func (h *Handler) Delete(c *fiber.Ctx) error {
 	doc, err := h.meta.GetDocument(c.Context(), c.Params("id"))
 	if err != nil {

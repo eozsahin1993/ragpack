@@ -79,6 +79,29 @@ func (l *VectorDb) DeleteChunksByDocument(ctx context.Context, tableName, docume
 	return nil
 }
 
+func (l *VectorDb) ListChunksByDocument(ctx context.Context, tableName, documentID string) ([]db.ChunkDbRecord, error) {
+	tbl, err := l.conn.OpenTable(ctx, tableName)
+	if err != nil {
+		return nil, fmt.Errorf("lancedb: open table %s: %w", tableName, err)
+	}
+	defer tbl.Close()
+
+	rows, err := tbl.SelectWithFilter(ctx, fmt.Sprintf("document_id = '%s'", documentID))
+	if err != nil {
+		return nil, fmt.Errorf("lancedb: list chunks for document %s: %w", documentID, err)
+	}
+
+	chunks := make([]db.ChunkDbRecord, 0, len(rows))
+	for i, row := range rows {
+		rec, err := rowToChunk(row)
+		if err != nil {
+			return nil, fmt.Errorf("lancedb: row %d: %w", i, err)
+		}
+		chunks = append(chunks, rec)
+	}
+	return chunks, nil
+}
+
 func (l *VectorDb) QuerySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int) ([]db.ChunkQueryResult, error) {
 	tbl, err := l.conn.OpenTable(ctx, tableName)
 	if err != nil {
