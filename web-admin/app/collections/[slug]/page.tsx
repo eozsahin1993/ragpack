@@ -276,12 +276,18 @@ export default function CollectionPage() {
                   </TableCell>
                 </TableRow>
               ) : docs.map(d => (
-                <TableRow key={d.id}>
+                <TableRow
+                  key={d.id}
+                  className="cursor-pointer hover:bg-zinc-50"
+                  onClick={() => router.push(`/collections/${slug}/documents/${d.id}/chunks`)}
+                >
                   <TableCell className="font-mono text-xs text-zinc-600 max-w-xs truncate">
                     {friendlyUri(d.file_uri)}
                   </TableCell>
                   <TableCell className="text-xs text-zinc-500">{d.mime_type}</TableCell>
-                  <TableCell className="text-xs text-zinc-500">{d.chunk_count}</TableCell>
+                  <TableCell className="text-xs text-zinc-500">
+                    {d.chunk_count}
+                  </TableCell>
                   <TableCell>
                     <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${statusColors[d.status] ?? ""}`}>
                       {d.status}
@@ -295,7 +301,7 @@ export default function CollectionPage() {
                   </TableCell>
                   <TableCell>
                     <button
-                      onClick={() => handleDeleteDocument(d.id, friendlyUri(d.file_uri))}
+                      onClick={e => { e.stopPropagation(); handleDeleteDocument(d.id, friendlyUri(d.file_uri)); }}
                       disabled={deletingDocId === d.id}
                       className="text-zinc-300 hover:text-red-500 transition-colors disabled:opacity-40"
                       title="Delete document"

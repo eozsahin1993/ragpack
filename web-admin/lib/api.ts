@@ -44,6 +44,17 @@ export interface Document {
   updated_at: string;
 }
 
+export interface Chunk {
+  id: string;
+  document_id: string;
+  chunk_hash: string;
+  chunk_index: number;
+  mime_type: string;
+  file_uri: string;
+  chunk_text: string | null;
+  created_at: string;
+}
+
 export interface QueryResultItem {
   source: string;
   file_uri: string;
@@ -94,6 +105,10 @@ export const api = {
       req<{ documents: Document[]; total: number; limit: number; offset: number }>(
         `/admin/collections/${slug}/documents?limit=${limit}&offset=${offset}`
       ),
+    get: (slug: string, id: string) =>
+      req<Document>(`/admin/collections/${slug}/documents/${id}`),
+    chunks: (slug: string, id: string) =>
+      req<{ chunks: Chunk[]; total: number }>(`/admin/collections/${slug}/documents/${id}/chunks`),
     delete: (slug: string, id: string) =>
       req<void>(`/admin/collections/${slug}/documents/${id}`, { method: "DELETE" }),
   },

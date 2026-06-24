@@ -4,10 +4,13 @@ import (
 	"context"
 	"io"
 	"iter"
+	"regexp"
 	"strings"
 
 	"golang.org/x/net/html"
 )
+
+var multipleBlankLines = regexp.MustCompile(`\n{3,}`)
 
 // HTMLParser converts HTML to Markdown and streams sections via MarkdownParser.
 type HTMLParser struct{}
@@ -30,7 +33,7 @@ func (p *HTMLParser) Parse(ctx context.Context, r io.ReadCloser) iter.Seq2[Unit,
 
 		var sb strings.Builder
 		htmlToMarkdown(doc, &sb, 0)
-		md := strings.TrimSpace(sb.String())
+		md := strings.TrimSpace(multipleBlankLines.ReplaceAllString(sb.String(), "\n\n"))
 		if md == "" {
 			return
 		}
