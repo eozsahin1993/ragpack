@@ -13,7 +13,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     LANCEDB_MODULE="$(go env GOPATH)/pkg/mod/github.com/eozsahin1993/lancedb-go@v0.1.4" && \
     CGO_CFLAGS="-I$LANCEDB_MODULE/include" \
     CGO_LDFLAGS="$LANCEDB_MODULE/lib/linux_${TARGETARCH}/liblancedb_go.a -lpthread -ldl -lm" \
-    go build -o /ragpack ./cmd/main.go
+    go build -o /ragpack ./cmd
 
 FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
