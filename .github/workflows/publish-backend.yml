@@ -6,6 +6,7 @@ on:
     paths:
       - 'backend/**'
       - '.github/workflows/publish-backend.yml'
+    tags: ['v*.*.*']
   workflow_dispatch:
 
 env:
@@ -96,8 +97,11 @@ jobs:
 
       - name: Create and push manifest
         run: |
-          docker buildx imagetools create \
-            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+          TAGS="--tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+                --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            TAGS="$TAGS --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}"
+          fi
+          docker buildx imagetools create $TAGS \
             $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
         working-directory: /tmp/digests
