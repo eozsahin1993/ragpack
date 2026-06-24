@@ -14,8 +14,8 @@ export interface FindSimilarOptions {
 export interface IngestUriOptions {
   /** Remote file URI (e.g. `s3://bucket/file.pdf`). */
   uri: string;
-  /** MIME type of the file (e.g. `application/pdf`, `text/plain`). */
-  mimeType: string;
+  /** MIME type of the file. Detected from the file extension if omitted. */
+  mimeType?: string;
 }
 
 /**
