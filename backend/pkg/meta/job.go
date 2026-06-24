@@ -15,15 +15,15 @@ const (
 )
 
 type Job struct {
-	ID           string     `db:"id"`
-	CollectionID string     `db:"collection_id"`
-	FileUri      string     `db:"file_uri"`
-	MimeType     string     `db:"mime_type"`
-	Status       JobStatus  `db:"status"`
-	Error        *string    `db:"error"`
-	ExecutedAt   *time.Time `db:"executed_at"`
-	CreatedAt    time.Time  `db:"created_at"`
-	UpdatedAt    time.Time  `db:"updated_at"`
+	ID           string     `db:"id"            json:"id"`
+	CollectionID string     `db:"collection_id" json:"collection_id"`
+	FileUri      string     `db:"file_uri"      json:"file_uri"`
+	MimeType     string     `db:"mime_type"     json:"mime_type"`
+	Status       JobStatus  `db:"status"        json:"status"`
+	Error        *string    `db:"error"         json:"error,omitempty"`
+	ExecutedAt   *time.Time `db:"executed_at"   json:"executed_at,omitempty"`
+	CreatedAt    time.Time  `db:"created_at"    json:"created_at"`
+	UpdatedAt    time.Time  `db:"updated_at"    json:"updated_at"`
 }
 
 type JobReader interface {

@@ -6,13 +6,13 @@ import (
 )
 
 type Collection struct {
-	ID         string    `db:"id"`
-	Name       string    `db:"name"`
-	Slug       string    `db:"slug"`
-	TableName  string    `db:"table_name"`
-	EmbedModel string    `db:"embed_model"`
-	VectorDim  int       `db:"vector_dim"`
-	CreatedAt  time.Time `db:"created_at"`
+	ID         string    `db:"id"           json:"id"`
+	Name       string    `db:"name"         json:"name"`
+	Slug       string    `db:"slug"         json:"slug"`
+	TableName  string    `db:"table_name"   json:"table_name"`
+	EmbedModel string    `db:"embed_model"  json:"embed_model"`
+	VectorDim  int       `db:"vector_dim"   json:"vector_dim"`
+	CreatedAt  time.Time `db:"created_at"   json:"created_at"`
 }
 
 type CollectionReader interface {
