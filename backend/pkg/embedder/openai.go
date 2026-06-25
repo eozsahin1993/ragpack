@@ -6,35 +6,45 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
-const openAIEmbeddingsURL = "https://api.openai.com/v1/embeddings"
+const openAIDefaultBaseURL = "https://api.openai.com/v1"
 
 type OpenAIEmbedder struct {
-	apiKey string
-	model  string
-	dims   int
-	client *http.Client
+	apiKey  string
+	model   string
+	baseURL string
+	dims    int
+	client  *http.Client
 }
 
 func NewOpenAI(ctx context.Context, apiKey, model string) (*OpenAIEmbedder, error) {
-	e := &OpenAIEmbedder{
-		apiKey: apiKey,
-		model:  model,
-		client: &http.Client{Timeout: 30 * time.Second},
-	}
+	return NewOpenAICompatible(ctx, apiKey, model, openAIDefaultBaseURL)
+}
 
-	vecs, err := e.Embed(ctx, []string{"probe"})
-	if err != nil {
-		return nil, fmt.Errorf("openai embedder: probe call failed: %w", err)
+func NewOpenAICompatible(ctx context.Context, apiKey, model, baseURL string) (*OpenAIEmbedder, error) {
+	e := &OpenAIEmbedder{
+		apiKey:  apiKey,
+		model:   model,
+		baseURL: strings.TrimRight(baseURL, "/"),
+		client:  &http.Client{Timeout: 30 * time.Second},
 	}
-	e.dims = len(vecs[0])
 
 	return e, nil
 }
 
-func (e *OpenAIEmbedder) Dimensions() int { return e.dims }
+func (e *OpenAIEmbedder) Model() string { return e.model }
+
+func (e *OpenAIEmbedder) Dimensions() int {
+	if e.dims == 0 {
+		if dims, err := probeDimensions(context.Background(), e); err == nil {
+			e.dims = dims
+		}
+	}
+	return e.dims
+}
 
 func (e *OpenAIEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
 	body, err := json.Marshal(map[string]any{
@@ -45,11 +55,13 @@ func (e *OpenAIEmbedder) Embed(ctx context.Context, texts []string) ([][]float32
 		return nil, fmt.Errorf("openai embedder: marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, openAIEmbeddingsURL, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.baseURL+"/embeddings", bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("openai embedder: build request: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+e.apiKey)
+	if e.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+e.apiKey)
+	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := e.client.Do(req)

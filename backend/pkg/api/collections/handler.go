@@ -34,11 +34,13 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		}
 	}
 
-	dim, ok := embedder.DimensionsForModel(model)
-	if !ok {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "vector dimensions unknown for model " + model + " — add it to embedder.ModelDimensions",
-		})
+	emb, err := h.registry.Get(model)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	dim := emb.Dimensions()
+	if dim == 0 {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": "embedding service unavailable — unable to determine vector dimensions"})
 	}
 
 	input := meta.CreateCollectionInput{

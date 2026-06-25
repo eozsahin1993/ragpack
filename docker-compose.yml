@@ -26,6 +26,28 @@ services:
     depends_on:
       - backend
 
+  tei:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    profiles: [tei]
+    ports:
+      - "8080:80"
+    volumes:
+      - tei_data:/data
+    environment:
+      - TEI_EMBED_MODEL=${TEI_EMBED_MODEL:?TEI_EMBED_MODEL is not set - add it to your .env file}
+    command: --model-id ${TEI_EMBED_MODEL:?TEI_EMBED_MODEL is not set - add it to your .env file}
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: "4g"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:80/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 120s
+
   ollama:
     image: ollama/ollama
     profiles: [ollama]
@@ -56,4 +78,5 @@ services:
 volumes:
   ragpack_data:
   ollama_data:
+  tei_data:
   web_admin_node_modules:

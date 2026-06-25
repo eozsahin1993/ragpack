@@ -16,8 +16,10 @@ type Config struct {
 
 	EmbedProvider string
 
-	OpenAI OpenAIConfig
-	Ollama OllamaConfig
+	OpenAI      OpenAIConfig
+	Ollama      OllamaConfig
+	HuggingFace HuggingFaceConfig
+	TEI         TEIConfig
 
 	Ingester IngesterConfig
 }
@@ -28,6 +30,16 @@ type OpenAIConfig struct {
 }
 
 type OllamaConfig struct {
+	BaseURL string
+	Model   string
+}
+
+type HuggingFaceConfig struct {
+	APIKey string
+	Model  string
+}
+
+type TEIConfig struct {
 	BaseURL string
 	Model   string
 }
@@ -50,7 +62,7 @@ func Load() Config {
 		DataPath:      getEnv("DATA_PATH", DefaultDataPath),
 		SqlitePath:    getEnv("SQLITE_PATH", DefaultSqlitePath),
 		LanceDBPath:   getEnv("LANCEDB_PATH", DefaultLanceDBPath),
-		EmbedProvider: getEnv("EMBED_PROVIDER", DefaultEmbedProvider),
+		EmbedProvider: getEnv("DEFAULT_EMBED_PROVIDER", DefaultEmbedProvider),
 
 		OpenAI: OpenAIConfig{
 			APIKey: getEnv("OPENAI_API_KEY", ""),
@@ -60,6 +72,16 @@ func Load() Config {
 		Ollama: OllamaConfig{
 			BaseURL: getEnv("OLLAMA_BASE_URL", DefaultOllamaBaseURL),
 			Model:   getEnv("OLLAMA_EMBED_MODEL", DefaultOllamaModel),
+		},
+
+		HuggingFace: HuggingFaceConfig{
+			APIKey: getEnv("HF_API_KEY", ""),
+			Model:  getEnv("HF_EMBED_MODEL", DefaultHFModel),
+		},
+
+		TEI: TEIConfig{
+			BaseURL: getEnv("TEI_BASE_URL", DefaultTEIBaseURL),
+			Model:   getEnv("TEI_EMBED_MODEL", DefaultTEIModel),
 		},
 
 		Ingester: IngesterConfig{

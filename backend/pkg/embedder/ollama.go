@@ -16,15 +16,26 @@ type OllamaEmbedder struct {
 	client  *http.Client
 }
 
-func NewOllama(_ context.Context, baseURL, model string) (*OllamaEmbedder, error) {
-	return &OllamaEmbedder{
+func NewOllama(ctx context.Context, baseURL, model string) (*OllamaEmbedder, error) {
+	e := &OllamaEmbedder{
 		baseURL: baseURL,
 		model:   model,
 		client:  &http.Client{Timeout: 5 * time.Minute},
-	}, nil
+	}
+
+	return e, nil
 }
 
-func (e *OllamaEmbedder) Dimensions() int { return e.dims }
+func (e *OllamaEmbedder) Model() string { return e.model }
+
+func (e *OllamaEmbedder) Dimensions() int {
+	if e.dims == 0 {
+		if dims, err := probeDimensions(context.Background(), e); err == nil {
+			e.dims = dims
+		}
+	}
+	return e.dims
+}
 
 func (e *OllamaEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
 	body, err := json.Marshal(map[string]any{
