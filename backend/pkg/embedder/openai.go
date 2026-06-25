@@ -37,13 +37,15 @@ func NewOpenAICompatible(ctx context.Context, apiKey, model, baseURL string) (*O
 
 func (e *OpenAIEmbedder) Model() string { return e.model }
 
-func (e *OpenAIEmbedder) Dimensions() int {
+func (e *OpenAIEmbedder) Dimensions() (int, error) {
 	if e.dims == 0 {
-		if dims, err := probeDimensions(context.Background(), e); err == nil {
-			e.dims = dims
+		dims, err := probeDimensions(context.Background(), e)
+		if err != nil {
+			return 0, err
 		}
+		e.dims = dims
 	}
-	return e.dims
+	return e.dims, nil
 }
 
 func (e *OpenAIEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {

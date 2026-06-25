@@ -28,13 +28,15 @@ func NewOllama(ctx context.Context, baseURL, model string) (*OllamaEmbedder, err
 
 func (e *OllamaEmbedder) Model() string { return e.model }
 
-func (e *OllamaEmbedder) Dimensions() int {
+func (e *OllamaEmbedder) Dimensions() (int, error) {
 	if e.dims == 0 {
-		if dims, err := probeDimensions(context.Background(), e); err == nil {
-			e.dims = dims
+		dims, err := probeDimensions(context.Background(), e)
+		if err != nil {
+			return 0, err
 		}
+		e.dims = dims
 	}
-	return e.dims
+	return e.dims, nil
 }
 
 func (e *OllamaEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {

@@ -17,7 +17,7 @@ const (
 	DefaultOllamaBaseURL = "http://localhost:11434"
 	DefaultOllamaModel   = "nomic-embed-text"
 	DefaultTEIBaseURL = "http://localhost:8080"
-	DefaultTEIModel   = "Qwen/Qwen3-Embedding-0.6B"
+	DefaultTEIModel   = "BAAI/bge-small-en-v1.5"
 	DefaultHFModel    = "BAAI/bge-small-en-v1.5"
 
 	// Ingester

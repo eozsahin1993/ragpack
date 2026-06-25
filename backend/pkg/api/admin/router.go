@@ -1,0 +1,7 @@
+package admin
+
+import "github.com/gofiber/fiber/v2"
+
+func Register(r fiber.Router, h *Handler) {
+	r.Get("/embedders", h.ListEmbedders)
+}

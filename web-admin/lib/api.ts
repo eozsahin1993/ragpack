@@ -66,10 +66,18 @@ export interface QueryResultItem {
   similarity: number;
 }
 
+export interface EmbedderInfo {
+  models: string[];
+  default: string;
+}
+
 export const api = {
+  embedders: {
+    list: () => req<EmbedderInfo>("/admin/embedders"),
+  },
   collections: {
     list: () => req<{ collections: Collection[] }>("/admin/collections"),
-    create: (body: { name: string }) =>
+    create: (body: { name: string; embed_model?: string }) =>
       req<Collection>("/admin/collections", { method: "POST", body: JSON.stringify(body) }),
     get: (slug: string) => req<Collection>(`/admin/collections/${slug}`),
     delete: (slug: string) =>

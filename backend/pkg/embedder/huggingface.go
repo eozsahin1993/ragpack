@@ -30,13 +30,15 @@ func NewHuggingFace(ctx context.Context, apiKey, model string) (*HuggingFaceEmbe
 
 func (e *HuggingFaceEmbedder) Model() string { return e.model }
 
-func (e *HuggingFaceEmbedder) Dimensions() int {
+func (e *HuggingFaceEmbedder) Dimensions() (int, error) {
 	if e.dims == 0 {
-		if dims, err := probeDimensions(context.Background(), e); err == nil {
-			e.dims = dims
+		dims, err := probeDimensions(context.Background(), e)
+		if err != nil {
+			return 0, err
 		}
+		e.dims = dims
 	}
-	return e.dims
+	return e.dims, nil
 }
 
 func (e *HuggingFaceEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {

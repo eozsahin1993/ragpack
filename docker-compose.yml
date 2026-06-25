@@ -26,8 +26,12 @@ services:
     depends_on:
       - backend
 
+  # TEI runs natively on Linux x86_64 (fast). On Mac (Apple Silicon) it runs under
+  # Rosetta 2 emulation: ONNX warmup maxes out all CPU cores and can take 10+ minutes.
+  # Not practical for local dev — use Ollama instead (--profile ollama).
   tei:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
+    platform: linux/amd64
     profiles: [tei]
     ports:
       - "8080:80"

@@ -7,7 +7,7 @@ import (
 
 type Embedder interface {
 	Embed(ctx context.Context, texts []string) ([][]float32, error)
-	Dimensions() int
+	Dimensions() (int, error)
 	Model() string
 }
 

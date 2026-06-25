@@ -78,6 +78,14 @@ func NewRegistryFromConfig(ctx context.Context, cfg config.Config) *Registry {
 	return registry
 }
 
+func (r *Registry) Models() []string {
+	models := make([]string, 0, len(r.embedders))
+	for model := range r.embedders {
+		models = append(models, model)
+	}
+	return models
+}
+
 func (r *Registry) Register(emb Embedder) {
 	r.embedders[emb.Model()] = emb
 }

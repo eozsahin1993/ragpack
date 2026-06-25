@@ -14,6 +14,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -21,15 +27,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { api, Collection } from "@/lib/api";
+import { api, Collection, EmbedderInfo } from "@/lib/api";
 
 export default function CollectionsPage() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "" });
+  const [form, setForm] = useState({ name: "", embed_model: "" });
   const [creating, setCreating] = useState(false);
+  const [embedderInfo, setEmbedderInfo] = useState<EmbedderInfo | null>(null);
 
   async function load() {
     try {
@@ -42,15 +49,21 @@ export default function CollectionsPage() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    api.embedders.list().then(setEmbedderInfo).catch(() => {});
+  }, []);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setCreating(true);
     setError("");
     try {
-      await api.collections.create({ name: form.name });
-      setForm({ name: "" });
+      await api.collections.create({
+        name: form.name,
+        ...(form.embed_model.trim() && { embed_model: form.embed_model.trim() }),
+      });
+      setForm({ name: "", embed_model: "" });
       setOpen(false);
       await load();
     } catch (e: unknown) {
@@ -95,6 +108,34 @@ export default function CollectionsPage() {
                   placeholder="My documents"
                 />
               </div>
+              {embedderInfo && (
+                <div className="space-y-1.5">
+                  <Label>
+                    Embedding model{" "}
+                    <span className="text-zinc-400 font-normal">(optional)</span>
+                  </Label>
+                  <Select
+                    value={form.embed_model || "__default__"}
+                    onValueChange={v => setForm({ ...form, embed_model: !v || v === "__default__" ? "" : v })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <span>
+                        {form.embed_model || `Default (${embedderInfo.default})`}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__default__">
+                        Default ({embedderInfo.default})
+                      </SelectItem>
+                      {embedderInfo.models
+                        .filter(m => m !== embedderInfo.default)
+                        .map(m => (
+                          <SelectItem key={m} value={m}>{m}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               {error && <p className="text-red-500 text-sm">{error}</p>}
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

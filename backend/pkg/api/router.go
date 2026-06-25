@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/gofiber/fiber/v2"
 
+	"ragpack/pkg/api/admin"
 	"ragpack/pkg/api/collections"
 	"ragpack/pkg/api/documents"
 	"ragpack/pkg/api/ingest"
@@ -27,8 +28,9 @@ func Register(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embe
 	mountRoutes(v1, ms, vec, registry, ing)
 
 	// Admin API — internal only, no auth (never published outside Docker network)
-	admin := app.Group("/admin")
-	mountRoutes(admin, ms, vec, registry, ing)
+	adminGroup := app.Group("/admin")
+	admin.Register(adminGroup, admin.NewHandler(registry))
+	mountRoutes(adminGroup, ms, vec, registry, ing)
 }
 
 func mountRoutes(r fiber.Router, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, ing ingester.Ingester) {

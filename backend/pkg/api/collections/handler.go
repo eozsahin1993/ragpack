@@ -1,6 +1,8 @@
 package collections
 
 import (
+	"fmt"
+
 	"github.com/gofiber/fiber/v2"
 
 	"ragpack/pkg/api/validate"
@@ -38,9 +40,9 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
-	dim := emb.Dimensions()
-	if dim == 0 {
-		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": "embedding service unavailable — unable to determine vector dimensions"})
+	dim, err := emb.Dimensions()
+	if err != nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": fmt.Sprintf("embedding service unavailable: %v", err)})
 	}
 
 	input := meta.CreateCollectionInput{
