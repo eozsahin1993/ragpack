@@ -62,10 +62,26 @@ export interface QueryResultItem {
   file_uri: string;
   mime_type: string;
   chunk_index: number;
+  chunk_header: string | null;
   chunk_text: string | null;
   extra_json: string | null;
   distance: number;
   similarity: number;
+}
+
+export interface RagChunk {
+  source: string;
+  file_uri: string;
+  chunk_index: number;
+  chunk_header: string | null;
+  chunk_text: string | null;
+  similarity: number;
+}
+
+export interface RagResponse {
+  formatted_prompt: string;
+  chunks: RagChunk[];
+  prompt_slug: string;
 }
 
 export interface EmbedderInfo {
@@ -78,6 +94,7 @@ export interface Prompt {
   name: string;
   slug: string;
   content: string;
+  is_system: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -142,9 +159,14 @@ export const api = {
         method: "POST",
         body: JSON.stringify(body),
       }),
+    rag: (slug: string, body: { query: string; top_k: number; prompt_slug: string }) =>
+      req<RagResponse>(`/admin/collections/${slug}/rag`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
   },
   prompts: {
-    list: () => req<{ prompts: Prompt[]; total: number }>("/admin/prompts"),
+    list: () => req<{ system: Prompt[]; user: Prompt[]; total: number }>("/admin/prompts"),
     create: (body: { name: string; content: string }) =>
       req<Prompt>("/admin/prompts", { method: "POST", body: JSON.stringify(body) }),
     get: (slug: string) => req<Prompt>(`/admin/prompts/${slug}`),

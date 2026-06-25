@@ -17,13 +17,14 @@ func (s *MetaStore) CreatePrompt(ctx context.Context, input meta.CreatePromptInp
 		Name:      input.Name,
 		Slug:      slugify(input.Name),
 		Content:   input.Content,
+		IsSystem:  false,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
 
 	_, err := s.db.NamedExecContext(ctx, `
-		INSERT INTO prompts (id, name, slug, content, created_at, updated_at)
-		VALUES (:id, :name, :slug, :content, :created_at, :updated_at)
+		INSERT INTO prompts (id, name, slug, content, is_system, created_at, updated_at)
+		VALUES (:id, :name, :slug, :content, :is_system, :created_at, :updated_at)
 	`, p)
 	if err != nil {
 		return meta.Prompt{}, fmt.Errorf("sqlite: create prompt %q: %w", input.Name, err)
@@ -34,7 +35,7 @@ func (s *MetaStore) CreatePrompt(ctx context.Context, input meta.CreatePromptInp
 func (s *MetaStore) GetPromptBySlug(ctx context.Context, slug string) (meta.Prompt, error) {
 	var p meta.Prompt
 	err := s.db.GetContext(ctx, &p, `
-		SELECT id, name, slug, content, created_at, updated_at
+		SELECT id, name, slug, content, is_system, created_at, updated_at
 		FROM prompts WHERE slug = ?
 	`, slug)
 	if err != nil {
@@ -46,8 +47,8 @@ func (s *MetaStore) GetPromptBySlug(ctx context.Context, slug string) (meta.Prom
 func (s *MetaStore) ListPrompts(ctx context.Context, limit, offset int) ([]meta.Prompt, error) {
 	var prompts []meta.Prompt
 	err := s.db.SelectContext(ctx, &prompts, `
-		SELECT id, name, slug, content, created_at, updated_at
-		FROM prompts ORDER BY created_at DESC LIMIT ? OFFSET ?
+		SELECT id, name, slug, content, is_system, created_at, updated_at
+		FROM prompts WHERE is_system = 0 ORDER BY created_at DESC LIMIT ? OFFSET ?
 	`, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list prompts: %w", err)
@@ -55,9 +56,23 @@ func (s *MetaStore) ListPrompts(ctx context.Context, limit, offset int) ([]meta.
 	return prompts, nil
 }
 
+func (s *MetaStore) ListSystemPrompts(ctx context.Context) ([]meta.Prompt, error) {
+	var prompts []meta.Prompt
+	err := s.db.SelectContext(ctx, &prompts, `
+		SELECT id, name, slug, content, is_system, created_at, updated_at
+		FROM prompts
+		WHERE is_system = 1
+		ORDER BY created_at ASC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: list system prompts: %w", err)
+	}
+	return prompts, nil
+}
+
 func (s *MetaStore) CountPrompts(ctx context.Context) (int, error) {
 	var count int
-	err := s.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM prompts`)
+	err := s.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM prompts WHERE is_system = 0`)
 	if err != nil {
 		return 0, fmt.Errorf("sqlite: count prompts: %w", err)
 	}
@@ -68,6 +83,9 @@ func (s *MetaStore) UpdatePrompt(ctx context.Context, slug string, input meta.Up
 	p, err := s.GetPromptBySlug(ctx, slug)
 	if err != nil {
 		return meta.Prompt{}, err
+	}
+	if p.IsSystem {
+		return meta.Prompt{}, meta.ErrSystemReadOnly
 	}
 
 	if input.Name != nil {
@@ -89,7 +107,15 @@ func (s *MetaStore) UpdatePrompt(ctx context.Context, slug string, input meta.Up
 }
 
 func (s *MetaStore) DeletePrompt(ctx context.Context, slug string) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM prompts WHERE slug = ?`, slug)
+	p, err := s.GetPromptBySlug(ctx, slug)
+	if err != nil {
+		return err
+	}
+	if p.IsSystem {
+		return meta.ErrSystemReadOnly
+	}
+
+	_, err = s.db.ExecContext(ctx, `DELETE FROM prompts WHERE slug = ?`, slug)
 	if err != nil {
 		return fmt.Errorf("sqlite: delete prompt %q: %w", slug, err)
 	}

@@ -2,14 +2,18 @@ package meta
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+var ErrSystemReadOnly = errors.New("system prompts cannot be modified or deleted")
 
 type Prompt struct {
 	ID        string    `db:"id"`
 	Name      string    `db:"name"`
 	Slug      string    `db:"slug"`
 	Content   string    `db:"content"`
+	IsSystem  bool      `db:"is_system"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 }
@@ -27,6 +31,7 @@ type UpdatePromptInput struct {
 type PromptReader interface {
 	GetPromptBySlug(ctx context.Context, slug string) (Prompt, error)
 	ListPrompts(ctx context.Context, limit, offset int) ([]Prompt, error)
+	ListSystemPrompts(ctx context.Context) ([]Prompt, error)
 	CountPrompts(ctx context.Context) (int, error)
 }
 

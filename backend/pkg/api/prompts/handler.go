@@ -1,6 +1,8 @@
 package prompts
 
 import (
+	"errors"
+
 	"github.com/gofiber/fiber/v2"
 
 	"ragpack/pkg/api/validate"
@@ -17,15 +19,29 @@ func NewHandler(ms meta.MetaStore) *Handler {
 
 func (h *Handler) List(c *fiber.Ctx) error {
 	limit, offset := validate.Pagination(c)
-	prompts, err := h.meta.ListPrompts(c.Context(), limit, offset)
+
+	system, err := h.meta.ListSystemPrompts(c.Context())
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
+
+	user, err := h.meta.ListPrompts(c.Context(), limit, offset)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
 	total, err := h.meta.CountPrompts(c.Context())
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(fiber.Map{"prompts": prompts, "total": total, "limit": limit, "offset": offset})
+
+	return c.JSON(fiber.Map{
+		"system": system,
+		"user":   user,
+		"total":  total,
+		"limit":  limit,
+		"offset": offset,
+	})
 }
 
 func (h *Handler) Create(c *fiber.Ctx) error {
@@ -63,6 +79,9 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 		Content: req.Content,
 	})
 	if err != nil {
+		if errors.Is(err, meta.ErrSystemReadOnly) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(p)
@@ -70,6 +89,9 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 
 func (h *Handler) Delete(c *fiber.Ctx) error {
 	if err := h.meta.DeletePrompt(c.Context(), c.Params("slug")); err != nil {
+		if errors.Is(err, meta.ErrSystemReadOnly) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(fiber.StatusNoContent)
