@@ -2,6 +2,8 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -48,6 +50,36 @@ func (s *MetaStore) CreateDocument(ctx context.Context, collectionID, jobID, fil
 		return meta.Document{}, fmt.Errorf("sqlite: fetch document after upsert: %w", err)
 	}
 	return existing, nil
+}
+
+func (s *MetaStore) FindDocumentByFileUri(ctx context.Context, collectionID, fileUri string) (*meta.Document, error) {
+	var d meta.Document
+	err := s.db.GetContext(ctx, &d, `
+		SELECT id, collection_id, job_id, file_uri, mime_type, external_id, extra_json, chunk_count, status, error, created_at, updated_at
+		FROM documents
+		WHERE collection_id = ? AND file_uri = ?
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, collectionID, fileUri)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("sqlite: find document by file_uri: %w", err)
+	}
+	return &d, nil
+}
+
+func (s *MetaStore) ResetDocument(ctx context.Context, docID, newJobID string) (meta.Document, error) {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE documents
+		SET job_id = ?, status = 'ingesting', chunk_count = 0, error = NULL, updated_at = ?
+		WHERE id = ?
+	`, newJobID, time.Now().UTC(), docID)
+	if err != nil {
+		return meta.Document{}, fmt.Errorf("sqlite: reset document %q for job %q: %w", docID, newJobID, err)
+	}
+	return s.GetDocument(ctx, docID)
 }
 
 func (s *MetaStore) GetDocument(ctx context.Context, id string) (meta.Document, error) {

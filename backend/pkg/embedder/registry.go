@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"ragpack/pkg/config"
 )
@@ -41,7 +42,7 @@ func NewRegistryFromConfig(ctx context.Context, cfg config.Config) *Registry {
 	}
 
 	if cfg.TEI.BaseURL != "" && cfg.TEI.Model != "" {
-		emb, err := NewOpenAICompatible(ctx, "", cfg.TEI.Model, cfg.TEI.BaseURL+"/v1")
+		emb, err := NewOpenAICompatible(ctx, "", cfg.TEI.Model, cfg.TEI.BaseURL+"/v1", true, 120*time.Second)
 		if err != nil {
 			log.Printf("warning: failed to init TEI embedder (%s): %v", cfg.TEI.Model, err)
 		} else {

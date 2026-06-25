@@ -71,6 +71,15 @@ export interface EmbedderInfo {
   default: string;
 }
 
+export interface Prompt {
+  id: string;
+  name: string;
+  slug: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const api = {
   embedders: {
     list: () => req<EmbedderInfo>("/admin/embedders"),
@@ -126,5 +135,15 @@ export const api = {
         method: "POST",
         body: JSON.stringify(body),
       }),
+  },
+  prompts: {
+    list: () => req<{ prompts: Prompt[]; total: number }>("/admin/prompts"),
+    create: (body: { name: string; content: string }) =>
+      req<Prompt>("/admin/prompts", { method: "POST", body: JSON.stringify(body) }),
+    get: (slug: string) => req<Prompt>(`/admin/prompts/${slug}`),
+    update: (slug: string, body: { name?: string; content?: string }) =>
+      req<Prompt>(`/admin/prompts/${slug}`, { method: "PATCH", body: JSON.stringify(body) }),
+    delete: (slug: string) =>
+      req<void>(`/admin/prompts/${slug}`, { method: "DELETE" }),
   },
 };

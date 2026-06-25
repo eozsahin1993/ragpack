@@ -5,5 +5,6 @@ type MetaStore interface {
 	JobStore
 	DocumentStore
 	APIKeyStore
+	PromptStore
 	Close() error
 }

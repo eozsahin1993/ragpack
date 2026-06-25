@@ -21,15 +21,19 @@ type OpenAIEmbedder struct {
 }
 
 func NewOpenAI(ctx context.Context, apiKey, model string) (*OpenAIEmbedder, error) {
-	return NewOpenAICompatible(ctx, apiKey, model, openAIDefaultBaseURL)
+	return NewOpenAICompatible(ctx, apiKey, model, openAIDefaultBaseURL, false, 30*time.Second)
 }
 
-func NewOpenAICompatible(ctx context.Context, apiKey, model, baseURL string) (*OpenAIEmbedder, error) {
+func NewOpenAICompatible(ctx context.Context, apiKey, model, baseURL string, disableCompression bool, timeout time.Duration) (*OpenAIEmbedder, error) {
+	transport := http.DefaultTransport
+	if disableCompression {
+		transport = &http.Transport{DisableCompression: true}
+	}
 	e := &OpenAIEmbedder{
 		apiKey:  apiKey,
 		model:   model,
 		baseURL: strings.TrimRight(baseURL, "/"),
-		client:  &http.Client{Timeout: 30 * time.Second},
+		client:  &http.Client{Timeout: timeout, Transport: transport},
 	}
 
 	return e, nil

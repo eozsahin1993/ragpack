@@ -10,6 +10,7 @@ import (
 	"ragpack/pkg/api/jobs"
 	"ragpack/pkg/api/keys"
 	"ragpack/pkg/api/middleware"
+	"ragpack/pkg/api/prompts"
 	"ragpack/pkg/api/query"
 	"ragpack/pkg/db"
 	"ragpack/pkg/embedder"
@@ -38,6 +39,7 @@ func mountRoutes(r fiber.Router, ms meta.MetaStore, vec db.VectorDb, registry *e
 	r.Get("/jobs/:id", jobs.NewHandler(ms).GetJob)
 
 	keys.Register(r.Group("/keys"), keys.NewHandler(ms))
+	prompts.Register(r.Group("/prompts"), prompts.NewHandler(ms))
 
 	collGroup := r.Group("/collections")
 	collections.Register(collGroup, collections.NewHandler(ms, vec, registry))

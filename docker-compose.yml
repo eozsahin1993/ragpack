@@ -39,7 +39,7 @@ services:
       - tei_data:/data
     environment:
       - TEI_EMBED_MODEL=${TEI_EMBED_MODEL:?TEI_EMBED_MODEL is not set - add it to your .env file}
-    command: --model-id ${TEI_EMBED_MODEL:?TEI_EMBED_MODEL is not set - add it to your .env file}
+    command: --model-id ${TEI_EMBED_MODEL:?TEI_EMBED_MODEL is not set - add it to your .env file} --max-client-batch-size 128
     deploy:
       resources:
         limits:

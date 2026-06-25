@@ -18,55 +18,77 @@ import (
 	parserpkg "ragpack/pkg/parser"
 )
 
+// failJob marks the job as failed and returns the original error.
+func (wp *WorkerPool) failJob(ctx context.Context, jobID string, err error) error {
+	errStr := err.Error()
+	if logErr := wp.metaStore.UpdateJobStatus(ctx, jobID, meta.JobStatusFailed, &errStr); logErr != nil {
+		log.Printf("ingester: job %s: failed to persist failure status: %v", jobID, logErr)
+	}
+	return err
+}
+
 func (wp *WorkerPool) processJob(ctx context.Context, item queueItem) error {
-	jobID := item.job.ID
+	job := item.job
+	jobID := job.ID
 
 	if err := wp.metaStore.UpdateJobStatus(ctx, jobID, meta.JobStatusProcessing, nil); err != nil {
 		return err
 	}
 
-	doc, err := wp.metaStore.CreateDocument(ctx, item.job.CollectionID, jobID, item.job.FileUri, item.job.MimeType)
+	collection, err := wp.metaStore.GetCollectionByID(ctx, job.CollectionID)
 	if err != nil {
-		errStr := err.Error()
-		if logErr := wp.metaStore.UpdateJobStatus(ctx, jobID, meta.JobStatusFailed, &errStr); logErr != nil {
-			log.Printf("ingester: job %s: failed to persist failure status: %v", jobID, logErr)
-		}
-		return err
+		return wp.failJob(ctx, jobID, err)
 	}
 
-	chunkCount, processErr := wp.process(ctx, item, doc.ID)
+	existing, err := wp.metaStore.FindDocumentByFileUri(ctx, job.CollectionID, job.FileUri)
+	if err != nil {
+		return wp.failJob(ctx, jobID, err)
+	}
+
+	var docID string
+	if existing != nil {
+		if job.Intent == meta.JobIntentIngest && !job.Force {
+			if existing.Status == meta.DocumentStatusComplete {
+				// Already ingested — skip.
+				return wp.metaStore.UpdateJobStatus(ctx, jobID, meta.JobStatusComplete, nil)
+			}
+			if existing.Status == meta.DocumentStatusIngesting {
+				return wp.failJob(ctx, jobID, fmt.Errorf("document is already being ingested"))
+			}
+		}
+		// Reuse existing document — reset status and bind to new job.
+		doc, err := wp.metaStore.ResetDocument(ctx, existing.ID, jobID)
+		if err != nil {
+			return wp.failJob(ctx, jobID, err)
+		}
+		docID = doc.ID
+	} else {
+		doc, err := wp.metaStore.CreateDocument(ctx, job.CollectionID, jobID, job.FileUri, job.MimeType)
+		if err != nil {
+			return wp.failJob(ctx, jobID, err)
+		}
+		docID = doc.ID
+	}
+
+	chunkCount, processErr := wp.process(ctx, item, docID, collection)
 	if processErr != nil {
 		errStr := processErr.Error()
-		if logErr := wp.metaStore.UpdateDocumentStatus(ctx, doc.ID, meta.DocumentStatusFailed, 0, &errStr); logErr != nil {
-			log.Printf("ingester: job %s: failed to mark document failed: %v", jobID, logErr)
+		if err := wp.metaStore.UpdateDocumentStatus(ctx, docID, meta.DocumentStatusFailed, 0, &errStr); err != nil {
+			log.Printf("ingester: job %s: failed to mark document failed: %v", jobID, err)
 		}
-		if logErr := wp.metaStore.UpdateJobStatus(ctx, jobID, meta.JobStatusFailed, &errStr); logErr != nil {
-			log.Printf("ingester: job %s: failed to persist failure status: %v", jobID, logErr)
-		}
-		return processErr
+		return wp.failJob(ctx, jobID, processErr)
 	}
 
-	// Propagate document status failure so the job is retried. Retry is safe because
-	// process() deletes stale chunks before inserting.
-	if err := wp.metaStore.UpdateDocumentStatus(ctx, doc.ID, meta.DocumentStatusComplete, chunkCount, nil); err != nil {
-		errStr := err.Error()
+	if err := wp.metaStore.UpdateDocumentStatus(ctx, docID, meta.DocumentStatusComplete, chunkCount, nil); err != nil {
 		log.Printf("ingester: job %s: failed to mark document complete: %v", jobID, err)
-		if logErr := wp.metaStore.UpdateJobStatus(ctx, jobID, meta.JobStatusFailed, &errStr); logErr != nil {
-			log.Printf("ingester: job %s: failed to persist failure status: %v", jobID, logErr)
-		}
-		return err
+		return wp.failJob(ctx, jobID, err)
 	}
 
 	return wp.metaStore.UpdateJobStatus(ctx, jobID, meta.JobStatusComplete, nil)
 }
 
-func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID string) (int, error) {
+func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID string, collection meta.Collection) (int, error) {
 	job := item.job
-
-	collection, err := wp.metaStore.GetCollectionByID(ctx, job.CollectionID)
-	if err != nil {
-		return 0, fmt.Errorf("get collection: %w", err)
-	}
 
 	reader := item.reader
 	if reader == nil {
@@ -84,7 +106,7 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 	}
 	// reader is closed by the parser inside Parse() — no defer here.
 
-	// Delete any chunks from a previous partial or failed attempt so retries are idempotent.
+	// Delete any stale chunks before re-embedding (handles retries and refresh).
 	if err := wp.vectorDb.DeleteChunksByDocument(ctx, collection.TableName, documentID); err != nil {
 		return 0, fmt.Errorf("delete stale chunks: %w", err)
 	}

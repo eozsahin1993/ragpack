@@ -14,11 +14,20 @@ const (
 	JobStatusFailed     JobStatus = "failed"
 )
 
+type JobIntent string
+
+const (
+	JobIntentIngest  JobIntent = "ingest"
+	JobIntentRefresh JobIntent = "refresh"
+)
+
 type Job struct {
 	ID           string     `db:"id"            json:"id"`
 	CollectionID string     `db:"collection_id" json:"collection_id"`
 	FileUri      string     `db:"file_uri"      json:"file_uri"`
 	MimeType     string     `db:"mime_type"     json:"mime_type"`
+	Intent       JobIntent  `db:"intent"        json:"intent"`
+	Force        bool       `db:"force"         json:"force"`
 	Status       JobStatus  `db:"status"        json:"status"`
 	Error        *string    `db:"error"         json:"error,omitempty"`
 	ExecutedAt   *time.Time `db:"executed_at"   json:"executed_at,omitempty"`
@@ -39,7 +48,7 @@ type JobReader interface {
 }
 
 type JobWriter interface {
-	CreateJob(ctx context.Context, collectionID, fileUri, mimeType string) (Job, error)
+	CreateJob(ctx context.Context, collectionID, fileUri, mimeType string, intent JobIntent, force bool) (Job, error)
 	UpdateJobStatus(ctx context.Context, id string, status JobStatus, jobError *string) error
 }
 

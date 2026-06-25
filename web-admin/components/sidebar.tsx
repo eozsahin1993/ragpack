@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Database, BriefcaseBusiness, FlaskConical } from "lucide-react";
+import { Database, BriefcaseBusiness, FlaskConical, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
   { href: "/collections", label: "Collections", icon: Database },
   { href: "/jobs", label: "Jobs", icon: BriefcaseBusiness },
+  { href: "/prompts", label: "Prompts", icon: ScrollText },
   { href: "/playground", label: "Playground", icon: FlaskConical },
 ];
 

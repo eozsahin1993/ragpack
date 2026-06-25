@@ -32,10 +32,12 @@ type DocumentReader interface {
 	GetDocument(ctx context.Context, id string) (Document, error)
 	ListDocumentsByCollection(ctx context.Context, collectionID string, limit, offset int) ([]Document, error)
 	CountDocumentsByCollection(ctx context.Context, collectionID string) (int, error)
+	FindDocumentByFileUri(ctx context.Context, collectionID, fileUri string) (*Document, error)
 }
 
 type DocumentWriter interface {
 	CreateDocument(ctx context.Context, collectionID, jobID, fileUri, mimeType string) (Document, error)
+	ResetDocument(ctx context.Context, docID, newJobID string) (Document, error)
 	UpdateDocumentStatus(ctx context.Context, id string, status DocumentStatus, chunkCount int, docError *string) error
 	DeleteDocument(ctx context.Context, id string) error
 	DeleteDocumentsByCollection(ctx context.Context, collectionID string) error
