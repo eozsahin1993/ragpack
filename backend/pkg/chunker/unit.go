@@ -32,7 +32,7 @@ func (c *UnitChunker) Chunk(units iter.Seq2[parser.Unit, error]) iter.Seq2[Chunk
 				idx++
 			} else {
 				var sub []Chunk
-				idx = splitOversize(text, idx, c.cfg, &sub)
+				idx = splitOversize(text, idx, c.cfg, nil, &sub)
 				for _, ch := range sub {
 					if !yield(ch, nil) {
 						return

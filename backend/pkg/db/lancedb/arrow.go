@@ -24,9 +24,10 @@ const (
 	colMimeType   = "mime_type"
 	colFileUri    = "file_uri"
 	colSourceName = "source_name"
-	colChunkText  = "chunk_text"
-	colExternalId = "external_id"
-	colExtraJSON  = "extra_json"
+	colChunkText   = "chunk_text"
+	colChunkHeader = "chunk_header"
+	colExternalId  = "external_id"
+	colExtraJSON   = "extra_json"
 )
 
 func chunkArrowSchema(vectorDim int) *arrow.Schema {
@@ -42,16 +43,17 @@ func chunkArrowSchema(vectorDim int) *arrow.Schema {
 		{Name: colFileUri, Type: arrow.BinaryTypes.String, Nullable: false},
 		{Name: colSourceName, Type: arrow.BinaryTypes.String, Nullable: false},
 		{Name: colChunkText, Type: arrow.BinaryTypes.String, Nullable: true},
+		{Name: colChunkHeader, Type: arrow.BinaryTypes.String, Nullable: true},
 		{Name: colExternalId, Type: arrow.BinaryTypes.String, Nullable: true},
 		{Name: colExtraJSON, Type: arrow.BinaryTypes.String, Nullable: true},
 	}, nil)
 }
 
 type chunkBuilders struct {
-	id, docID, hash, mime, fileUri, srcName, chunkText, extID, extra *array.StringBuilder
-	idx                                                               *array.Int32Builder
-	vec                                                               *array.FixedSizeListBuilder
-	created, updated                                                  *array.Int64Builder
+	id, docID, hash, mime, fileUri, srcName, chunkText, chunkHeader, extID, extra *array.StringBuilder
+	idx                                                                            *array.Int32Builder
+	vec                                                                            *array.FixedSizeListBuilder
+	created, updated                                                               *array.Int64Builder
 }
 
 func newChunkBuilders(pool memory.Allocator, vectorDim int) chunkBuilders {
@@ -60,8 +62,9 @@ func newChunkBuilders(pool memory.Allocator, vectorDim int) chunkBuilders {
 		id: array.NewStringBuilder(pool), docID: array.NewStringBuilder(pool),
 		hash: array.NewStringBuilder(pool), mime: array.NewStringBuilder(pool),
 		fileUri: array.NewStringBuilder(pool), srcName: array.NewStringBuilder(pool),
-		chunkText: array.NewStringBuilder(pool), extID: array.NewStringBuilder(pool),
-		extra: array.NewStringBuilder(pool), idx: array.NewInt32Builder(pool),
+		chunkText: array.NewStringBuilder(pool), chunkHeader: array.NewStringBuilder(pool),
+		extID: array.NewStringBuilder(pool), extra: array.NewStringBuilder(pool),
+		idx: array.NewInt32Builder(pool),
 		vec: vecB, created: array.NewInt64Builder(pool), updated: array.NewInt64Builder(pool),
 	}
 }
@@ -79,6 +82,7 @@ func (b chunkBuilders) append(r db.ChunkDbRecord) {
 	b.fileUri.Append(r.FileUri)
 	b.srcName.Append(r.SourceName)
 	appendOptionalString(b.chunkText, r.ChunkText)
+	appendOptionalString(b.chunkHeader, r.ChunkHeader)
 	appendOptionalString(b.extID, r.ExternalId)
 	appendOptionalString(b.extra, r.ExtraJSON)
 }
@@ -88,7 +92,7 @@ func (b chunkBuilders) finish(schema *arrow.Schema, n int64) arrow.Record {
 		b.id.NewArray(), b.docID.NewArray(), b.hash.NewArray(), b.idx.NewArray(),
 		b.vec.NewArray(), b.created.NewArray(), b.updated.NewArray(),
 		b.mime.NewArray(), b.fileUri.NewArray(), b.srcName.NewArray(),
-		b.chunkText.NewArray(), b.extID.NewArray(), b.extra.NewArray(),
+		b.chunkText.NewArray(), b.chunkHeader.NewArray(), b.extID.NewArray(), b.extra.NewArray(),
 	}
 	for _, c := range cols {
 		defer c.Release()
@@ -197,6 +201,7 @@ func rowToChunk(row map[string]interface{}) (db.ChunkDbRecord, error) {
 	}
 
 	rec.ChunkText = extractOptionalString(row, colChunkText)
+	rec.ChunkHeader = extractOptionalString(row, colChunkHeader)
 	rec.ExternalId = extractOptionalString(row, colExternalId)
 	rec.ExtraJSON = extractOptionalString(row, colExtraJSON)
 

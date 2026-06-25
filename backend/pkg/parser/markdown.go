@@ -9,8 +9,8 @@ import (
 )
 
 // MarkdownParser streams sections from Markdown documents.
-// Each section spans from one ATX heading to the next; the full breadcrumb of
-// parent headings is attached as metadata so retrieved chunks retain hierarchy context.
+// Each section spans from one ATX heading to the next; the heading breadcrumb
+// is attached as metadata["heading"] and the body text is emitted separately.
 type MarkdownParser struct{}
 
 func (p *MarkdownParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, error] {
@@ -29,15 +29,11 @@ func (p *MarkdownParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Uni
 		flush := func() bool {
 			b := strings.TrimSpace(body.String())
 			body.Reset()
-			if breadcrumb == "" && b == "" {
-				return true
-			}
-			text := strings.TrimSpace(breadcrumb + "\n" + b)
-			if text == "" {
+			if b == "" {
 				return true
 			}
 			meta := map[string]string{"heading": breadcrumb}
-			return yield(Unit{Text: text, Metadata: meta}, nil)
+			return yield(Unit{Text: b, Metadata: meta}, nil)
 		}
 
 		scanner := bufio.NewScanner(r)

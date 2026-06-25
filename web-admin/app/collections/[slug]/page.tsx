@@ -65,6 +65,7 @@ export default function CollectionPage() {
   const [ingesting, setIngesting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
+  const [refreshingDocId, setRefreshingDocId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -112,6 +113,19 @@ export default function CollectionPage() {
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleRefreshDocument(doc: Document) {
+    setRefreshingDocId(doc.id);
+    setError("");
+    try {
+      await api.ingest.refresh(slug, { file_uri: doc.file_uri, mime_type: doc.mime_type });
+      await loadDocs(page);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Refresh failed");
+    } finally {
+      setRefreshingDocId(null);
     }
   }
 
@@ -265,7 +279,7 @@ export default function CollectionPage() {
                 <TableHead>Chunks</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Ingested</TableHead>
-                <TableHead className="w-10" />
+                <TableHead className="w-20" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -300,14 +314,26 @@ export default function CollectionPage() {
                     {new Date(d.created_at).toLocaleString()}
                   </TableCell>
                   <TableCell>
-                    <button
-                      onClick={e => { e.stopPropagation(); handleDeleteDocument(d.id, friendlyUri(d.file_uri)); }}
-                      disabled={deletingDocId === d.id}
-                      className="text-zinc-300 hover:text-red-500 transition-colors disabled:opacity-40"
-                      title="Delete document"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {!d.file_uri.startsWith("upload://") && (
+                        <button
+                          onClick={e => { e.stopPropagation(); handleRefreshDocument(d); }}
+                          disabled={refreshingDocId === d.id || deletingDocId === d.id}
+                          className="text-zinc-300 hover:text-blue-500 transition-colors disabled:opacity-40"
+                          title="Re-ingest document"
+                        >
+                          <RefreshCw className={`w-4 h-4 ${refreshingDocId === d.id ? "animate-spin" : ""}`} />
+                        </button>
+                      )}
+                      <button
+                        onClick={e => { e.stopPropagation(); handleDeleteDocument(d.id, friendlyUri(d.file_uri)); }}
+                        disabled={deletingDocId === d.id || refreshingDocId === d.id}
+                        className="text-zinc-300 hover:text-red-500 transition-colors disabled:opacity-40"
+                        title="Delete document"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

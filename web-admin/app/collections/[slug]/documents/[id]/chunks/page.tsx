@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trash2, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, Chunk, Document } from "@/lib/api";
 
@@ -157,6 +157,15 @@ export default function ChunksPage() {
                     {ch.chunk_hash.slice(0, 16)}…
                   </span>
                 </div>
+                {ch.chunk_header && (
+                  <>
+                    <div className="flex items-center gap-1.5 text-xs text-indigo-500 font-medium">
+                      <Hash className="w-3 h-3 shrink-0" />
+                      <span>{ch.chunk_header}</span>
+                    </div>
+                    <div className="border-t border-zinc-100" />
+                  </>
+                )}
                 <p className="text-sm text-zinc-700 whitespace-pre-wrap break-words leading-relaxed">
                   {ch.chunk_text ?? <span className="italic text-zinc-300">no text stored</span>}
                 </p>

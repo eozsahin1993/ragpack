@@ -8,6 +8,8 @@ import (
 	sdk "github.com/eozsahin1993/lancedb-go/pkg/lancedb"
 
 	"ragpack/pkg/db"
+	"ragpack/pkg/db/lancedb/migrations"
+	"ragpack/pkg/meta"
 )
 
 type VectorDb struct {
@@ -25,6 +27,10 @@ func (l *VectorDb) Connect(ctx context.Context, connectionUrl string) error {
 	}
 	l.conn = conn
 	return nil
+}
+
+func (l *VectorDb) MigrateAll(ctx context.Context, collections []meta.Collection) error {
+	return migrations.MigrateAll(ctx, l.conn, collections)
 }
 
 func (l *VectorDb) DropTable(ctx context.Context, name string) error {
@@ -68,6 +74,7 @@ func (l *VectorDb) InsertBatch(ctx context.Context, tableName string, records []
 	}
 	return nil
 }
+
 
 func (l *VectorDb) DeleteChunksByDocument(ctx context.Context, tableName, documentID string) error {
 	tbl, err := l.conn.OpenTable(ctx, tableName)

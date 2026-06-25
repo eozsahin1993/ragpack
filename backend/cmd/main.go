@@ -37,6 +37,14 @@ func main() {
 		log.Fatalf("vector store: %v", err)
 	}
 
+	collections, err := ms.ListAllCollections(context.Background())
+	if err != nil {
+		log.Fatalf("list collections for migration: %v", err)
+	}
+	if err := vec.MigrateAll(context.Background(), collections); err != nil {
+		log.Fatalf("lancedb migrations: %v", err)
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

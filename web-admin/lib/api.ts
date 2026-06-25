@@ -3,8 +3,9 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
-  const body = await res.json();
-  if (!res.ok) throw new Error(body.error ?? res.statusText);
+  const text = await res.text();
+  const body = text ? JSON.parse(text) : null;
+  if (!res.ok) throw new Error(body?.error ?? res.statusText);
   return body as T;
 }
 
@@ -52,6 +53,7 @@ export interface Chunk {
   mime_type: string;
   file_uri: string;
   chunk_text: string | null;
+  chunk_header: string | null;
   created_at: string;
 }
 
@@ -102,6 +104,11 @@ export const api = {
   ingest: {
     uri: (slug: string, body: { file_uri: string; mime_type: string }) =>
       req<Job>(`/admin/collections/${slug}/ingest`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    refresh: (slug: string, body: { file_uri: string; mime_type: string }) =>
+      req<Job>(`/admin/collections/${slug}/ingest?refresh=true`, {
         method: "POST",
         body: JSON.stringify(body),
       }),

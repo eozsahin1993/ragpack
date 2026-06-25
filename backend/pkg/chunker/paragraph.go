@@ -29,7 +29,7 @@ func (c *ParagraphChunker) Chunk(units iter.Seq2[parser.Unit, error]) iter.Seq2[
 			if len([]rune(text)) > c.cfg.ChunkSize {
 				// Single paragraph exceeded the limit — split with sliding window.
 				var sub []Chunk
-				idx = splitOversize(text, idx, c.cfg, &sub)
+				idx = splitOversize(text, idx, c.cfg, nil, &sub)
 				for _, ch := range sub {
 					if !yield(ch, nil) {
 						return false

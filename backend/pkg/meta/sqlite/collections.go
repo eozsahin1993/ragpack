@@ -78,6 +78,20 @@ func (s *MetaStore) ListCollections(ctx context.Context, limit, offset int) ([]m
 	return collections, nil
 }
 
+func (s *MetaStore) ListAllCollections(ctx context.Context) ([]meta.Collection, error) {
+	var collections []meta.Collection
+	err := s.db.SelectContext(ctx, &collections, `
+		SELECT id, name, slug, table_name, embed_model, vector_dim, created_at,
+		       chunk_strategy, chunk_size, chunk_overlap
+		FROM collections
+		ORDER BY created_at ASC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: list all collections: %w", err)
+	}
+	return collections, nil
+}
+
 func (s *MetaStore) CountCollections(ctx context.Context) (int, error) {
 	var count int
 	err := s.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM collections`)

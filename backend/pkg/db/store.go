@@ -19,9 +19,10 @@ type ChunkDbRecord struct {
 	SourceName string    `json:"source_name"`
 
 	// Optional
-	ChunkText  *string `json:"chunk_text"`
-	ExternalId *string `json:"external_id"`
-	ExtraJSON  *string `json:"extra_json"`
+	ChunkText   *string `json:"chunk_text"`   // optional in case for non text forms of data (e.g. images, audio, video)
+	ChunkHeader *string `json:"chunk_header"` // heading breadcrumb for structured docs, e.g. "Introduction > Background"
+	ExternalId  *string `json:"external_id"`  // this is for the user to store their own external id for the chunk, e.g. a primary key from their own database
+	ExtraJSON   *string `json:"extra_json"`   // optional JSON blob for any extra metadata the user wants to store with the chunk
 }
 
 type ChunkQueryResult struct {

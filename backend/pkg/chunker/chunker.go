@@ -10,8 +10,9 @@ import (
 
 // Chunk is a fixed-size piece of text ready for embedding.
 type Chunk struct {
-	Text  string
-	Index int
+	Text   string
+	Index  int
+	Header *string // optional heading breadcrumb, e.g. "Introduction > Background"
 }
 
 // Strategy constants select how parser units are grouped into embeddable chunks.
