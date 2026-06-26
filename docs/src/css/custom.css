@@ -24,36 +24,6 @@
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
 
-/* Footer */
-.footer {
-  background: #09090c !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.footer__title {
-  color: #fff !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.08em !important;
-}
-
-.footer__link-item {
-  color: rgba(255, 255, 255, 0.45) !important;
-  font-size: 0.9rem !important;
-  transition: color 0.15s !important;
-}
-
-.footer__link-item:hover {
-  color: #fff !important;
-  text-decoration: none !important;
-}
-
-.footer__copyright {
-  color: rgba(255, 255, 255, 0.3) !important;
-  font-size: 0.8rem !important;
-}
-
-.footer__link-item svg {
+[class*='iconExternalLink'] {
   display: none !important;
 }

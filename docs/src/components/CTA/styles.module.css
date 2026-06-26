@@ -1,0 +1,39 @@
+.wrapper {
+  padding: 80px 24px;
+  text-align: center;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+  background: radial-gradient(ellipse at 50% 100%, rgba(99, 102, 241, 0.1) 0%, transparent 60%);
+}
+
+.inner {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.inner h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 12px;
+  letter-spacing: -0.02em;
+}
+
+.inner p {
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 32px;
+  font-size: 1.05rem;
+}
+
+.btn {
+  padding: 12px 28px;
+  border-radius: 8px;
+  background: var(--ifm-color-primary);
+  color: white !important;
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none !important;
+  transition: opacity 0.15s;
+}
+
+.btn:hover {
+  opacity: 0.85;
+}

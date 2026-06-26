@@ -63,31 +63,7 @@ const config: Config = {
     },
     footer: {
       style: 'dark',
-      links: [
-        {
-          title: 'Docs',
-          items: [
-            {label: 'Getting Started', to: '/docs/getting-started'},
-            {label: 'API Reference', to: '/docs/api'},
-            {label: 'JS SDK', to: '/docs/sdk/js'},
-          ],
-        },
-        {
-          title: 'Packages',
-          items: [
-            {label: 'ragpack (CLI)', href: 'https://www.npmjs.com/package/ragpack'},
-            {label: 'ragpack-js (SDK)', href: 'https://www.npmjs.com/package/ragpack-js'},
-          ],
-        },
-        {
-          title: 'Source',
-          items: [
-            {label: 'GitHub', href: 'https://github.com/eozsahin1993/ragpack'},
-            {label: 'Issues', href: 'https://github.com/eozsahin1993/ragpack/issues'},
-          ],
-        },
-      ],
-      copyright: `MIT License © ${new Date().getFullYear()} RagPack`,
+      links: [],
     },
     prism: {
       theme: prismThemes.github,

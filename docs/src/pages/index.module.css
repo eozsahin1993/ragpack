@@ -76,11 +76,8 @@
   opacity: 0.85;
 }
 
-.githubBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 11px 20px;
+.btnSecondary {
+  padding: 11px 24px;
   border-radius: 8px;
   border: 1px solid var(--ifm-color-emphasis-300);
   color: var(--ifm-font-color-base) !important;
@@ -90,16 +87,8 @@
   transition: border-color 0.15s;
 }
 
-.githubBtn:hover {
+.btnSecondary:hover {
   border-color: var(--ifm-color-primary);
-}
-
-.starCount {
-  background: var(--ifm-color-emphasis-200);
-  border-radius: 99px;
-  padding: 1px 8px;
-  font-size: 0.8rem;
-  font-weight: 700;
 }
 
 /* Terminal */
