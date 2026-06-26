@@ -20,7 +20,7 @@ import (
 	"ragpack/pkg/meta"
 )
 
-func Register(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester) {
+func Register(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string) {
 	app.Get("/api/v1/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "healthy", "engine": "Go + Fiber"})
 	})
@@ -28,14 +28,14 @@ func Register(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embe
 	// External API — requires authentication
 	v1 := app.Group("/api/v1")
 	v1.Use(middleware.Auth(ms))
-	mountRoutes(v1, ms, vec, registry, llmRegistry, ing)
+	mountRoutes(v1, ms, vec, registry, llmRegistry, ing, defaultPromptSlug)
 
 	// Admin API — internal only, no auth (never published outside Docker network)
 	adminGroup := app.Group("/admin")
-	mountRoutes(adminGroup, ms, vec, registry, llmRegistry, ing)
+	mountRoutes(adminGroup, ms, vec, registry, llmRegistry, ing, defaultPromptSlug)
 }
 
-func mountRoutes(r fiber.Router, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester) {
+func mountRoutes(r fiber.Router, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string) {
 	r.Get("/jobs", jobs.NewHandler(ms).GetAllJobs)
 	r.Get("/jobs/:id", jobs.NewHandler(ms).GetJob)
 
@@ -51,6 +51,6 @@ func mountRoutes(r fiber.Router, ms meta.MetaStore, vec db.VectorDb, registry *e
 	nameGroup := collGroup.Group("/:slug")
 	jobs.Register(nameGroup, jobs.NewHandler(ms))
 	ingest.Register(nameGroup, ingest.NewHandler(ms, ing))
-	query.Register(nameGroup, query.NewHandler(ms, vec, registry, llmRegistry))
+	query.Register(nameGroup, query.NewHandler(ms, vec, registry, llmRegistry, defaultPromptSlug))
 	documents.Register(nameGroup, documents.NewHandler(ms, vec))
 }

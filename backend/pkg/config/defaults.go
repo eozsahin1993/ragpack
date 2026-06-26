@@ -33,4 +33,7 @@ const (
 	DefaultChunkStrategy = chunker.StrategyAuto
 	DefaultChunkSize     = 2000
 	DefaultChunkOverlap  = 200
+
+	// RAG
+	DefaultPromptSlug = "basic_rag"
 )

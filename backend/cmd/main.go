@@ -70,7 +70,7 @@ func main() {
 		AllowMethods: "GET, POST, PATCH, DELETE, OPTIONS",
 	}))
 
-	api.Register(app, ms, vec, registry, llmRegistry, ing)
+	api.Register(app, ms, vec, registry, llmRegistry, ing, cfg.DefaultPromptSlug)
 	// graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)

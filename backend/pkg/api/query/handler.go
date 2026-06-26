@@ -17,14 +17,15 @@ import (
 )
 
 type Handler struct {
-	meta        meta.MetaStore
-	vectorDb    db.VectorDb
-	registry    *embedder.Registry
-	llmRegistry *llm.Registry
+	meta              meta.MetaStore
+	vectorDb          db.VectorDb
+	registry          *embedder.Registry
+	llmRegistry       *llm.Registry
+	defaultPromptSlug string
 }
 
-func NewHandler(ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry) *Handler {
-	return &Handler{meta: ms, vectorDb: vec, registry: registry, llmRegistry: llmRegistry}
+func NewHandler(ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, defaultPromptSlug string) *Handler {
+	return &Handler{meta: ms, vectorDb: vec, registry: registry, llmRegistry: llmRegistry, defaultPromptSlug: defaultPromptSlug}
 }
 
 func (h *Handler) Query(c *fiber.Ctx) error {
@@ -89,7 +90,7 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 		req.TopK = 10
 	}
 	if req.PromptSlug == "" {
-		req.PromptSlug = "basic_rag"
+		req.PromptSlug = h.defaultPromptSlug
 	}
 
 	prompt, err := h.meta.GetPromptBySlug(c.Context(), req.PromptSlug)

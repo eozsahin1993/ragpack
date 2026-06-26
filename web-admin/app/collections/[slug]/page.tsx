@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { Upload, Trash2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,7 +82,7 @@ export default function CollectionPage() {
 
   useEffect(() => { loadDocs(page); }, [page]);
 
-  async function handleIngest(e: React.FormEvent) {
+  async function handleIngest(e: React.SyntheticEvent) {
     e.preventDefault();
     setIngesting(true);
     setError("");

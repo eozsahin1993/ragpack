@@ -45,13 +45,13 @@ type ChunkConfigResponse struct {
 
 func toResponse(c meta.Collection) CollectionResponse {
 	r := CollectionResponse{
-		ID:         c.ID,
-		Name:       c.Name,
-		Slug:       c.Slug,
-		TableName:  c.TableName,
+		ID:        c.ID,
+		Name:      c.Name,
+		Slug:      c.Slug,
+		TableName: c.TableName,
 		EmbedModel: c.EmbedModel,
-		VectorDim:  c.VectorDim,
-		CreatedAt:  c.CreatedAt,
+		VectorDim: c.VectorDim,
+		CreatedAt: c.CreatedAt,
 	}
 	if c.ChunkStrategy != nil || c.ChunkSize != nil || c.ChunkOverlap != nil {
 		r.ChunkConfig = &ChunkConfigResponse{

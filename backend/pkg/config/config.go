@@ -23,7 +23,8 @@ type Config struct {
 	TEI         TEIConfig
 	Anthropic   AnthropicConfig
 
-	Ingester IngesterConfig
+	Ingester          IngesterConfig
+	DefaultPromptSlug string
 }
 
 type OpenAIConfig struct {
@@ -100,6 +101,8 @@ func Load() Config {
 			BaseURL: getEnv("TEI_BASE_URL", DefaultTEIBaseURL),
 			Model:   getEnv("TEI_EMBED_MODEL", DefaultTEIModel),
 		},
+
+		DefaultPromptSlug: getEnv("DEFAULT_PROMPT_SLUG", DefaultPromptSlug),
 
 		Ingester: IngesterConfig{
 			WorkerCount:    getEnvInt("WORKER_COUNT", DefaultWorkerCount),
