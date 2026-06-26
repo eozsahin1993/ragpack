@@ -16,5 +16,10 @@
     "node": ">=18"
   },
   "type": "module",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eozsahin1993/ragpack.git",
+    "directory": "cli"
+  }
 }
