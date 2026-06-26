@@ -1,0 +1,337 @@
+.hero {
+  padding: 80px 24px;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+  background: radial-gradient(ellipse at 60% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 60%);
+}
+
+.heroInner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+
+.heroLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.badge {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 4px 12px;
+  border-radius: 99px;
+  border: 1px solid var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.heroTitle {
+  font-size: 2.8rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.heroTitleAccent {
+  background: linear-gradient(135deg, var(--ifm-color-primary) 0%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.heroSubtitle {
+  font-size: 1.1rem;
+  color: var(--ifm-color-emphasis-700);
+  line-height: 1.7;
+  margin: 0;
+}
+
+.heroActions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.btnPrimary {
+  padding: 11px 24px;
+  border-radius: 8px;
+  background: var(--ifm-color-primary);
+  color: white !important;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none !important;
+  transition: opacity 0.15s;
+}
+
+.btnPrimary:hover {
+  opacity: 0.85;
+}
+
+.githubBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  color: var(--ifm-font-color-base) !important;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none !important;
+  transition: border-color 0.15s;
+}
+
+.githubBtn:hover {
+  border-color: var(--ifm-color-primary);
+}
+
+.starCount {
+  background: var(--ifm-color-emphasis-200);
+  border-radius: 99px;
+  padding: 1px 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+/* Terminal */
+.terminal {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+}
+
+.terminalHeader {
+  background: #1e1e2e;
+  padding: 12px 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.terminalBody {
+  background: #13131a;
+  color: #cdd6f4;
+  margin: 0;
+  padding: 20px;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  overflow-x: auto;
+  border-radius: 0;
+}
+
+/* Features */
+.features {
+  padding: 80px 24px;
+}
+
+.featuresInner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--ifm-color-emphasis-200);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.feature {
+  background: var(--ifm-background-color);
+  padding: 36px 32px;
+}
+
+.featureEyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ifm-color-primary);
+  margin-bottom: 10px;
+}
+
+.feature h3 {
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin-bottom: 12px;
+  margin-top: 0;
+  letter-spacing: -0.01em;
+}
+
+.feature p {
+  color: var(--ifm-color-emphasis-700);
+  line-height: 1.7;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+/* What's included */
+.included {
+  padding: 80px 24px;
+  background: var(--ifm-background-surface-color);
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.includedInner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.includedTitle {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin-bottom: 40px;
+  letter-spacing: -0.02em;
+}
+
+.includedGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.includedCard {
+  padding: 24px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 10px;
+  background: var(--ifm-background-color);
+  transition: border-color 0.15s;
+}
+
+.includedCard:hover {
+  border-color: var(--ifm-color-primary);
+}
+
+.includedIcon {
+  font-size: 1.4rem;
+  margin-bottom: 12px;
+}
+
+.includedCard h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.includedCard p {
+  font-size: 0.875rem;
+  color: var(--ifm-color-emphasis-700);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Use cases */
+.useCases {
+  padding: 80px 24px;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.useCasesInner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.useCasesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.useCaseCard {
+  padding: 28px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 10px;
+  transition: border-color 0.15s;
+}
+
+.useCaseCard:hover {
+  border-color: var(--ifm-color-primary);
+}
+
+.useCaseCard h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.useCaseCard p {
+  font-size: 0.875rem;
+  color: var(--ifm-color-emphasis-700);
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+
+.useCaseExample {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.8rem;
+  color: var(--ifm-color-primary);
+  background: var(--ifm-code-background);
+  border-radius: 6px;
+  padding: 8px 12px;
+  line-height: 1.5;
+}
+
+/* CTA */
+.cta {
+  padding: 80px 24px;
+  text-align: center;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+  background: radial-gradient(ellipse at 50% 100%, rgba(99, 102, 241, 0.1) 0%, transparent 60%);
+}
+
+.ctaInner {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.ctaInner h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 12px;
+  letter-spacing: -0.02em;
+}
+
+.ctaInner p {
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 32px;
+  font-size: 1.05rem;
+}
+
+@media (max-width: 900px) {
+  .heroInner {
+    grid-template-columns: 1fr;
+  }
+
+  .heroRight {
+    display: none;
+  }
+
+  .heroTitle {
+    font-size: 2rem;
+  }
+
+  .featuresInner {
+    grid-template-columns: 1fr;
+  }
+
+  .includedGrid {
+    grid-template-columns: 1fr;
+  }
+}
