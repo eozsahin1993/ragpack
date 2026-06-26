@@ -1,5 +1,5 @@
 {
-  "name": "ragpack",
+  "name": "ragpack-js",
   "version": "0.1.0",
   "description": "TypeScript client for the Ragpack self-hosted RAG engine",
   "main": "./dist/index.js",

@@ -1,8 +1,8 @@
-name: Publish JS SDK
+name: Publish CLI
 
 on:
   push:
-    tags: ['sdk/v*.*.*']
+    tags: ['cli/v*.*.*']
 
 jobs:
   publish:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: sdks/js
+        working-directory: cli
 
     steps:
       - name: Checkout
