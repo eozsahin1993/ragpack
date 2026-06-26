@@ -4,8 +4,9 @@ import "ragpack/pkg/chunker"
 
 const (
 	// Server
-	DefaultPort     = "9000"
-	DefaultDataPath = "./data"
+	DefaultPort      = "9000"
+	DefaultAdminPort = "9001"
+	DefaultDataPath  = "./data"
 
 	// Storage
 	DefaultSqlitePath  = "./ragpack.db"

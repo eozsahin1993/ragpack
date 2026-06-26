@@ -10,6 +10,7 @@ import (
 
 type Config struct {
 	Port        string
+	AdminPort   string
 	DataPath    string
 	SqlitePath  string
 	LanceDBPath string
@@ -69,6 +70,7 @@ func Load() Config {
 
 	return Config{
 		Port:          getEnv("PORT", DefaultPort),
+		AdminPort:     getEnv("ADMIN_PORT", DefaultAdminPort),
 		DataPath:      getEnv("DATA_PATH", DefaultDataPath),
 		SqlitePath:    getEnv("SQLITE_PATH", DefaultSqlitePath),
 		LanceDBPath:   getEnv("LANCEDB_PATH", DefaultLanceDBPath),

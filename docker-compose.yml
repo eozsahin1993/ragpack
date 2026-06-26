@@ -4,7 +4,8 @@ services:
     build:
       context: ./backend
     ports:
-      - "9000:9000"
+      - "9000:9000"       # public API — requires auth
+      # port 9001 (admin) is intentionally NOT published; reachable only within Docker network
     env_file:
       - .env
     environment:
@@ -18,9 +19,9 @@ services:
     command: sh -c "npm install --prefer-offline && npm run dev"
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3000:3000"   # localhost only — access via: ssh -L 3000:localhost:3000 user@vps
     environment:
-      - RAGPACK_BACKEND_URL=http://backend:9000
+      - RAGPACK_BACKEND_URL=http://backend:9001   # internal admin port, never exposed publicly
     volumes:
       - ./web-admin:/app
       - web_admin_node_modules:/app/node_modules

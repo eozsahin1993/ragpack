@@ -20,17 +20,21 @@ import (
 	"ragpack/pkg/meta"
 )
 
-func Register(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string) {
+// RegisterPublic mounts the external API (requires auth) on the given app.
+// Intended for the public-facing port exposed to the internet.
+func RegisterPublic(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string) {
 	app.Get("/api/v1/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "healthy", "engine": "Go + Fiber"})
 	})
 
-	// External API — requires authentication
 	v1 := app.Group("/api/v1")
 	v1.Use(middleware.Auth(ms))
 	mountRoutes(v1, ms, vec, registry, llmRegistry, ing, defaultPromptSlug)
+}
 
-	// Admin API — internal only, no auth (never published outside Docker network)
+// RegisterAdmin mounts the admin API (no auth) on the given app.
+// Intended for an internal-only port never published outside the Docker network.
+func RegisterAdmin(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string) {
 	adminGroup := app.Group("/admin")
 	mountRoutes(adminGroup, ms, vec, registry, llmRegistry, ing, defaultPromptSlug)
 }

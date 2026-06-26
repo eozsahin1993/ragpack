@@ -60,17 +60,23 @@ func main() {
 	ing := ingester.New(ms, vec, registry, cfg.Ingester.WorkerCount, cfg.Ingester.EmbedRateLimit, chunkCfg)
 	ing.Start(ctx, cfg.Ingester.WorkerCount)
 
-	app := fiber.New(fiber.Config{
-		AppName: "RagPack Engine v1.0",
-	})
-	app.Use(logger.New())
-	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowHeaders: "Origin, Content-Type, Accept",
-		AllowMethods: "GET, POST, PATCH, DELETE, OPTIONS",
-	}))
+	newApp := func() *fiber.App {
+		app := fiber.New(fiber.Config{AppName: "RagPack Engine v1.0"})
+		app.Use(logger.New())
+		app.Use(cors.New(cors.Config{
+			AllowOrigins: "*",
+			AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+			AllowMethods: "GET, POST, PATCH, DELETE, OPTIONS",
+		}))
+		return app
+	}
 
-	api.Register(app, ms, vec, registry, llmRegistry, ing, cfg.DefaultPromptSlug)
+	publicApp := newApp()
+	api.RegisterPublic(publicApp, ms, vec, registry, llmRegistry, ing, cfg.DefaultPromptSlug)
+
+	adminApp := newApp()
+	api.RegisterAdmin(adminApp, ms, vec, registry, llmRegistry, ing, cfg.DefaultPromptSlug)
+
 	// graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
@@ -79,11 +85,19 @@ func main() {
 		log.Println("shutting down...")
 		cancel()
 		ing.Stop()
-		app.Shutdown()
+		publicApp.Shutdown()
+		adminApp.Shutdown()
 	}()
 
-	log.Printf("RagPack server starting on :%s", cfg.Port)
-	if err := app.Listen(fmt.Sprintf(":%s", cfg.Port)); err != nil {
+	go func() {
+		log.Printf("RagPack admin server starting on :%s (internal only)", cfg.AdminPort)
+		if err := adminApp.Listen(fmt.Sprintf(":%s", cfg.AdminPort)); err != nil {
+			log.Fatalf("admin server: %v", err)
+		}
+	}()
+
+	log.Printf("RagPack public server starting on :%s", cfg.Port)
+	if err := publicApp.Listen(fmt.Sprintf(":%s", cfg.Port)); err != nil {
 		log.Fatalf("server: %v", err)
 	}
 }
