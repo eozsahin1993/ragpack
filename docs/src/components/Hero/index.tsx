@@ -1,5 +1,6 @@
 import Link from '@docusaurus/Link';
 import Terminal from '@site/src/components/Terminal';
+import { track } from '@site/src/lib/analytics';
 import styles from './styles.module.css';
 
 export default function Hero() {
@@ -17,7 +18,7 @@ export default function Hero() {
             Self-hosted on your own infra — bring your own AI with Ollama or OpenAI.
           </p>
           <div className={styles.heroActions}>
-            <Link className={styles.btnPrimary} to="/docs/getting-started">
+            <Link className={styles.btnPrimary} to="/docs/getting-started" onClick={() => track('click_get_started', 'hero')}>
               Get started →
             </Link>
             <a
@@ -25,6 +26,7 @@ export default function Hero() {
               href="https://github.com/eozsahin1993/ragpack"
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => track('click_github', 'hero')}
             >
               View on GitHub
             </a>
