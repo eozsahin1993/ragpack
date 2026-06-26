@@ -1,30 +1,51 @@
-# ragpack
+# RagPack
 
-Self-hostable semantic search and RAG (Retrieval-Augmented Generation) infrastructure for developers. Bring your own AI — Ollama for local models or OpenAI — and be up and running in minutes.
+Self-hostable semantic search and RAG infrastructure for developers. Bring your own AI — Ollama for local models or OpenAI — and be up and running in minutes.
 
-## What it is
+## What it does
 
-ragpack gives you a REST API for ingesting documents and running semantic search over them. You organize documents into **collections**, ingest files or URLs, and query with natural language. It handles chunking, embedding, and vector storage so you don't have to.
+- Ingest documents from URLs, file uploads, or S3 — RagPack fetches, parses, chunks, and embeds them automatically
+- Organize documents into **collections** and query them with natural language
+- Get back ranked chunks with similarity scores, ready to drop into any LLM prompt
+- Manage everything via REST API or the built-in admin UI
 
-Use it as the retrieval layer in a RAG pipeline, as a semantic search backend, or as a knowledge base for an AI assistant.
+Supported formats: `.txt`, `.md`, `.html`, `.pdf`
 
-## How it works
+## Quick start
 
-```
-Document (URL / file upload / S3)
-        ↓
-   Fetch & parse
-        ↓
-   Chunk (Markdown-aware / HTML / PDF / plain text)
-        ↓
-   Embed (Ollama or OpenAI)
-        ↓
-   Store in LanceDB (vectors) + SQLite (metadata)
-        ↓
-   Query via REST API
+```bash
+npx ragpack init       # creates .env.ragpack in the current directory
+npx ragpack start      # starts the stack (API on :9000, admin UI on :3000)
 ```
 
-State is tracked in SQLite. Vectors live in LanceDB on disk. No external services required beyond your embedding provider.
+With Ollama (fully local):
+
+```bash
+npx ragpack start --profile ollama
+```
+
+With OpenAI — edit `.env.ragpack` first:
+
+```env
+EMBED_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+OPENAI_EMBED_MODEL=text-embedding-3-small
+```
+
+Then `npx ragpack start`.
+
+Open [http://localhost:3000](http://localhost:3000) for the admin UI.
+
+## CLI
+
+| Command | Description |
+|---|---|
+| `ragpack init` | Create `.env.ragpack` in the current directory |
+| `ragpack start [--profile ollama]` | Start the stack |
+| `ragpack stop [-v]` | Stop the stack (`-v` removes volumes and all data) |
+| `ragpack logs [service]` | Tail logs (`backend`, `web-admin`, `ollama`) |
+| `ragpack update` | Pull latest images and restart |
+| `ragpack eject` | Copy `docker-compose.yml` locally for customization |
 
 ## Stack
 
@@ -33,71 +54,36 @@ State is tracked in SQLite. Vectors live in LanceDB on disk. No external service
 | API server | Go + Fiber |
 | Vector store | LanceDB (embedded) |
 | Metadata / job state | SQLite |
-| Embeddings | Ollama (local) or OpenAI |
+| Embeddings | Ollama (local), OpenAI, or HuggingFace TEI |
 | Admin UI | Next.js |
 
-### Why Go?
-
-ragpack is designed to run on a single small server — a $5 VPS, a Raspberry Pi, a spare Mac Mini. Go fits that constraint well:
-
-- **Low memory footprint** — the server idles at ~20MB RAM, leaving headroom for the embedding model.
-- **Single static binary** — no Python virtualenv, no JVM, no runtime to manage. The Docker image is small and the binary starts in milliseconds.
-- **Built-in concurrency** — the ingestion worker pool uses goroutines and channels. Embedding batches run concurrently without the complexity of async frameworks.
-- **Simple builds** — pure Go where possible means no CGo toolchain requirements and reproducible Docker builds.
-
-### Why LanceDB?
-
-Most vector databases are external services — Pinecone is SaaS, Weaviate and Qdrant need their own container with memory and a port. For a self-hosted tool that should be "up in minutes", that's friction.
-
-LanceDB is an **embedded** vector store — it runs inside the ragpack process, reads and writes directly to disk, and needs no separate process, network port, or ops attention. Characteristics that matter here:
-
-- **Zero ops** — nothing to provision, monitor, or restart separately.
-- **Disk-persistent** — survives container restarts without re-indexing.
-- **Columnar storage (Apache Arrow)** — fast filtered scans, efficient memory use.
-- **Rust core** — competitive query performance without running a separate service.
-- **Scales for single-node** — handles millions of vectors on a modest machine, which covers the vast majority of self-hosted RAG use cases.
-
-## Quick start
-
-**With Ollama (fully local):**
-
-```bash
-cp .env.example .env
-docker compose --profile ollama up -d
-```
-
-Then open [http://localhost:3000](http://localhost:3000) to access the admin UI.
-
-**With OpenAI:**
-
-```bash
-cp .env.example .env
-# Set EMBED_PROVIDER=openai, OPENAI_API_KEY, OPENAI_EMBED_MODEL in .env
-docker compose up -d
-```
+The stack is chosen for **low memory footprint** (~20MB idle), a **single static binary** with no runtime dependencies, and **fast query performance** — so RagPack runs comfortably on a $5 VPS, a Raspberry Pi, or a spare Mac Mini.
 
 ## Configuration
 
-Copy `.env.example` to `.env` and edit:
+`.env.ragpack` (created by `ragpack init`):
 
 ```env
-# Choose your embedding provider
-EMBED_PROVIDER=ollama          # or: openai
+# Embedding provider
+EMBED_PROVIDER=ollama          # ollama | openai | tei
 
-# Ollama (used when EMBED_PROVIDER=ollama)
+# Ollama
 OLLAMA_BASE_URL=http://ollama:11434
 OLLAMA_EMBED_MODEL=nomic-embed-text
 
-# OpenAI (used when EMBED_PROVIDER=openai)
+# OpenAI
 OPENAI_API_KEY=sk-...
 OPENAI_EMBED_MODEL=text-embedding-3-small
 
-# Ingestion workers
+# HuggingFace TEI
+TEI_EMBED_MODEL=BAAI/bge-small-en-v1.5
+
+# Ingestion
 WORKER_COUNT=5
 EMBED_RATE_LIMIT=10            # max embed API calls/sec
 ```
 
-Storage paths default to `/data` inside the container, backed by a named Docker volume.
+Storage defaults to `/data` inside the container, backed by a named Docker volume.
 
 ## API
 
@@ -112,7 +98,6 @@ Base URL: `http://localhost:9000/api/v1`
 | `GET` | `/collections/:slug` | Get a collection |
 | `DELETE` | `/collections/:slug` | Delete a collection and all its data |
 
-**Create a collection** — embed model is auto-selected from the configured provider:
 ```bash
 curl -X POST http://localhost:9000/api/v1/collections \
   -H "Content-Type: application/json" \
@@ -125,21 +110,18 @@ curl -X POST http://localhost:9000/api/v1/collections \
 |---|---|---|
 | `POST` | `/collections/:slug/ingest` | Ingest a URL or file upload |
 
-**Ingest a URL** — MIME type is auto-detected:
 ```bash
+# Ingest a URL
 curl -X POST http://localhost:9000/api/v1/collections/my-docs/ingest \
   -H "Content-Type: application/json" \
   -d '{"file_uri": "https://example.com/docs/guide"}'
-```
 
-**Upload a file:**
-```bash
+# Upload a file
 curl -X POST http://localhost:9000/api/v1/collections/my-docs/ingest \
   -F "file=@./document.pdf"
 ```
 
-Supported sources: `https://`, `s3://`, local file paths, file uploads.  
-Supported formats: `.txt`, `.md`, `.html`, `.pdf`.
+Supported sources: `https://`, `s3://`, local file paths, file uploads.
 
 ### Query
 
@@ -162,21 +144,21 @@ Response includes matched chunks with `chunk_text`, `file_uri`, `distance`, and 
 | `GET` | `/collections/:slug/documents` | List ingested documents (paginated) |
 | `GET` | `/collections/:slug/documents/:id` | Get a document |
 | `DELETE` | `/collections/:slug/documents/:id` | Delete a document and its chunks |
-| `GET` | `/collections/:slug/documents/:id/chunks` | List all chunks (debug) |
+| `GET` | `/collections/:slug/documents/:id/chunks` | List all chunks |
 
 ## Admin UI
 
-The admin UI runs at [http://localhost:3000](http://localhost:3000) and lets you:
+The admin UI at [http://localhost:3000](http://localhost:3000) lets you:
 
 - Create and delete collections
 - Ingest documents via URL or file upload
-- View ingestion status (ingesting / complete / failed) with error details
+- Monitor ingestion status (ingesting / complete / failed)
 - Delete individual documents
 - Run queries against a collection
 
 ## Embedding models
 
-Vector dimensions are looked up automatically from the model name — you don't need to specify them. Supported models include:
+Supported out of the box:
 
 | Model | Dimensions | Provider |
 |---|---|---|
@@ -188,18 +170,37 @@ Vector dimensions are looked up automatically from the model name — you don't 
 | `text-embedding-3-large` | 3072 | OpenAI |
 | `text-embedding-ada-002` | 1536 | OpenAI |
 
-To add a model not in this list, add it to `backend/pkg/embedder/dimensions.go`.
+To add a model, edit `backend/pkg/embedder/dimensions.go`.
 
 ## Chunking
 
-Documents are split before embedding:
+- **Markdown** — splits on headers, prepending parent breadcrumbs to each chunk for context
+- **HTML** — converted to Markdown (stripping nav, footer, scripts) then chunked as above
+- **PDF** — text extracted page-by-page, chunked as plain text
+- **Plain text** — sliding window (2000 chars, 200 char overlap)
 
-- **Markdown** — splits on headers (`#`, `##`, `###`…) first, with parent header breadcrumbs prepended to each chunk for context. Falls back to paragraph then character splitting for oversized sections.
-- **HTML** — converted to Markdown (stripping nav, footer, scripts, ads) then chunked as above.
-- **PDF** — text extracted page-by-page, then chunked as plain text.
-- **Plain text** — sliding window (2000 chars, 200 char overlap).
+## Running locally
 
-Default chunk size and overlap can be configured in `backend/pkg/chunker/chunker.go`.
+Prerequisites: Go 1.22+, Node 18+, Docker
+
+**Backend** (hot reload via Air):
+
+```bash
+cd backend
+./dev.sh
+```
+
+**Admin UI** (hot reload via Next.js):
+
+```bash
+cd web-admin
+npm install
+npm run dev
+```
+
+The backend dev server runs on `:9000`. The admin UI runs on `:3000` and proxies API requests to the backend.
+
+For the embedding provider, the easiest local setup is Ollama — start it separately and point `OLLAMA_BASE_URL` at it in your `.env.ragpack`.
 
 ## License
 

@@ -5,13 +5,13 @@ TypeScript SDK for [RagPack](https://github.com/eozsahin1993/ragpack) — a self
 ## Installation
 
 ```bash
-npm install ragpack
+npm install ragpack-js
 ```
 
 ## Quick start
 
 ```ts
-import { RagPack } from "ragpack";
+import { RagPack } from "ragpack-js";
 
 const client = new RagPack({
   baseUrl: "http://localhost:9000",
@@ -24,7 +24,10 @@ const collection = await client.collections.create("my-docs");
 // Ingest a file
 await collection.ingest(file);
 
-// Or ingest from a remote URI
+// Or ingest from a URL
+await collection.ingest({ uri: "https://example.com/docs/guide" });
+
+// Or from S3
 await collection.ingest({ uri: "s3://my-bucket/report.pdf" });
 
 // Wait for ingestion to finish
@@ -67,7 +70,7 @@ Returns a `CollectionClient` scoped to that collection.
 | Method                              | Description                              |
 |-------------------------------------|------------------------------------------|
 | `ingest(file, filename?)`           | Upload a file directly                   |
-| `ingest({ uri, mimeType? })`        | Ingest from a remote URI, MIME type auto-detected if omitted |
+| `ingest({ uri, mimeType? })`        | Ingest from a URL or S3 URI, MIME type auto-detected if omitted |
 | `rag(options)`                      | Full RAG pipeline — retrieves chunks and returns an LLM answer |
 | `findSimilar({ query, topK? })`     | Semantic search without LLM, returns ranked chunks |
 | `jobs.list()`                       | List ingestion jobs for this collection  |
@@ -111,7 +114,7 @@ const prompts = await client.prompts.list();
 All methods throw `RagPackError` on non-2xx responses:
 
 ```ts
-import { RagPack, RagPackError } from "ragpack";
+import { RagPack, RagPackError } from "ragpack-js";
 
 try {
   await collection.findSimilar({ query: "..." });
@@ -126,3 +129,7 @@ try {
 
 - Node.js 18+
 - A running RagPack backend ([setup guide](https://github.com/eozsahin1993/ragpack))
+
+## License
+
+MIT
