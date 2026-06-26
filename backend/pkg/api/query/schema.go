@@ -21,6 +21,7 @@ type RagRequest struct {
 	Query      string `json:"query"       validate:"required,min=1"`
 	TopK       int    `json:"top_k"       validate:"min=1,max=100"`
 	PromptSlug string `json:"prompt_slug" validate:"required,min=1"`
+	Model      string `json:"model"`
 }
 
 type RagChunk struct {
@@ -34,6 +35,7 @@ type RagChunk struct {
 
 type RagResponse struct {
 	FormattedPrompt string     `json:"formatted_prompt"`
+	Answer          string     `json:"answer"`
 	Chunks          []RagChunk `json:"chunks"`
 	PromptSlug      string     `json:"prompt_slug"`
 }

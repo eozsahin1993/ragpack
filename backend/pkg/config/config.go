@@ -15,23 +15,32 @@ type Config struct {
 	LanceDBPath string
 
 	EmbedProvider string
+	LLMProvider   string
 
 	OpenAI      OpenAIConfig
 	Ollama      OllamaConfig
 	HuggingFace HuggingFaceConfig
 	TEI         TEIConfig
+	Anthropic   AnthropicConfig
 
 	Ingester IngesterConfig
 }
 
 type OpenAIConfig struct {
-	APIKey string
-	Model  string
+	APIKey   string
+	Model    string
+	LLMModel string
 }
 
 type OllamaConfig struct {
-	BaseURL string
-	Model   string
+	BaseURL  string
+	Model    string
+	LLMModel string
+}
+
+type AnthropicConfig struct {
+	APIKey string
+	Model  string
 }
 
 type HuggingFaceConfig struct {
@@ -63,15 +72,23 @@ func Load() Config {
 		SqlitePath:    getEnv("SQLITE_PATH", DefaultSqlitePath),
 		LanceDBPath:   getEnv("LANCEDB_PATH", DefaultLanceDBPath),
 		EmbedProvider: getEnv("DEFAULT_EMBED_PROVIDER", DefaultEmbedProvider),
+		LLMProvider:   getEnv("DEFAULT_LLM_PROVIDER", ""),
 
 		OpenAI: OpenAIConfig{
-			APIKey: getEnv("OPENAI_API_KEY", ""),
-			Model:  getEnv("OPENAI_EMBED_MODEL", DefaultOpenAIModel),
+			APIKey:   getEnv("OPENAI_API_KEY", ""),
+			Model:    getEnv("OPENAI_EMBED_MODEL", DefaultOpenAIModel),
+			LLMModel: getEnv("OPENAI_LLM_MODEL", ""),
 		},
 
 		Ollama: OllamaConfig{
-			BaseURL: getEnv("OLLAMA_BASE_URL", DefaultOllamaBaseURL),
-			Model:   getEnv("OLLAMA_EMBED_MODEL", DefaultOllamaModel),
+			BaseURL:  getEnv("OLLAMA_BASE_URL", DefaultOllamaBaseURL),
+			Model:    getEnv("OLLAMA_EMBED_MODEL", DefaultOllamaModel),
+			LLMModel: getEnv("OLLAMA_LLM_MODEL", ""),
+		},
+
+		Anthropic: AnthropicConfig{
+			APIKey: getEnv("ANTHROPIC_API_KEY", ""),
+			Model:  getEnv("ANTHROPIC_MODEL", DefaultAnthropicModel),
 		},
 
 		HuggingFace: HuggingFaceConfig{

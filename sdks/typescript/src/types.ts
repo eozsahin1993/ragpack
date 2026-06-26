@@ -68,6 +68,33 @@ export interface Document {
   updated_at: string;
 }
 
+export interface Prompt {
+  id: string;
+  name: string;
+  slug: string;
+  /** Template content. Use `{{context}}` and `{{question}}` as placeholders. */
+  content: string;
+  is_system: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RagChunk {
+  source: string;
+  file_uri: string;
+  chunk_index: number;
+  chunk_header: string | null;
+  chunk_text: string | null;
+  similarity: number;
+}
+
+export interface RagResult {
+  formatted_prompt: string;
+  answer: string;
+  chunks: RagChunk[];
+  prompt_slug: string;
+}
+
 export interface QueryResult {
   source: string;
   file_uri: string;

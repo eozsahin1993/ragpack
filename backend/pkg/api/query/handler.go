@@ -10,17 +10,19 @@ import (
 	"ragpack/pkg/api/validate"
 	"ragpack/pkg/db"
 	"ragpack/pkg/embedder"
+	"ragpack/pkg/llm"
 	"ragpack/pkg/meta"
 )
 
 type Handler struct {
-	meta     meta.MetaStore
-	vectorDb db.VectorDb
-	registry *embedder.Registry
+	meta        meta.MetaStore
+	vectorDb    db.VectorDb
+	registry    *embedder.Registry
+	llmRegistry *llm.Registry
 }
 
-func NewHandler(ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry) *Handler {
-	return &Handler{meta: ms, vectorDb: vec, registry: registry}
+func NewHandler(ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry) *Handler {
+	return &Handler{meta: ms, vectorDb: vec, registry: registry, llmRegistry: llmRegistry}
 }
 
 func (h *Handler) Query(c *fiber.Ctx) error {
@@ -106,8 +108,7 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	context := buildContext(results)
-	formatted := strings.ReplaceAll(prompt.Content, "{{context}}", context)
+	formatted := strings.ReplaceAll(prompt.Content, "{{context}}", buildContext(results))
 	formatted = strings.ReplaceAll(formatted, "{{question}}", req.Query)
 
 	chunks := make([]RagChunk, len(results))
@@ -122,8 +123,28 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 		}
 	}
 
+	var provider llm.LLM
+	if req.Model != "" {
+		provider, err = h.llmRegistry.Get(req.Model)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("model %q not available: %v", req.Model, err)})
+		}
+	} else {
+		_, provider, err = h.llmRegistry.Default()
+		if err != nil {
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": fmt.Sprintf("no LLM configured: %v", err)})
+		}
+	}
+
+	answer, err := provider.Complete(c.Context(), formatted)
+	if err != nil {
+		log.Printf("rag llm error: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "LLM call failed"})
+	}
+
 	return c.JSON(RagResponse{
 		FormattedPrompt: formatted,
+		Answer:          answer,
 		Chunks:          chunks,
 		PromptSlug:      prompt.Slug,
 	})
@@ -131,15 +152,16 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 
 func buildContext(chunks []db.ChunkQueryResult) string {
 	parts := make([]string, 0, len(chunks))
-	for _, c := range chunks {
+	for i, c := range chunks {
 		text := ""
 		if c.ChunkText != nil {
 			text = *c.ChunkText
 		}
+		label := fmt.Sprintf("[Source %d: %s]", i+1, c.SourceName)
 		if c.ChunkHeader != nil && *c.ChunkHeader != "" {
-			parts = append(parts, fmt.Sprintf("[Section: %s]\n%s", *c.ChunkHeader, text))
+			parts = append(parts, fmt.Sprintf("%s\n[Section: %s]\n%s", label, *c.ChunkHeader, text))
 		} else {
-			parts = append(parts, text)
+			parts = append(parts, fmt.Sprintf("%s\n%s", label, text))
 		}
 	}
 	return strings.Join(parts, "\n\n---\n\n")

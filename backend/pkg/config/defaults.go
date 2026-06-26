@@ -20,6 +20,11 @@ const (
 	DefaultTEIModel   = "BAAI/bge-small-en-v1.5"
 	DefaultHFModel    = "BAAI/bge-small-en-v1.5"
 
+	// LLM
+	DefaultOpenAILLMModel  = "gpt-4o-mini"
+	DefaultOllamaLLMModel  = "llama3.2"
+	DefaultAnthropicModel  = "claude-haiku-4-5-20251001"
+
 	// Ingester
 	DefaultWorkerCount    = 5
 	DefaultEmbedRateLimit = 10.0

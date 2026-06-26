@@ -1,8 +1,19 @@
 import type { Requester } from "./requester.js";
-import type { Job, QueryResult } from "./types.js";
+import type { Job, QueryResult, RagResult } from "./types.js";
 import { JobsResource } from "./resources/jobs.js";
 import { DocumentsResource } from "./resources/documents.js";
 import { QueryResource } from "./resources/query.js";
+
+export interface RagOptions {
+  /** Slug of the prompt template to use. */
+  prompt: string;
+  /** The user's question. Substituted into `{{question}}`. */
+  query: string;
+  /** Number of chunks to retrieve. Defaults to 5. */
+  topK?: number;
+  /** LLM model name to use (e.g. `"gpt-4o"`, `"claude-opus-4-8"`). Falls back to server default. */
+  model?: string;
+}
 
 export interface FindSimilarOptions {
   /** The search query text. */
@@ -91,5 +102,29 @@ export class CollectionClient {
    */
   findSimilar(options: FindSimilarOptions): Promise<QueryResult[]> {
     return this._query.findSimilar(options);
+  }
+
+  /**
+   * Full RAG pipeline: retrieve relevant chunks, build context, expand the
+   * prompt template, and call the configured LLM — all server-side.
+   *
+   * @example
+   * ```ts
+   * const { answer, chunks } = await collection.rag({
+   *   prompt: "basic-rag",
+   *   query: "How do I reset my password?",
+   * });
+   * ```
+   */
+  rag(options: RagOptions): Promise<RagResult> {
+    return this._req<RagResult>(`/collections/${this.slug}/rag`, {
+      method: "POST",
+      body: JSON.stringify({
+        query: options.query,
+        top_k: options.topK ?? 5,
+        prompt_slug: options.prompt,
+        ...(options.model ? { model: options.model } : {}),
+      }),
+    });
   }
 }

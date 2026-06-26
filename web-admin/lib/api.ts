@@ -80,11 +80,17 @@ export interface RagChunk {
 
 export interface RagResponse {
   formatted_prompt: string;
+  answer: string;
   chunks: RagChunk[];
   prompt_slug: string;
 }
 
 export interface EmbedderInfo {
+  models: string[];
+  default: string;
+}
+
+export interface LlmInfo {
   models: string[];
   default: string;
 }
@@ -153,13 +159,16 @@ export const api = {
     delete: (slug: string, id: string) =>
       req<void>(`/admin/collections/${slug}/documents/${id}`, { method: "DELETE" }),
   },
+  llms: {
+    list: () => req<LlmInfo>("/admin/llms"),
+  },
   query: {
     run: (slug: string, body: { query: string; top_k: number }) =>
       req<{ results: QueryResultItem[] }>(`/admin/collections/${slug}/query`, {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    rag: (slug: string, body: { query: string; top_k: number; prompt_slug: string }) =>
+    rag: (slug: string, body: { query: string; top_k: number; prompt_slug: string; model?: string }) =>
       req<RagResponse>(`/admin/collections/${slug}/rag`, {
         method: "POST",
         body: JSON.stringify(body),

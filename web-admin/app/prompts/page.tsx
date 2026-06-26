@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Pencil, Lock } from "lucide-react";
+import { Plus, Trash2, Pencil, Lock, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +35,7 @@ export default function PromptsPage() {
   const [editTarget, setEditTarget] = useState<Prompt | null>(null);
   const [editForm, setEditForm] = useState({ name: "", content: "" });
   const [saving, setSaving] = useState(false);
+  const [expandedSlug, setExpandedSlug] = useState<string | null>(null);
 
   async function load() {
     try {
@@ -100,32 +101,60 @@ export default function PromptsPage() {
     }
   }
 
+  function renderPlaceholders(content: string) {
+    return content.split(/(\{\{[^}]+\}\})/g).map((part, i) =>
+      /^\{\{[^}]+\}\}$/.test(part)
+        ? <mark key={i} className="bg-amber-100 text-amber-800 rounded px-0.5 not-italic font-medium">{part}</mark>
+        : <span key={i}>{part}</span>
+    );
+  }
+
   function renderPromptRows(rows: Prompt[], isSystem: boolean) {
-    return rows.map(p => (
-      <TableRow key={p.id} className="group">
-        <TableCell className="font-medium">{p.name}</TableCell>
-        <TableCell>
-          <Badge variant="secondary" className="font-mono text-xs">{p.slug}</Badge>
-        </TableCell>
-        <TableCell className="text-zinc-500 text-sm max-w-sm truncate">
-          {p.content}
-        </TableCell>
-        <TableCell>
-          {isSystem ? (
-            <Lock className="w-3.5 h-3.5 text-zinc-300" />
-          ) : (
-            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onClick={() => openEdit(p)} className="text-zinc-400 hover:text-zinc-700">
-                <Pencil className="w-4 h-4" />
-              </button>
-              <button onClick={() => handleDelete(p.slug, p.name)} className="text-zinc-400 hover:text-red-500">
-                <Trash2 className="w-4 h-4" />
-              </button>
+    return rows.flatMap((p, i) => {
+      const isExpanded = expandedSlug === (p.slug || String(i));
+      const key = p.id || p.slug || String(i);
+      return [
+        <TableRow key={key} className="group cursor-pointer hover:bg-zinc-50" onClick={() => setExpandedSlug(isExpanded ? null : (p.slug || String(i)))}>
+          <TableCell>
+            <div className="flex items-center gap-2">
+              {isExpanded
+                ? <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                : <ChevronRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+              <span className="font-medium">{p.name}</span>
             </div>
-          )}
-        </TableCell>
-      </TableRow>
-    ));
+          </TableCell>
+          <TableCell>
+            <Badge variant="secondary" className="font-mono text-xs">{p.slug}</Badge>
+          </TableCell>
+          <TableCell className="text-zinc-500 text-sm max-w-sm truncate">
+            {p.content}
+          </TableCell>
+          <TableCell onClick={e => e.stopPropagation()}>
+            {isSystem ? (
+              <Lock className="w-3.5 h-3.5 text-zinc-300" />
+            ) : (
+              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => openEdit(p)} className="text-zinc-400 hover:text-zinc-700">
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button onClick={() => handleDelete(p.slug, p.name)} className="text-zinc-400 hover:text-red-500">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </TableCell>
+        </TableRow>,
+        isExpanded && (
+          <TableRow key={`${key}-expanded`}>
+            <TableCell colSpan={4} className="bg-zinc-50 px-6 pb-5 pt-3">
+              <pre className="text-xs text-zinc-700 font-mono whitespace-pre-wrap leading-relaxed">
+                {renderPlaceholders(p.content)}
+              </pre>
+            </TableCell>
+          </TableRow>
+        ),
+      ].filter(Boolean);
+    });
   }
 
   return (
@@ -228,11 +257,11 @@ export default function PromptsPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
+                <TableRow key="loading">
                   <TableCell colSpan={4} className="text-center text-zinc-400 py-8">Loading…</TableCell>
                 </TableRow>
               ) : systemPrompts.length === 0 ? (
-                <TableRow>
+                <TableRow key="empty">
                   <TableCell colSpan={4} className="text-center text-zinc-400 py-8">No built-in prompts.</TableCell>
                 </TableRow>
               ) : renderPromptRows(systemPrompts, true)}
@@ -256,11 +285,11 @@ export default function PromptsPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
+                <TableRow key="loading">
                   <TableCell colSpan={4} className="text-center text-zinc-400 py-8">Loading…</TableCell>
                 </TableRow>
               ) : userPrompts.length === 0 ? (
-                <TableRow>
+                <TableRow key="empty">
                   <TableCell colSpan={4} className="text-center text-zinc-400 py-8">
                     No custom prompts yet. Create one to get started.
                   </TableCell>

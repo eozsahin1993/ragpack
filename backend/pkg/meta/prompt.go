@@ -9,13 +9,13 @@ import (
 var ErrSystemReadOnly = errors.New("system prompts cannot be modified or deleted")
 
 type Prompt struct {
-	ID        string    `db:"id"`
-	Name      string    `db:"name"`
-	Slug      string    `db:"slug"`
-	Content   string    `db:"content"`
-	IsSystem  bool      `db:"is_system"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
+	ID        string    `db:"id"         json:"id"`
+	Name      string    `db:"name"       json:"name"`
+	Slug      string    `db:"slug"       json:"slug"`
+	Content   string    `db:"content"    json:"content"`
+	IsSystem  bool      `db:"is_system"  json:"is_system"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
 }
 
 type CreatePromptInput struct {

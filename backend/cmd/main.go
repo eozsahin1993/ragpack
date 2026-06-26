@@ -18,6 +18,7 @@ import (
 	lancedbpkg "ragpack/pkg/db/lancedb"
 	"ragpack/pkg/embedder"
 	"ragpack/pkg/ingester"
+	"ragpack/pkg/llm"
 	sqlitemeta "ragpack/pkg/meta/sqlite"
 )
 
@@ -49,6 +50,7 @@ func main() {
 	defer cancel()
 
 	registry := embedder.NewRegistryFromConfig(ctx, cfg)
+	llmRegistry := llm.NewRegistryFromConfig(cfg)
 
 	chunkCfg := chunker.Config{
 		ChunkSize: cfg.Ingester.ChunkSize,
@@ -68,7 +70,7 @@ func main() {
 		AllowMethods: "GET, POST, PATCH, DELETE, OPTIONS",
 	}))
 
-	api.Register(app, ms, vec, registry, ing)
+	api.Register(app, ms, vec, registry, llmRegistry, ing)
 	// graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
