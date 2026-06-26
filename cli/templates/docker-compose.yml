@@ -4,7 +4,7 @@ services:
     ports:
       - "9000:9000"
     env_file:
-      - .env
+      - ${RAGPACK_ENV_FILE}
     volumes:
       - ragpack_data:/data
 
@@ -48,3 +48,4 @@ services:
 volumes:
   ragpack_data:
   ollama_data:
+

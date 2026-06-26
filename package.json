@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "scripts": {
+    "dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build",
+    "dev:ollama": "docker compose --profile ollama -f docker-compose.yml -f docker-compose.dev.yml up --build",
+    "dev:tei": "docker compose --profile tei -f docker-compose.yml -f docker-compose.dev.yml up --build",
+    "start": "docker compose up -d",
+    "stop": "docker compose down",
+    "logs": "docker compose logs -f"
+  }
+}
