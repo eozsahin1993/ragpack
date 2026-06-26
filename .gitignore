@@ -16,3 +16,4 @@ dist/
 
 # macOS
 .DS_Store
+backend/tmp/
