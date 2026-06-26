@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Upload, Trash2, RefreshCw } from "lucide-react";
+import { Upload, Trash2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { api, Collection, Document } from "@/lib/api";
+import { Pagination } from "@/components/pagination";
 
 const MIME_TYPES = [
   { label: "Plain text (.txt)", value: "text/plain" },
@@ -158,35 +159,27 @@ export default function CollectionPage() {
 
   return (
     <div className="space-y-8">
-      {/* Breadcrumb + header */}
-      <div>
-        <div className="flex items-center gap-1.5 text-sm text-zinc-400 mb-2">
-          <Link href="/collections" className="hover:text-zinc-600">Collections</Link>
-          <ChevronRight className="w-3.5 h-3.5" />
-          <span className="text-zinc-700">{collection?.name ?? slug}</span>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">{collection?.name ?? slug}</h1>
+          {collection && (
+            <p className="text-sm text-zinc-500 mt-0.5">
+              {collection.embed_model} · {collection.vector_dim}d
+            </p>
+          )}
         </div>
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-xl font-semibold">{collection?.name ?? slug}</h1>
-            {collection && (
-              <p className="text-sm text-zinc-500 mt-0.5">
-                {collection.embed_model} · {collection.vector_dim}d
-              </p>
-            )}
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-red-500 hover:text-red-600 hover:bg-red-50"
-            onClick={handleDelete}
-            disabled={deleting}
-          >
-            <Trash2 className="w-4 h-4 mr-1.5" />
-            {deleting ? "Deleting…" : "Delete collection"}
-          </Button>
-        </div>
-        {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+          onClick={handleDelete}
+          disabled={deleting}
+        >
+          <Trash2 className="w-4 h-4 mr-1.5" />
+          {deleting ? "Deleting…" : "Delete collection"}
+        </Button>
       </div>
+      {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
 
       {/* Ingest */}
       <div className="rounded-lg border bg-white p-6 space-y-4">
@@ -341,32 +334,13 @@ export default function CollectionPage() {
           </Table>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between text-sm text-zinc-500">
-            <span>
-              {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total}
-            </span>
-            <div className="flex gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === 0}
-                onClick={() => setPage(p => p - 1)}
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages - 1}
-                onClick={() => setPage(p => p + 1)}
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );

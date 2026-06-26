@@ -28,6 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { api, Collection, EmbedderInfo } from "@/lib/api";
+import { PageHeader } from "@/components/page-header";
 
 export default function CollectionsPage() {
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -85,15 +86,12 @@ export default function CollectionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Collections</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">Manage your vector collections and indexed documents</p>
-        </div>
-        <Button size="sm" className="gap-2" onClick={() => setOpen(true)}>
-          <Plus className="w-4 h-4" /> New collection
-        </Button>
-        <Dialog open={open} onOpenChange={setOpen}>
+      <PageHeader
+        title="Collections"
+        description="Manage your vector collections and indexed documents"
+        action={<Button size="sm" className="gap-2" onClick={() => setOpen(true)}><Plus className="w-4 h-4" /> New collection</Button>}
+      />
+      <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>New collection</DialogTitle>
@@ -146,7 +144,6 @@ export default function CollectionsPage() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
 
       {error && !open && <p className="text-red-500 text-sm">{error}</p>}
 

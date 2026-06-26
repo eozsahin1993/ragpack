@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { api, Prompt } from "@/lib/api";
+import { PageHeader } from "@/components/page-header";
 
 export default function PromptsPage() {
   const [systemPrompts, setSystemPrompts] = useState<Prompt[]>([]);
@@ -159,16 +160,13 @@ export default function PromptsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Prompts</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">RAG prompt templates using <code className="text-xs bg-zinc-100 px-1 py-0.5 rounded">{"{{context}}"}</code> and <code className="text-xs bg-zinc-100 px-1 py-0.5 rounded">{"{{question}}"}</code></p>
-        </div>
-        <Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}>
-          <Plus className="w-4 h-4" /> New prompt
-        </Button>
+      <PageHeader
+        title="Prompts"
+        description={<>RAG prompt templates using <code className="text-xs bg-zinc-100 px-1 py-0.5 rounded">{"{{context}}"}</code> and <code className="text-xs bg-zinc-100 px-1 py-0.5 rounded">{"{{question}}"}</code></>}
+        action={<Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}><Plus className="w-4 h-4" /> New prompt</Button>}
+      />
 
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>New prompt</DialogTitle>
@@ -235,7 +233,6 @@ export default function PromptsPage() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
 
       {error && !createOpen && !editTarget && <p className="text-red-500 text-sm">{error}</p>}
 

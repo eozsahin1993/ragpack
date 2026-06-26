@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { api, Job } from "@/lib/api";
+import { PageHeader } from "@/components/page-header";
 
 const statusColors: Record<string, string> = {
   complete: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -40,15 +41,11 @@ export default function JobsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Jobs</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">All ingest jobs across collections</p>
-        </div>
-        <button onClick={load} className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-700">
-          <RefreshCw className="w-3.5 h-3.5" /> Refresh
-        </button>
-      </div>
+      <PageHeader
+        title="Jobs"
+        description="All ingest jobs across collections"
+        action={<button onClick={load} className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-700"><RefreshCw className="w-3.5 h-3.5" /> Refresh</button>}
+      />
 
       {error && <p className="text-red-500 text-sm">{error}</p>}
 

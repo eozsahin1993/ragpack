@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api, Collection, Prompt, RagResponse } from "@/lib/api";
+import { ChunkCard } from "@/components/chunk-card";
 
 export default function RagPage() {
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -81,11 +82,11 @@ export default function RagPage() {
   return (
     <div className="space-y-6">
       <form onSubmit={handleSubmit} className="rounded-lg border bg-white p-6 space-y-4">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          <div className="space-y-1.5">
+        <div className="flex gap-4">
+          <div className="flex-1 space-y-1.5">
             <Label className="text-xs text-zinc-500">Collection</Label>
             <Select value={slug} onValueChange={v => v && setSlug(v)}>
-              <SelectTrigger>
+              <SelectTrigger className="[&>span]:truncate">
                 <SelectValue placeholder="Pick a collection" />
               </SelectTrigger>
               <SelectContent>
@@ -95,13 +96,13 @@ export default function RagPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
+          <div className="flex-1 space-y-1.5">
             <Label className="text-xs text-zinc-500">Prompt</Label>
             {prompts.length === 0 ? (
               <p className="text-xs text-zinc-400 pt-2">No prompts yet — create one in Prompts.</p>
             ) : (
               <Select value={promptSlug} onValueChange={v => v && setPromptSlug(v)}>
-                <SelectTrigger>
+                <SelectTrigger className="[&>span]:truncate">
                   <SelectValue placeholder="Pick a prompt" />
                 </SelectTrigger>
                 <SelectContent>
@@ -112,13 +113,15 @@ export default function RagPage() {
               </Select>
             )}
           </div>
-          <div className="space-y-1.5">
+        </div>
+        <div className="flex gap-4">
+          <div className="flex-1 space-y-1.5">
             <Label className="text-xs text-zinc-500">LLM Model</Label>
             {llmModels.length === 0 ? (
               <p className="text-xs text-zinc-400 pt-2">No LLM configured — set one in .env.</p>
             ) : (
               <Select value={model} onValueChange={v => v && setModel(v)}>
-                <SelectTrigger>
+                <SelectTrigger className="[&>span]:truncate">
                   <SelectValue placeholder="Server default" />
                 </SelectTrigger>
                 <SelectContent>
@@ -129,7 +132,7 @@ export default function RagPage() {
               </Select>
             )}
           </div>
-          <div className="space-y-1.5">
+          <div className="flex-1 space-y-1.5">
             <Label className="text-xs text-zinc-500">Top K</Label>
             <Input
               type="number"
@@ -139,7 +142,7 @@ export default function RagPage() {
               onChange={e => setTopK(e.target.value)}
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="flex-1 space-y-1.5">
             <Label className="text-xs text-zinc-500">Min Similarity %</Label>
             <Input
               type="number"
@@ -198,22 +201,15 @@ export default function RagPage() {
           <div className="space-y-3">
             <p className="text-sm text-zinc-500">{ragResult.chunks.length} source{ragResult.chunks.length !== 1 ? "s" : ""}</p>
             {ragResult.chunks.map((c, i) => (
-              <div key={i} className="rounded-lg border bg-white p-5 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{c.source}</span>
-                    <span className="text-xs text-zinc-400">chunk {c.chunk_index}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-lg font-semibold text-emerald-600">{c.similarity.toFixed(1)}%</span>
-                    <p className="text-xs text-zinc-400">similarity</p>
-                  </div>
-                </div>
-                {c.chunk_text && (
-                  <p className="text-sm text-zinc-600 leading-relaxed border-t pt-3 mt-2">{c.chunk_text}</p>
-                )}
-                <p className="text-xs text-zinc-400 font-mono">{c.file_uri}</p>
-              </div>
+              <ChunkCard
+                key={i}
+                chunkIndex={c.chunk_index}
+                source={c.source}
+                fileUri={c.file_uri}
+                similarity={c.similarity}
+                chunkHeader={c.chunk_header}
+                chunkText={c.chunk_text}
+              />
             ))}
           </div>
         </div>

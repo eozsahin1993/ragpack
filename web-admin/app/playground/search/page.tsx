@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api, Collection, QueryResultItem } from "@/lib/api";
+import { ChunkCard } from "@/components/chunk-card";
 
 export default function SearchPage() {
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -50,11 +51,11 @@ export default function SearchPage() {
   return (
     <div className="space-y-6">
       <form onSubmit={handleSubmit} className="rounded-lg border bg-white p-6 space-y-4">
-        <div className="flex gap-4 flex-wrap">
-          <div className="w-56 space-y-1.5">
+        <div className="flex gap-4">
+          <div className="flex-1 space-y-1.5">
             <Label className="text-xs text-zinc-500">Collection</Label>
             <Select value={slug} onValueChange={v => v && setSlug(v)}>
-              <SelectTrigger>
+              <SelectTrigger className="[&>span]:truncate">
                 <SelectValue placeholder="Pick a collection" />
               </SelectTrigger>
               <SelectContent>
@@ -64,7 +65,7 @@ export default function SearchPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="w-24 space-y-1.5">
+          <div className="flex-1 space-y-1.5">
             <Label className="text-xs text-zinc-500">Top K</Label>
             <Input
               type="number"
@@ -104,22 +105,15 @@ export default function SearchPage() {
               No results found.
             </div>
           ) : results.map((r, i) => (
-            <div key={i} className="rounded-lg border bg-white p-5 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{r.source}</span>
-                  <span className="text-xs text-zinc-400">chunk {r.chunk_index}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-lg font-semibold text-emerald-600">{r.similarity.toFixed(1)}%</span>
-                  <p className="text-xs text-zinc-400">similarity</p>
-                </div>
-              </div>
-              {r.chunk_text && (
-                <p className="text-sm text-zinc-600 leading-relaxed border-t pt-3 mt-2">{r.chunk_text}</p>
-              )}
-              <p className="text-xs text-zinc-400 font-mono">{r.file_uri}</p>
-            </div>
+            <ChunkCard
+              key={i}
+              chunkIndex={r.chunk_index}
+              source={r.source}
+              fileUri={r.file_uri}
+              similarity={r.similarity}
+              chunkHeader={r.chunk_header}
+              chunkText={r.chunk_text}
+            />
           ))}
         </div>
       )}
