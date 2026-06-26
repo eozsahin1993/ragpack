@@ -24,6 +24,9 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, uri string) (io.ReadCloser, err
 		return nil, fmt.Errorf("http fetcher: build request: %w", err)
 	}
 
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; RagPack/1.0; +https://github.com/eozsahin1993/ragpack)")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+
 	resp, err := f.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("http fetcher: request failed: %w", err)

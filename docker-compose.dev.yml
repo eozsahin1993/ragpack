@@ -1,0 +1,23 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+      - go_build_cache:/root/.cache/go-build
+      - go_pkg_cache:/go/pkg/mod
+
+  web-admin:
+    build: null
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm install --prefer-offline && npm run dev"
+    volumes:
+      - ./web-admin:/app
+      - web_admin_node_modules:/app/node_modules
+
+volumes:
+  go_build_cache:
+  go_pkg_cache:
+  web_admin_node_modules:

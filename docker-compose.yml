@@ -14,17 +14,13 @@ services:
       - ragpack_data:/data
 
   web-admin:
-    image: node:22-alpine
-    working_dir: /app
-    command: sh -c "npm install --prefer-offline && npm run dev"
+    build:
+      context: ./web-admin
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"   # localhost only — access via: ssh -L 3000:localhost:3000 user@vps
     environment:
       - RAGPACK_BACKEND_URL=http://backend:9001   # internal admin port, never exposed publicly
-    volumes:
-      - ./web-admin:/app
-      - web_admin_node_modules:/app/node_modules
     depends_on:
       - backend
 
@@ -85,4 +81,3 @@ volumes:
   ragpack_data:
   ollama_data:
   tei_data:
-  web_admin_node_modules:
