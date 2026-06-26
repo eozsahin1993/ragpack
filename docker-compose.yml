@@ -15,7 +15,8 @@ services:
   web-admin:
     image: node:22-alpine
     working_dir: /app
-    command: sh -c "npm install && npm run dev"
+    command: sh -c "npm install --prefer-offline && npm run dev"
+    restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"
     environment:
