@@ -1,18 +1,23 @@
 .footer {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--ifm-color-emphasis-200);
   padding: 24px;
   text-align: center;
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--ifm-color-emphasis-600);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
 }
 
 .footer a {
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--ifm-color-emphasis-600);
   text-decoration: none;
-  margin: 0 12px;
   transition: color 0.15s;
 }
 
 .footer a:hover {
-  color: #fff;
+  color: var(--ifm-color-emphasis-900);
+  text-decoration: none;
 }
