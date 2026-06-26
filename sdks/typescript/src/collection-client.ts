@@ -5,8 +5,8 @@ import { DocumentsResource } from "./resources/documents.js";
 import { QueryResource } from "./resources/query.js";
 
 export interface RagOptions {
-  /** Slug of the prompt template to use. */
-  promptSlug: string;
+  /** Slug of the prompt template to use. Defaults to `"basic_rag"` if omitted. */
+  promptSlug?: string;
   /** The user's question. Substituted into `{{question}}`. */
   query: string;
   /** Number of chunks to retrieve. Defaults to 5. */
@@ -124,7 +124,7 @@ export class CollectionClient {
       body: JSON.stringify({
         query: options.query,
         top_k: options.topK ?? 5,
-        prompt_slug: options.promptSlug,
+        ...(options.promptSlug ? { prompt_slug: options.promptSlug } : {}),
         ...(options.model ? { model: options.model } : {}),
         ...(options.minSimilarity != null ? { min_similarity: options.minSimilarity } : {}),
       }),

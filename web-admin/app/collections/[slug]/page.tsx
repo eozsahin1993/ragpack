@@ -15,15 +15,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { api, Collection, Document } from "@/lib/api";
 import { Pagination } from "@/components/pagination";
+import { DataTable } from "@/components/data-table";
 
 const MIME_TYPES = [
   { label: "Plain text (.txt)", value: "text/plain" },
@@ -263,26 +260,21 @@ export default function CollectionPage() {
           </button>
         </div>
 
-        <div className="rounded-lg border bg-white overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-zinc-50">
-                <TableHead>File</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Chunks</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Ingested</TableHead>
-                <TableHead className="w-20" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {docs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-zinc-400 py-10">
-                    No documents yet.
-                  </TableCell>
-                </TableRow>
-              ) : docs.map(d => (
+        <DataTable columns={[
+          { label: "File" },
+          { label: "Type" },
+          { label: "Chunks" },
+          { label: "Status" },
+          { label: "Ingested" },
+          { label: "", className: "w-20" },
+        ]}>
+          {docs.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center text-zinc-400 py-10">
+                No documents yet.
+              </TableCell>
+            </TableRow>
+          ) : docs.map(d => (
                 <TableRow
                   key={d.id}
                   className="cursor-pointer hover:bg-zinc-50"
@@ -330,9 +322,7 @@ export default function CollectionPage() {
                   </TableCell>
                 </TableRow>
               ))}
-            </TableBody>
-          </Table>
-        </div>
+        </DataTable>
 
         <Pagination
           page={page}

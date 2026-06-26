@@ -13,15 +13,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { api, Prompt } from "@/lib/api";
 import { PageHeader } from "@/components/page-header";
+import { DataTable } from "@/components/data-table";
 
 export default function PromptsPage() {
   const [systemPrompts, setSystemPrompts] = useState<Prompt[]>([]);
@@ -242,59 +239,45 @@ export default function PromptsPage() {
           <h2 className="text-sm font-medium text-zinc-700">Built-in</h2>
           <Lock className="w-3 h-3 text-zinc-400" />
         </div>
-        <div className="rounded-lg border bg-white overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-zinc-50">
-                <TableHead>Name</TableHead>
-                <TableHead>Slug</TableHead>
-                <TableHead>Preview</TableHead>
-                <TableHead className="w-10"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow key="loading">
-                  <TableCell colSpan={4} className="text-center text-zinc-400 py-8">Loading…</TableCell>
-                </TableRow>
-              ) : systemPrompts.length === 0 ? (
-                <TableRow key="empty">
-                  <TableCell colSpan={4} className="text-center text-zinc-400 py-8">No built-in prompts.</TableCell>
-                </TableRow>
-              ) : renderPromptRows(systemPrompts, true)}
-            </TableBody>
-          </Table>
-        </div>
+        <DataTable columns={[
+          { label: "Name" },
+          { label: "Slug" },
+          { label: "Preview" },
+          { label: "", className: "w-10" },
+        ]}>
+          {loading ? (
+            <TableRow key="loading">
+              <TableCell colSpan={4} className="text-center text-zinc-400 py-8">Loading…</TableCell>
+            </TableRow>
+          ) : systemPrompts.length === 0 ? (
+            <TableRow key="empty">
+              <TableCell colSpan={4} className="text-center text-zinc-400 py-8">No built-in prompts.</TableCell>
+            </TableRow>
+          ) : renderPromptRows(systemPrompts, true)}
+        </DataTable>
       </div>
 
       {/* User prompts */}
       <div className="space-y-2">
         <h2 className="text-sm font-medium text-zinc-700">Custom</h2>
-        <div className="rounded-lg border bg-white overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-zinc-50">
-                <TableHead>Name</TableHead>
-                <TableHead>Slug</TableHead>
-                <TableHead>Preview</TableHead>
-                <TableHead className="w-20"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow key="loading">
-                  <TableCell colSpan={4} className="text-center text-zinc-400 py-8">Loading…</TableCell>
-                </TableRow>
-              ) : userPrompts.length === 0 ? (
-                <TableRow key="empty">
-                  <TableCell colSpan={4} className="text-center text-zinc-400 py-8">
-                    No custom prompts yet. Create one to get started.
-                  </TableCell>
-                </TableRow>
-              ) : renderPromptRows(userPrompts, false)}
-            </TableBody>
-          </Table>
-        </div>
+        <DataTable columns={[
+          { label: "Name" },
+          { label: "Slug" },
+          { label: "Preview" },
+          { label: "", className: "w-20" },
+        ]}>
+          {loading ? (
+            <TableRow key="loading">
+              <TableCell colSpan={4} className="text-center text-zinc-400 py-8">Loading…</TableCell>
+            </TableRow>
+          ) : userPrompts.length === 0 ? (
+            <TableRow key="empty">
+              <TableCell colSpan={4} className="text-center text-zinc-400 py-8">
+                No custom prompts yet. Create one to get started.
+              </TableCell>
+            </TableRow>
+          ) : renderPromptRows(userPrompts, false)}
+        </DataTable>
       </div>
     </div>
   );

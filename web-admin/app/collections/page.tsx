@@ -20,15 +20,12 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { api, Collection, EmbedderInfo } from "@/lib/api";
 import { PageHeader } from "@/components/page-header";
+import { DataTable } from "@/components/data-table";
 
 export default function CollectionsPage() {
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -147,54 +144,47 @@ export default function CollectionsPage() {
 
       {error && !open && <p className="text-red-500 text-sm">{error}</p>}
 
-      <div className="rounded-lg border bg-white overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-zinc-50">
-              <TableHead>Name</TableHead>
-              <TableHead>Slug</TableHead>
-              <TableHead>Model</TableHead>
-              <TableHead>Dimensions</TableHead>
-              <TableHead className="w-20"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-zinc-400 py-10">Loading…</TableCell>
-              </TableRow>
-            ) : collections.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-zinc-400 py-10">
-                  No collections yet. Create one to get started.
-                </TableCell>
-              </TableRow>
-            ) : collections.map(c => (
-              <TableRow key={c.id} className="group">
-                <TableCell>
-                  <Link href={`/collections/${c.slug}`} className="font-medium hover:text-zinc-600 flex items-center gap-1">
-                    {c.name}
-                    <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-opacity" />
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="secondary" className="font-mono text-xs">{c.slug}</Badge>
-                </TableCell>
-                <TableCell className="text-zinc-500 text-sm">{c.embed_model}</TableCell>
-                <TableCell className="text-zinc-500 text-sm">{c.vector_dim}</TableCell>
-                <TableCell>
-                  <button
-                    onClick={() => handleDelete(c.slug, c.name)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-400 hover:text-red-500"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable columns={[
+        { label: "Name" },
+        { label: "Slug" },
+        { label: "Model" },
+        { label: "Dimensions" },
+        { label: "", className: "w-20" },
+      ]}>
+        {loading ? (
+          <TableRow>
+            <TableCell colSpan={5} className="text-center text-zinc-400 py-10">Loading…</TableCell>
+          </TableRow>
+        ) : collections.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={5} className="text-center text-zinc-400 py-10">
+              No collections yet. Create one to get started.
+            </TableCell>
+          </TableRow>
+        ) : collections.map(c => (
+          <TableRow key={c.id} className="group">
+            <TableCell>
+              <Link href={`/collections/${c.slug}`} className="font-medium hover:text-zinc-600 flex items-center gap-1">
+                {c.name}
+                <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-opacity" />
+              </Link>
+            </TableCell>
+            <TableCell>
+              <Badge variant="secondary" className="font-mono text-xs">{c.slug}</Badge>
+            </TableCell>
+            <TableCell className="text-zinc-500 text-sm">{c.embed_model}</TableCell>
+            <TableCell className="text-zinc-500 text-sm">{c.vector_dim}</TableCell>
+            <TableCell>
+              <button
+                onClick={() => handleDelete(c.slug, c.name)}
+                className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-400 hover:text-red-500"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </TableCell>
+          </TableRow>
+        ))}
+      </DataTable>
     </div>
   );
 }

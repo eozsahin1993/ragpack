@@ -88,6 +88,9 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 	if req.TopK == 0 {
 		req.TopK = 10
 	}
+	if req.PromptSlug == "" {
+		req.PromptSlug = "basic_rag"
+	}
 
 	prompt, err := h.meta.GetPromptBySlug(c.Context(), req.PromptSlug)
 	if err != nil {
