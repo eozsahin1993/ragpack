@@ -72,11 +72,6 @@ services:
         ollama pull $${OLLAMA_LLM_MODEL}
       fi &&
       wait"
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-          memory: "4g"
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 5s

@@ -106,6 +106,26 @@ func (s *MetaStore) UpdatePrompt(ctx context.Context, slug string, input meta.Up
 	return p, nil
 }
 
+func (s *MetaStore) upsertSystemPrompts(ctx context.Context) error {
+	now := time.Now().UTC()
+	for _, seed := range systemPrompts {
+		_, err := s.db.ExecContext(ctx, `
+			INSERT INTO prompts (id, name, slug, content, is_system, created_at, updated_at)
+			VALUES (?, ?, ?, ?, 1, ?, ?)
+			ON CONFLICT(slug) DO UPDATE SET
+				name       = excluded.name,
+				content    = excluded.content,
+				updated_at = excluded.updated_at
+			WHERE is_system = 1
+			  AND (prompts.name != excluded.name OR prompts.content != excluded.content)
+		`, seed.id, seed.name, seed.slug, seed.content, now, now)
+		if err != nil {
+			return fmt.Errorf("upsert system prompt %q: %w", seed.slug, err)
+		}
+	}
+	return nil
+}
+
 func (s *MetaStore) DeletePrompt(ctx context.Context, slug string) error {
 	p, err := s.GetPromptBySlug(ctx, slug)
 	if err != nil {

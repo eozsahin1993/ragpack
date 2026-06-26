@@ -1,9 +1,11 @@
 package query
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -108,6 +110,16 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	if req.MinSimilarity != nil && *req.MinSimilarity > 0 {
+		filtered := results[:0]
+		for _, r := range results {
+			if r.Similarity >= *req.MinSimilarity {
+				filtered = append(filtered, r)
+			}
+		}
+		results = filtered
+	}
+
 	formatted := strings.ReplaceAll(prompt.Content, "{{context}}", buildContext(results))
 	formatted = strings.ReplaceAll(formatted, "{{question}}", req.Query)
 
@@ -136,7 +148,9 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 		}
 	}
 
-	answer, err := provider.Complete(c.Context(), formatted)
+	llmCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	answer, err := provider.Complete(llmCtx, formatted)
 	if err != nil {
 		log.Printf("rag llm error: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "LLM call failed"})

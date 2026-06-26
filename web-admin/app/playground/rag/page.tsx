@@ -23,6 +23,7 @@ export default function RagPage() {
   const [topK, setTopK] = useState("5");
   const [promptSlug, setPromptSlug] = useState("");
   const [model, setModel] = useState("");
+  const [minSimilarity, setMinSimilarity] = useState("");
   const [ragResult, setRagResult] = useState<RagResponse | null>(null);
   const [querying, setQuerying] = useState(false);
   const [error, setError] = useState("");
@@ -54,11 +55,13 @@ export default function RagPage() {
     setError("");
     setRagResult(null);
     try {
+      const minSim = minSimilarity !== "" ? parseFloat(minSimilarity) : undefined;
       const data = await api.query.rag(slug, {
         query,
         top_k: parseInt(topK),
         prompt_slug: promptSlug,
         ...(model ? { model } : {}),
+        ...(minSim != null ? { min_similarity: minSim } : {}),
       });
       setRagResult(data);
     } catch (e: unknown) {
@@ -78,8 +81,8 @@ export default function RagPage() {
   return (
     <div className="space-y-6">
       <form onSubmit={handleSubmit} className="rounded-lg border bg-white p-6 space-y-4">
-        <div className="flex gap-4 flex-wrap">
-          <div className="w-56 space-y-1.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="space-y-1.5">
             <Label className="text-xs text-zinc-500">Collection</Label>
             <Select value={slug} onValueChange={v => v && setSlug(v)}>
               <SelectTrigger>
@@ -92,17 +95,7 @@ export default function RagPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="w-24 space-y-1.5">
-            <Label className="text-xs text-zinc-500">Top K</Label>
-            <Input
-              type="number"
-              min={1}
-              max={100}
-              value={topK}
-              onChange={e => setTopK(e.target.value)}
-            />
-          </div>
-          <div className="w-56 space-y-1.5">
+          <div className="space-y-1.5">
             <Label className="text-xs text-zinc-500">Prompt</Label>
             {prompts.length === 0 ? (
               <p className="text-xs text-zinc-400 pt-2">No prompts yet — create one in Prompts.</p>
@@ -119,7 +112,7 @@ export default function RagPage() {
               </Select>
             )}
           </div>
-          <div className="w-56 space-y-1.5">
+          <div className="space-y-1.5">
             <Label className="text-xs text-zinc-500">LLM Model</Label>
             {llmModels.length === 0 ? (
               <p className="text-xs text-zinc-400 pt-2">No LLM configured — set one in .env.</p>
@@ -135,6 +128,28 @@ export default function RagPage() {
                 </SelectContent>
               </Select>
             )}
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-zinc-500">Top K</Label>
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={topK}
+              onChange={e => setTopK(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-zinc-500">Min Similarity %</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              placeholder="None"
+              value={minSimilarity}
+              onChange={e => setMinSimilarity(e.target.value)}
+            />
           </div>
         </div>
 

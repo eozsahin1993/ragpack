@@ -19,7 +19,7 @@ func NewOllama(baseURL, model string) *OllamaLLM {
 	return &OllamaLLM{
 		baseURL: baseURL,
 		model:   model,
-		client:  &http.Client{Timeout: 5 * time.Minute},
+		client:  &http.Client{Timeout: 2 * time.Minute},
 	}
 }
 

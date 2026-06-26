@@ -168,7 +168,7 @@ export const api = {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    rag: (slug: string, body: { query: string; top_k: number; prompt_slug: string; model?: string }) =>
+    rag: (slug: string, body: { query: string; top_k: number; prompt_slug: string; model?: string; min_similarity?: number }) =>
       req<RagResponse>(`/admin/collections/${slug}/rag`, {
         method: "POST",
         body: JSON.stringify(body),

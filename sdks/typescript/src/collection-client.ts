@@ -6,13 +6,15 @@ import { QueryResource } from "./resources/query.js";
 
 export interface RagOptions {
   /** Slug of the prompt template to use. */
-  prompt: string;
+  promptSlug: string;
   /** The user's question. Substituted into `{{question}}`. */
   query: string;
   /** Number of chunks to retrieve. Defaults to 5. */
   topK?: number;
   /** LLM model name to use (e.g. `"gpt-4o"`, `"claude-opus-4-8"`). Falls back to server default. */
   model?: string;
+  /** Minimum similarity score (0–100) a chunk must meet to be included in context. Omit to include all top_k results. */
+  minSimilarity?: number;
 }
 
 export interface FindSimilarOptions {
@@ -122,8 +124,9 @@ export class CollectionClient {
       body: JSON.stringify({
         query: options.query,
         top_k: options.topK ?? 5,
-        prompt_slug: options.prompt,
+        prompt_slug: options.promptSlug,
         ...(options.model ? { model: options.model } : {}),
+        ...(options.minSimilarity != null ? { min_similarity: options.minSimilarity } : {}),
       }),
     });
   }

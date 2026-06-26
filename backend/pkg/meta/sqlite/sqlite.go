@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"regexp"
@@ -55,7 +56,13 @@ func New(path string) (*MetaStore, error) {
 		return nil, fmt.Errorf("sqlite: run migrations: %w", err)
 	}
 
-	return &MetaStore{db: db}, nil
+	ms := &MetaStore{db: db}
+	if err := ms.upsertSystemPrompts(context.Background()); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("sqlite: seed system prompts: %w", err)
+	}
+
+	return ms, nil
 }
 
 func (s *MetaStore) Close() error {
