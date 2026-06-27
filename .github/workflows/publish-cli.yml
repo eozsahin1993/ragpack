@@ -12,20 +12,22 @@ jobs:
   publish:
     name: Publish to npm
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
           package-manager-cache: false
 
       - name: Verify version matches tag
-        working-directory: cli
         run: |
           PKG_VERSION="v$(node -p "require('./package.json').version")"
           TAG_VERSION="${GITHUB_REF_NAME#cli/}"
@@ -35,14 +37,24 @@ jobs:
           fi
 
       - name: Install dependencies
-        working-directory: cli
         run: npm ci
 
+      - name: Debug OIDC exchange
+        working-directory: ${{ github.workspace }}
+        run: |
+          OIDC_TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm" | python3 -c "import sys,json; print(json.load(sys.stdin)['value'])")
+          echo "OIDC token prefix: ${OIDC_TOKEN:0:30}..."
+          RESPONSE=$(curl -sS -X POST https://registry.npmjs.org/-/npm/v1/login/oidc \
+            -H "Content-Type: application/json" \
+            -d "{\"type\":\"oidc-token\",\"token\":\"$OIDC_TOKEN\"}")
+          echo "npmjs.com OIDC response: $RESPONSE"
+
       - name: Publish
-        working-directory: cli
         run: npm publish --access public
 
       - name: Create GitHub Release
+        working-directory: ${{ github.workspace }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
