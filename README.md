@@ -50,14 +50,21 @@ OPENAI_EMBED_MODEL=text-embedding-3-small
 
 Then `npx ragpack start`.
 
-Open [http://localhost:3000](http://localhost:3000) for the admin UI.
+The admin UI opens automatically at [http://localhost:3000](http://localhost:3000). Logs stream in the terminal — Ctrl+C stops following logs without stopping the stack.
+
+For headless/VPS use, start in the background:
+
+```bash
+ragpack start --detach
+```
 
 ## CLI
 
 | Command | Description |
 |---|---|
 | `ragpack init` | Create `.env.ragpack` in the current directory |
-| `ragpack start [--profile ollama]` | Start the stack |
+| `ragpack start [--profile ollama]` | Start the stack (streams logs, opens admin UI) |
+| `ragpack start --detach` | Start in background without following logs |
 | `ragpack stop [-v]` | Stop the stack (`-v` removes volumes and all data) |
 | `ragpack logs [service]` | Tail logs (`backend`, `web-admin`, `ollama`) |
 | `ragpack update` | Pull latest images and restart |
