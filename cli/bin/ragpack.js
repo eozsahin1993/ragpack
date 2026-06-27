@@ -130,10 +130,10 @@ program
 
 program
   .command("update")
-  .description("Pull latest images and restart")
+  .description("Pull latest RagPack images and restart")
   .action(() => {
     requireInit();
-    compose(["--profile", "ollama", "--profile", "tei", "pull"]);
+    compose(["pull", "backend", "web-admin"]);
     compose(["--profile", "ollama", "--profile", "tei", "up", "-d"]);
   });
 
