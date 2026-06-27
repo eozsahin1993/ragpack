@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: read
+      contents: write
     defaults:
       run:
         working-directory: cli
@@ -39,3 +39,12 @@ jobs:
 
       - name: Publish
         run: npm publish --provenance --access public
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "CLI ${GITHUB_REF_NAME#cli/}" \
+            --generate-notes \
+            --notes-start-tag "$(git tag --sort=-creatordate | grep '^cli/' | sed -n '2p')"
