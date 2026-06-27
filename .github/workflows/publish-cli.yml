@@ -4,16 +4,14 @@ on:
   push:
     tags: ['cli/v*.*.*']
 
+permissions:
+  id-token: write
+  contents: write
+
 jobs:
   publish:
     name: Publish to npm
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: write
-    defaults:
-      run:
-        working-directory: cli
 
     steps:
       - name: Checkout
@@ -23,8 +21,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - name: Verify version matches tag
+        working-directory: cli
         run: |
           PKG_VERSION="v$(node -p "require('./package.json').version")"
           TAG_VERSION="${GITHUB_REF_NAME#cli/}"
@@ -34,10 +35,12 @@ jobs:
           fi
 
       - name: Install dependencies
+        working-directory: cli
         run: npm ci
 
       - name: Publish
-        run: npm publish --provenance --access public --loglevel verbose
+        working-directory: cli
+        run: npm publish --access public
 
       - name: Create GitHub Release
         env:
