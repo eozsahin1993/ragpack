@@ -40,7 +40,7 @@ func (l *VectorDb) DropTable(ctx context.Context, name string) error {
 	return nil
 }
 
-func (l *VectorDb) CreateTable(ctx context.Context, name string, vectorDim int) error {
+func (l *VectorDb) CreateTable(ctx context.Context, name string, collectionID string, vectorDim int) error {
 	schema, err := sdk.NewSchema(chunkArrowSchema(vectorDim))
 	if err != nil {
 		return fmt.Errorf("lancedb: schema build failed: %w", err)
@@ -49,6 +49,10 @@ func (l *VectorDb) CreateTable(ctx context.Context, name string, vectorDim int) 
 	_, err = l.conn.CreateTable(ctx, name, schema)
 	if err != nil {
 		return fmt.Errorf("lancedb: table provisioning failed for %s: %w", name, err)
+	}
+
+	if err := migrations.MarkUpToDate(ctx, l.conn, collectionID); err != nil {
+		return fmt.Errorf("lancedb: mark migrations for %s: %w", name, err)
 	}
 	return nil
 }

@@ -32,6 +32,24 @@ func CurrentVersion() int {
 	return registry[len(registry)-1].Version
 }
 
+// MarkUpToDate records all registered migrations as applied for a newly created
+// collection table. Call this immediately after CreateTable so the migration
+// runner never tries to apply migrations to a table that was born with the
+// latest schema.
+func MarkUpToDate(ctx context.Context, conn contracts.IConnection, collectionID string) error {
+	mTbl, err := openOrCreateMigrationsTable(ctx, conn)
+	if err != nil {
+		return fmt.Errorf("lancedb migrate: open migrations table: %w", err)
+	}
+	defer mTbl.Close()
+	for _, m := range registry {
+		if err := recordApplied(ctx, mTbl, collectionID, m.Version); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // MigrateAll applies any pending migrations to every collection table.
 // Call once at server startup after connecting to LanceDB.
 func MigrateAll(ctx context.Context, conn contracts.IConnection, collections []meta.Collection) error {

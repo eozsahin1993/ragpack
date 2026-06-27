@@ -60,7 +60,7 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	if err := h.vec.CreateTable(c.Context(), col.TableName, col.VectorDim); err != nil {
+	if err := h.vec.CreateTable(c.Context(), col.TableName, col.ID, col.VectorDim); err != nil {
 		_ = h.meta.DeleteCollection(c.Context(), col.ID)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

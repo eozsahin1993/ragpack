@@ -13,9 +13,25 @@ Supported formats: `.txt`, `.md`, `.html`, `.pdf`
 
 ## Quick start
 
+**Prerequisites:** [Docker](https://docs.docker.com/get-docker/) must be installed and running.
+
+Install the CLI:
+
 ```bash
-npx ragpack init       # creates .env.ragpack in the current directory
-npx ragpack start      # starts the stack (API on :9000, admin UI on :3000)
+npm install -g ragpack
+```
+
+Or run without installing via `npx`:
+
+```bash
+npx ragpack init
+```
+
+Then start the stack:
+
+```bash
+ragpack init       # creates .env.ragpack in the current directory
+ragpack start      # starts the stack (API on :9000, admin UI on :3000)
 ```
 
 With Ollama (fully local):

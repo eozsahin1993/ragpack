@@ -54,6 +54,7 @@ program
   .command("init")
   .description("Create .env.ragpack in the current directory")
   .action(() => {
+    console.log(BANNER);
     if (existsSync(ENV_FILE)) {
       console.log(".env.ragpack already exists, skipping.");
     } else {
@@ -74,12 +75,34 @@ program
   .description("Start the RagPack stack")
   .option("--profile <profile>", "Embedding provider profile (ollama, tei)")
   .option("--build", "Force rebuild images")
+  .option("--no-open", "Do not open the admin UI in a browser")
+  .option("-d, --detach", "Start in background without following logs")
   .action((opts) => {
     requireInit();
+    console.log(BANNER);
     const preArgs = opts.profile ? ["--profile", opts.profile] : [];
     const args = [...preArgs, "up", "-d"];
     if (opts.build) args.push("--build");
     compose(args);
+    if (opts.open) {
+      const url = "http://localhost:3000";
+      console.log(`\n  Opening admin UI → ${url}\n`);
+      const cmd = process.platform === "win32" ? "cmd" : process.platform === "darwin" ? "open" : "xdg-open";
+      const cmdArgs = process.platform === "win32" ? ["/c", "start", url] : [url];
+      spawnSync(cmd, cmdArgs, { stdio: "ignore" });
+    }
+    if (opts.detach) {
+      console.log("\n  \x1b[32m✓ RagPack is running in the background.\x1b[0m");
+      console.log("  \x1b[2mAdmin UI  →  http://localhost:3000\x1b[0m");
+      console.log("  \x1b[2mAPI       →  http://localhost:9000\x1b[0m");
+      console.log("\n  \x1b[2mragpack stop          stop the stack\x1b[0m");
+      console.log("  \x1b[2mragpack logs          follow logs\x1b[0m");
+      console.log("  \x1b[2mragpack stop -v       stop and delete all data\x1b[0m\n");
+    } else {
+      console.log("\n  \x1b[2mCtrl+C stops following logs — the stack keeps running.\x1b[0m");
+      console.log("  \x1b[2mRun `ragpack stop` to shut down the stack.\x1b[0m\n");
+      compose(["logs", "-f", "--tail", "50"]);
+    }
   });
 
 program
@@ -88,7 +111,9 @@ program
   .option("-v, --volumes", "Also remove volumes (deletes all data)")
   .action((opts) => {
     requireInit();
-    compose(opts.volumes ? ["down", "-v"] : ["down"]);
+    const args = ["--profile", "ollama", "--profile", "tei", "down"];
+    if (opts.volumes) args.push("-v");
+    compose(args);
   });
 
 program
@@ -108,8 +133,8 @@ program
   .description("Pull latest images and restart")
   .action(() => {
     requireInit();
-    compose(["pull"]);
-    compose(["up", "-d"]);
+    compose(["--profile", "ollama", "--profile", "tei", "pull"]);
+    compose(["--profile", "ollama", "--profile", "tei", "up", "-d"]);
   });
 
 program

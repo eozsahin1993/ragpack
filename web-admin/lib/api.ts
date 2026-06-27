@@ -107,7 +107,7 @@ export interface Prompt {
 
 export const api = {
   embedders: {
-    list: () => req<EmbedderInfo>("/admin/embedders"),
+    list: () => req<EmbedderInfo>("/admin/embeddings"),
   },
   collections: {
     list: () => req<{ collections: Collection[] }>("/admin/collections"),
