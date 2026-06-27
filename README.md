@@ -202,28 +202,17 @@ To add a model, edit `backend/pkg/embedder/dimensions.go`.
 - **PDF** — text extracted page-by-page, chunked as plain text
 - **Plain text** — sliding window (2000 chars, 200 char overlap)
 
-## Running locally
+## Contributing / local development
 
-Prerequisites: Go 1.22+, Node 18+, Docker
-
-**Backend** (hot reload via Air):
+Prerequisites: Docker
 
 ```bash
-cd backend
-./dev.sh
+npm run dev           # backend + admin UI with hot reload
+npm run dev:ollama    # include Ollama
+npm run dev:tei       # include HuggingFace TEI
 ```
 
-**Admin UI** (hot reload via Next.js):
-
-```bash
-cd web-admin
-npm install
-npm run dev
-```
-
-The backend dev server runs on `:9000`. The admin UI runs on `:3000` and proxies API requests to the backend.
-
-For the embedding provider, the easiest local setup is Ollama — start it separately and point `OLLAMA_BASE_URL` at it in your `.env.ragpack`.
+Backend runs on `:9000`, admin UI on `:3000`.
 
 ## License
 
