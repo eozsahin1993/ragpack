@@ -1,6 +1,6 @@
 # RagPack
 
-Self-hostable semantic search and RAG infrastructure for developers. Bring your own AI — Ollama for local models or OpenAI — and be up and running in minutes.
+Self-hostable semantic search and RAG infrastructure. High-performance, low-cost, and up in minutes. Bring your own AI — Ollama for local models or any OpenAI-compatible provider.
 
 ## What it does
 
@@ -9,7 +9,7 @@ Self-hostable semantic search and RAG infrastructure for developers. Bring your 
 - Get back ranked chunks with similarity scores, ready to drop into any LLM prompt
 - Manage everything via REST API or the built-in admin UI
 
-Supported formats: `.txt`, `.md`, `.html`, `.pdf`
+Supported formats: `.txt`, `.md`, `.html`, `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.csv`, `.json`
 
 ## Quick start
 
@@ -160,7 +160,7 @@ curl -X POST http://localhost:9000/api/v1/collections/my-docs/ingest \
 ```
 
 Supported sources: `https://`, `s3://`, file uploads.
-Supported formats: `.txt`, `.md`, `.html`, `.pdf`, `.docx`, `.pptx`, `.xlsx`
+Supported formats: `.txt`, `.md`, `.html`, `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.csv`, `.json`, `.docx`, `.pptx`, `.xlsx`
 
 ### Query
 
