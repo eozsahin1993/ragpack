@@ -1,0 +1,32 @@
+[
+  {
+    "id": "1",
+    "name": "Alice Johnson",
+    "role": "Software Engineer",
+    "address": {
+      "street": "12 Baker Street",
+      "city": "London",
+      "country": "UK"
+    },
+    "skills": ["Go", "Python", "Kubernetes"],
+    "meta": {
+      "active": true,
+      "score": 98.5
+    }
+  },
+  {
+    "id": "2",
+    "name": "Bob Smith",
+    "role": "Product Manager",
+    "address": {
+      "street": "45 Unter den Linden",
+      "city": "Berlin",
+      "country": "Germany"
+    },
+    "skills": ["Roadmapping", "SQL", "Figma"],
+    "meta": {
+      "active": true,
+      "score": 91.0
+    }
+  }
+]

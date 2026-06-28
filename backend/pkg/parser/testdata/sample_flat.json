@@ -1,0 +1,29 @@
+[
+  {
+    "id": "1",
+    "name": "Alice Johnson",
+    "role": "Software Engineer",
+    "department": "Engineering",
+    "location": "London",
+    "email": "alice@example.com",
+    "joined": "2021-03-15"
+  },
+  {
+    "id": "2",
+    "name": "Bob Smith",
+    "role": "Product Manager",
+    "department": "Product",
+    "location": "Berlin",
+    "email": "bob@example.com",
+    "joined": "2020-07-01"
+  },
+  {
+    "id": "3",
+    "name": "Carol White",
+    "role": "Data Scientist",
+    "department": "Engineering",
+    "location": "Amsterdam",
+    "email": "carol@example.com",
+    "joined": "2022-01-10"
+  }
+]
