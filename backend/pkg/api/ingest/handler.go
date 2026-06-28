@@ -34,6 +34,9 @@ func (h *Handler) Ingest(c *fiber.Ctx) error {
 		if mimeType == "" {
 			mimeType = "text/plain"
 		}
+		if err := validateFile(file.Filename, mimeType); err != nil {
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": err.Error()})
+		}
 		fileUri := "upload://" + file.Filename
 
 		if doc, skip := h.skipIfComplete(c, col.ID, fileUri, intent, force); skip {
@@ -60,8 +63,14 @@ func (h *Handler) Ingest(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil || req.FileURI == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "provide a file upload or {file_uri}"})
 	}
+	if !validateURI(req.FileURI) {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "unsupported URI scheme — use https://, http://, or s3://"})
+	}
 	if req.MimeType == "" {
 		req.MimeType = detectMimeType(c.Context(), req.FileURI)
+	}
+	if err := validateFile(req.FileURI, req.MimeType); err != nil {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	if doc, skip := h.skipIfComplete(c, col.ID, req.FileURI, intent, force); skip {

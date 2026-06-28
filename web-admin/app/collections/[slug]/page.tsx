@@ -26,6 +26,9 @@ const MIME_TYPES = [
   { label: "Markdown (.md)", value: "text/markdown" },
   { label: "HTML", value: "text/html" },
   { label: "PDF", value: "application/pdf" },
+  { label: "Word (.docx)", value: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+  { label: "PowerPoint (.pptx)", value: "application/vnd.openxmlformats-officedocument.presentationml.presentation" },
+  { label: "Excel (.xlsx)", value: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
 ];
 
 const statusColors: Record<string, string> = {
@@ -42,10 +45,13 @@ function friendlyUri(uri: string) {
 
 function guessMimeType(uri: string): string {
   const path = uri.toLowerCase().split("?")[0];
-  if (path.endsWith(".pdf"))                          return "application/pdf";
+  if (path.endsWith(".pdf"))                              return "application/pdf";
   if (path.endsWith(".md") || path.endsWith(".markdown")) return "text/markdown";
-  if (path.endsWith(".html") || path.endsWith(".htm")) return "text/html";
-  if (path.endsWith(".txt"))                          return "text/plain";
+  if (path.endsWith(".html") || path.endsWith(".htm"))    return "text/html";
+  if (path.endsWith(".txt"))                              return "text/plain";
+  if (path.endsWith(".docx"))  return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (path.endsWith(".pptx"))  return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+  if (path.endsWith(".xlsx"))  return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
   if (uri.startsWith("http://") || uri.startsWith("https://")) return "text/html";
   return "text/plain";
 }
@@ -226,7 +232,7 @@ export default function CollectionPage() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".txt,.md,.html,.pdf"
+          accept=".txt,.md,.markdown,.html,.htm,.pdf,.docx,.pptx,.xlsx"
           className="hidden"
           onChange={handleFileUpload}
         />
@@ -238,7 +244,7 @@ export default function CollectionPage() {
           className="gap-2 w-full"
         >
           <Upload className="w-4 h-4" />
-          {uploading ? "Uploading…" : "Upload file (.txt, .md, .html, .pdf)"}
+          {uploading ? "Uploading…" : "Upload file (.txt, .md, .html, .pdf, .docx, .pptx, .xlsx)"}
         </Button>
       </div>
 
