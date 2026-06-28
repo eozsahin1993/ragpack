@@ -54,7 +54,7 @@ func (p *XlsxParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, e
 					"headers": header,
 					"sheet":   sheetName,
 				}
-				if !yield(Unit{Text: text, Metadata: meta}, nil) {
+				if !yield(Unit{Kind: UnitKindRow, Text: text, Metadata: meta}, nil) {
 					return
 				}
 			}

@@ -27,7 +27,7 @@ func (p *DocxParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, e
 
 		// w:t = text run, w:p = paragraph boundary
 		if err := xmlStreamText(rc, "t", "p", func(text string) bool {
-			return yield(Unit{Text: text}, nil)
+			return yield(Unit{Kind: UnitKindParagraph, Text: text}, nil)
 		}); err != nil {
 			yield(Unit{}, fmt.Errorf("docx: parse: %w", err))
 		}

@@ -46,7 +46,7 @@ func (p *PDFParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, er
 				continue
 			}
 			meta := map[string]string{"page": fmt.Sprintf("%d", i)}
-			if !yield(Unit{Text: text, Metadata: meta}, nil) {
+			if !yield(Unit{Kind: UnitKindPage, Text: text, Metadata: meta}, nil) {
 				return
 			}
 		}
