@@ -10,6 +10,6 @@ export class EmbeddersResource {
 
   /** List all configured embedding models and the server default. */
   list(): Promise<EmbedderInfo> {
-    return this.req<EmbedderInfo>("/embedders");
+    return this.req<EmbedderInfo>("/embeddings");
   }
 }
