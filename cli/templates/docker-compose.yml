@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ghcr.io/eozsahin1993/ragpack:latest
+    image: ghcr.io/eozsahin1993/ragpack:${RAGPACK_VERSION:-latest}
     ports:
       - "9000:9000"
     env_file:
@@ -9,7 +9,7 @@ services:
       - ragpack_data:/data
 
   web-admin:
-    image: ghcr.io/eozsahin1993/ragpack-web-admin:latest
+    image: ghcr.io/eozsahin1993/ragpack-web-admin:${RAGPACK_VERSION:-latest}
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"   # localhost only — access via: ssh -L 3000:localhost:3000 user@vps

@@ -85,6 +85,12 @@ export interface RagResponse {
   prompt_slug: string;
 }
 
+export interface HealthInfo {
+  status: string;
+  version: string;
+  uptime: string;
+}
+
 export interface EmbedderInfo {
   models: string[];
   default: string;
@@ -106,6 +112,9 @@ export interface Prompt {
 }
 
 export const api = {
+  health: {
+    get: () => req<HealthInfo>("/admin/health"),
+  },
   embedders: {
     list: () => req<EmbedderInfo>("/admin/embeddings"),
   },
