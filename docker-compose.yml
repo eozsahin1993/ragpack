@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ghcr.io/eozsahin1993/ragpack:latest
+    image: ghcr.io/eozsahin1993/ragpack-backend:latest
     build:
       context: ./backend
     ports:
