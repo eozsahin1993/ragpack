@@ -44,6 +44,8 @@ func New(mimeType string) (Parser, error) {
 		return &MarkdownParser{}, nil
 	case mimeType == "text/html":
 		return &HTMLParser{}, nil
+	case mimeType == "text/csv":
+		return &CSVParser{}, nil
 	case strings.HasPrefix(mimeType, "text/"):
 		return &TextParser{}, nil
 	case mimeType == "application/pdf":
