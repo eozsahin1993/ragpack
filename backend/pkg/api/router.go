@@ -22,15 +22,8 @@ import (
 
 // RegisterPublic mounts the external API (requires auth) on the given app.
 // Intended for the public-facing port exposed to the internet.
-<<<<<<< fix/add-ingester-file-upload-limit
 func RegisterPublic(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string, maxUploadSize int) {
-	app.Get("/api/v1/health", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{"status": "healthy", "engine": "Go + Fiber"})
-	})
-=======
-func RegisterPublic(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string) {
 	app.Get("/api/v1/health", healthHandler)
->>>>>>> main
 
 	v1 := app.Group("/api/v1")
 	v1.Use(middleware.Auth(ms))
@@ -39,12 +32,8 @@ func RegisterPublic(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry
 
 // RegisterAdmin mounts the admin API (no auth) on the given app.
 // Intended for an internal-only port never published outside the Docker network.
-<<<<<<< fix/add-ingester-file-upload-limit
 func RegisterAdmin(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string, maxUploadSize int) {
-=======
-func RegisterAdmin(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string) {
 	app.Get("/admin/health", healthHandler)
->>>>>>> main
 	adminGroup := app.Group("/admin")
 	mountRoutes(adminGroup, ms, vec, registry, llmRegistry, ing, defaultPromptSlug, maxUploadSize)
 }
