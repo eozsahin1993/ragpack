@@ -41,11 +41,11 @@ func main() {
 	llmRegistry := llm.NewRegistryFromConfig(cfg)
 	ing := startIngester(ctx, cfg, ms, vec, registry)
 
-	publicApp := createApp()
-	api.RegisterPublic(publicApp, ms, vec, registry, llmRegistry, ing, cfg.DefaultPromptSlug)
+	publicApp := createApp(cfg.MaxUploadSizeMB)
+	api.RegisterPublic(publicApp, ms, vec, registry, llmRegistry, ing, cfg.DefaultPromptSlug, cfg.MaxUploadSizeMB)
 
-	adminApp := createApp()
-	api.RegisterAdmin(adminApp, ms, vec, registry, llmRegistry, ing, cfg.DefaultPromptSlug)
+	adminApp := createApp(cfg.MaxUploadSizeMB)
+	api.RegisterAdmin(adminApp, ms, vec, registry, llmRegistry, ing, cfg.DefaultPromptSlug, cfg.MaxUploadSizeMB)
 
 	go handleShutdown(cancel, ing, publicApp, adminApp)
 
@@ -79,8 +79,8 @@ func startIngester(ctx context.Context, cfg config.Config, ms meta.MetaStore, ve
 	return ing
 }
 
-func createApp() *fiber.App {
-	app := fiber.New(fiber.Config{AppName: "RagPack Engine v1.0"})
+func createApp(maxUploadSize int) *fiber.App {
+	app := fiber.New(fiber.Config{AppName: "RagPack Engine v1.0", BodyLimit: maxUploadSize * 1024 * 1024})
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",

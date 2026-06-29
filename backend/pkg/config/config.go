@@ -26,6 +26,7 @@ type Config struct {
 
 	Ingester          IngesterConfig
 	DefaultPromptSlug string
+	MaxUploadSizeMB   int
 }
 
 type OpenAIConfig struct {
@@ -105,6 +106,7 @@ func Load() Config {
 		},
 
 		DefaultPromptSlug: getEnv("DEFAULT_PROMPT_SLUG", DefaultPromptSlug),
+		MaxUploadSizeMB:   getEnvInt("MAX_UPLOAD_SIZE_MB", DefaultMaxUploadSize),
 
 		Ingester: IngesterConfig{
 			WorkerCount:    getEnvInt("WORKER_COUNT", DefaultWorkerCount),

@@ -22,24 +22,24 @@ import (
 
 // RegisterPublic mounts the external API (requires auth) on the given app.
 // Intended for the public-facing port exposed to the internet.
-func RegisterPublic(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string) {
+func RegisterPublic(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string, maxUploadSize int) {
 	app.Get("/api/v1/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "healthy", "engine": "Go + Fiber"})
 	})
 
 	v1 := app.Group("/api/v1")
 	v1.Use(middleware.Auth(ms))
-	mountRoutes(v1, ms, vec, registry, llmRegistry, ing, defaultPromptSlug)
+	mountRoutes(v1, ms, vec, registry, llmRegistry, ing, defaultPromptSlug, maxUploadSize)
 }
 
 // RegisterAdmin mounts the admin API (no auth) on the given app.
 // Intended for an internal-only port never published outside the Docker network.
-func RegisterAdmin(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string) {
+func RegisterAdmin(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string, maxUploadSize int) {
 	adminGroup := app.Group("/admin")
-	mountRoutes(adminGroup, ms, vec, registry, llmRegistry, ing, defaultPromptSlug)
+	mountRoutes(adminGroup, ms, vec, registry, llmRegistry, ing, defaultPromptSlug, maxUploadSize)
 }
 
-func mountRoutes(r fiber.Router, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string) {
+func mountRoutes(r fiber.Router, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string, maxUploadSize int) {
 	r.Get("/jobs", jobs.NewHandler(ms).GetAllJobs)
 	r.Get("/jobs/:id", jobs.NewHandler(ms).GetJob)
 
@@ -54,7 +54,7 @@ func mountRoutes(r fiber.Router, ms meta.MetaStore, vec db.VectorDb, registry *e
 
 	nameGroup := collGroup.Group("/:slug")
 	jobs.Register(nameGroup, jobs.NewHandler(ms))
-	ingest.Register(nameGroup, ingest.NewHandler(ms, ing))
+	ingest.Register(nameGroup, ingest.NewHandler(ms, ing, maxUploadSize))
 	query.Register(nameGroup, query.NewHandler(ms, vec, registry, llmRegistry, defaultPromptSlug))
 	documents.Register(nameGroup, documents.NewHandler(ms, vec))
 }
