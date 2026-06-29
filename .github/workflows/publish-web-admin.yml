@@ -6,7 +6,11 @@ on:
     paths:
       - 'web-admin/**'
       - '.github/workflows/publish-web-admin.yml'
-    tags: ['v*.*.*']
+  workflow_call:
+    inputs:
+      version-tag:
+        type: string
+        required: true
   workflow_dispatch:
 
 env:
@@ -30,14 +34,11 @@ jobs:
             runner: ubuntu-24.04-arm
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Log in to ghcr.io
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -51,8 +52,8 @@ jobs:
           file: ./web-admin/Dockerfile
           platforms: ${{ matrix.platform }}
           push: true
-          cache-from: type=gha,scope=${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+          cache-from: type=gha,scope=web-admin-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=web-admin-${{ matrix.platform }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
@@ -61,10 +62,9 @@ jobs:
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
 
-      - name: Upload digest
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: digest-${{ matrix.runner }}
+          name: web-admin-digest-${{ matrix.runner }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -78,30 +78,26 @@ jobs:
       packages: write
 
     steps:
-      - name: Download digests
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
-          pattern: digest-*
+          pattern: web-admin-digest-*
           merge-multiple: true
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Log in to ghcr.io
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create and push manifest
+        working-directory: /tmp/digests
         run: |
-          TAGS="--tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-                --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            TAGS="$TAGS --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}"
+          TAGS="--tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          if [ -n "${{ inputs.version-tag }}" ]; then
+            TAGS="$TAGS --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.version-tag }}"
           fi
           docker buildx imagetools create $TAGS \
             $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
-        working-directory: /tmp/digests

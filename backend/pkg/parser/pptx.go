@@ -53,7 +53,7 @@ func (p *PptxParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, e
 			}
 
 			meta := map[string]string{"slide": fmt.Sprintf("%d", i+1)}
-			if !yield(Unit{Text: text, Metadata: meta}, nil) {
+			if !yield(Unit{Kind: UnitKindSlide, Text: text, Metadata: meta}, nil) {
 				return
 			}
 		}

@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Database, BriefcaseBusiness, FlaskConical, ScrollText } from "lucide-react";
+import { LayoutDashboard, Database, BriefcaseBusiness, FlaskConical, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
+  { href: "/", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/collections", label: "Collections", icon: Database },
   { href: "/jobs", label: "Jobs", icon: BriefcaseBusiness },
   { href: "/prompts", label: "Prompts", icon: ScrollText },
@@ -21,8 +22,8 @@ export function Sidebar() {
         <span className="text-white font-semibold text-sm tracking-tight">ragpack</span>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {nav.map(({ href, label, icon: Icon }) => {
-          const active = path === href || path.startsWith(href + "/");
+        {nav.map(({ href, label, icon: Icon, exact }) => {
+          const active = exact ? path === href : path === href || path.startsWith(href + "/");
           return (
             <Link
               key={href}

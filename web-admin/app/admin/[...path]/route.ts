@@ -21,6 +21,7 @@ async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
     method: req.method,
     headers,
     body: body ? Buffer.from(body) : undefined,
+    cache: "no-store",
     // @ts-expect-error Node.js fetch needs this to not buffer response
     duplex: "half",
   });

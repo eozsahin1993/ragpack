@@ -8,7 +8,9 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEMPLATES = join(__dirname, "..", "templates");
 const COMPOSE_FILE = join(TEMPLATES, "docker-compose.yml");
-const { version } = JSON.parse(readFileSync(join(__dirname, "../package.json"), "utf8"));
+const pkg = JSON.parse(readFileSync(join(__dirname, "../package.json"), "utf8"));
+const { version } = pkg;
+const ragpackVersion = `v${version}`;
 
 const ENV_FILE = join(process.cwd(), ".env.ragpack");
 const PROJECT_NAME = basename(process.cwd());
@@ -30,7 +32,7 @@ function compose(args) {
     ["compose", "--project-name", PROJECT_NAME, "-f", COMPOSE_FILE, "--env-file", ENV_FILE, ...args],
     {
       stdio: "inherit",
-      env: { ...process.env, RAGPACK_ENV_FILE: ENV_FILE },
+      env: { ...process.env, RAGPACK_ENV_FILE: ENV_FILE, RAGPACK_VERSION: ragpackVersion },
     }
   );
   if (result.status !== 0) process.exit(result.status ?? 1);

@@ -1,6 +1,6 @@
 # RagPack
 
-Self-hostable semantic search and RAG infrastructure for developers. Bring your own AI — Ollama for local models or OpenAI — and be up and running in minutes.
+Self-hostable semantic search and RAG infrastructure. High-performance, low-cost, and up in minutes. Bring your own AI — Ollama for local models or any OpenAI-compatible provider.
 
 ## What it does
 
@@ -9,7 +9,7 @@ Self-hostable semantic search and RAG infrastructure for developers. Bring your 
 - Get back ranked chunks with similarity scores, ready to drop into any LLM prompt
 - Manage everything via REST API or the built-in admin UI
 
-Supported formats: `.txt`, `.md`, `.html`, `.pdf`
+Supported formats: `.txt`, `.md`, `.html`, `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.csv`, `.json`
 
 ## Quick start
 
@@ -112,6 +112,18 @@ Storage defaults to `/data` inside the container, backed by a named Docker volum
 
 Base URL: `http://localhost:9000/api/v1`
 
+All requests require an API key. On first startup the backend prints it to the logs and saves it to `/data/api_key` inside the container. To retrieve it:
+
+```bash
+ragpack logs backend | grep "Key:"
+```
+
+Pass it as a bearer token in every request:
+
+```bash
+export RAGPACK_API_KEY=rp_...
+```
+
 ### Collections
 
 | Method | Path | Description |
@@ -123,6 +135,7 @@ Base URL: `http://localhost:9000/api/v1`
 
 ```bash
 curl -X POST http://localhost:9000/api/v1/collections \
+  -H "Authorization: Bearer $RAGPACK_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"name": "My Docs"}'
 ```
@@ -136,15 +149,18 @@ curl -X POST http://localhost:9000/api/v1/collections \
 ```bash
 # Ingest a URL
 curl -X POST http://localhost:9000/api/v1/collections/my-docs/ingest \
+  -H "Authorization: Bearer $RAGPACK_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"file_uri": "https://example.com/docs/guide"}'
 
 # Upload a file
 curl -X POST http://localhost:9000/api/v1/collections/my-docs/ingest \
+  -H "Authorization: Bearer $RAGPACK_API_KEY" \
   -F "file=@./document.pdf"
 ```
 
-Supported sources: `https://`, `s3://`, local file paths, file uploads.
+Supported sources: `https://`, `s3://`, file uploads.
+Supported formats: `.txt`, `.md`, `.html`, `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.csv`, `.json`, `.docx`, `.pptx`, `.xlsx`
 
 ### Query
 
@@ -154,6 +170,7 @@ Supported sources: `https://`, `s3://`, local file paths, file uploads.
 
 ```bash
 curl -X POST http://localhost:9000/api/v1/collections/my-docs/query \
+  -H "Authorization: Bearer $RAGPACK_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"query": "how do I configure authentication?", "top_k": 5}'
 ```
@@ -216,4 +233,4 @@ Backend runs on `:9000`, admin UI on `:3000`.
 
 ## License
 
-MIT
+Apache-2.0

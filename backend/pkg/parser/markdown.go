@@ -33,7 +33,7 @@ func (p *MarkdownParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Uni
 				return true
 			}
 			meta := map[string]string{"heading": breadcrumb}
-			return yield(Unit{Text: b, Metadata: meta}, nil)
+			return yield(Unit{Kind: UnitKindSection, Text: b, Metadata: meta}, nil)
 		}
 
 		scanner := bufio.NewScanner(r)

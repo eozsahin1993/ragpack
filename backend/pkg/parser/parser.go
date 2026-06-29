@@ -8,11 +8,24 @@ import (
 	"strings"
 )
 
+// UnitKind describes the structural role of a Unit so chunkers can make
+// kind-aware decisions without needing the source MIME type.
+type UnitKind string
+
+const (
+	UnitKindParagraph UnitKind = "paragraph" // plain text, docx
+	UnitKindSection   UnitKind = "section"   // markdown/html heading boundary
+	UnitKindPage      UnitKind = "page"      // pdf
+	UnitKindSlide     UnitKind = "slide"     // pptx
+	UnitKindRow       UnitKind = "row"       // xlsx
+)
+
 // Unit is one semantic element emitted by a parser — a paragraph, slide, row,
 // or section. Metadata carries format-specific context (heading breadcrumb,
 // slide number, sheet name, column headers) so chunkers can make smart
 // grouping decisions without knowing the source format.
 type Unit struct {
+	Kind     UnitKind
 	Text     string
 	Metadata map[string]string
 }
@@ -31,6 +44,10 @@ func New(mimeType string) (Parser, error) {
 		return &MarkdownParser{}, nil
 	case mimeType == "text/html":
 		return &HTMLParser{}, nil
+	case mimeType == "text/csv":
+		return &CSVParser{}, nil
+	case mimeType == "application/json":
+		return &JSONParser{}, nil
 	case strings.HasPrefix(mimeType, "text/"):
 		return &TextParser{}, nil
 	case mimeType == "application/pdf":

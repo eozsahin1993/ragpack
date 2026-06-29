@@ -23,7 +23,7 @@ func (p *TextParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, e
 		flush := func() bool {
 			if text := strings.TrimSpace(cur.String()); text != "" {
 				cur.Reset()
-				return yield(Unit{Text: text}, nil)
+				return yield(Unit{Kind: UnitKindParagraph, Text: text}, nil)
 			}
 			cur.Reset()
 			return true
