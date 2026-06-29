@@ -8,12 +8,13 @@ import (
 )
 
 type Handler struct {
-	meta meta.MetaStore
-	ing  ingester.Ingester
+	meta          meta.MetaStore
+	ing           ingester.Ingester
+	maxUploadSize int64
 }
 
-func NewHandler(ms meta.MetaStore, ing ingester.Ingester) *Handler {
-	return &Handler{meta: ms, ing: ing}
+func NewHandler(ms meta.MetaStore, ing ingester.Ingester, maxUploadSize int) *Handler {
+	return &Handler{meta: ms, ing: ing, maxUploadSize: int64(maxUploadSize) * 1024 * 1024}
 }
 
 func (h *Handler) Ingest(c *fiber.Ctx) error {
@@ -30,6 +31,9 @@ func (h *Handler) Ingest(c *fiber.Ctx) error {
 
 	// multipart upload
 	if file, err := c.FormFile("file"); err == nil {
+		if file.Size > h.maxUploadSize {
+			return c.Status(fiber.StatusRequestEntityTooLarge).JSON(fiber.Map{"error": "file exceeds max upload size"})
+		}
 		mimeType := file.Header.Get("Content-Type")
 		if mimeType == "" {
 			mimeType = "text/plain"
