@@ -7,40 +7,57 @@
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  background: var(--ifm-color-emphasis-200);
-  border: 1px solid var(--ifm-color-emphasis-200);
-  border-radius: 12px;
-  overflow: hidden;
+  gap: 24px;
 }
 
 .card {
   background: var(--ifm-background-color);
-  padding: 36px 32px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-top: 3px solid var(--accent);
+  border-radius: 12px;
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: box-shadow 0.2s;
+}
+
+.card:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.iconWrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
 }
 
 .eyebrow {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--ifm-color-primary);
-  margin-bottom: 10px;
+  color: var(--ifm-color-emphasis-600);
 }
 
 .card h3 {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 800;
-  margin-bottom: 12px;
-  margin-top: 0;
+  margin: 0;
   letter-spacing: -0.01em;
+  line-height: 1.3;
 }
 
 .card p {
   color: var(--ifm-color-emphasis-700);
   line-height: 1.7;
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.93rem;
 }
 
 @media (max-width: 900px) {

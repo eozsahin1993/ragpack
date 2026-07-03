@@ -6,10 +6,10 @@ export default function CTA() {
   return (
     <div className={styles.wrapper}>
       <div className={styles.inner}>
-        <h2>Ready to ship your RAG pipeline?</h2>
-        <p>One command. No cloud account. No token limits.</p>
+        <h2>Start building with Ragpack today</h2>
+        <p>Follow the quickstart guide and you'll be querying in minutes.</p>
         <Link className={styles.btn} to="/docs/getting-started" onClick={() => track('click_get_started', 'cta')}>
-          Read the docs →
+          Click to get started →
         </Link>
       </div>
     </div>

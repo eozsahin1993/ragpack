@@ -2,6 +2,7 @@ import type {ReactNode} from 'react';
 import Layout from '@theme/Layout';
 import Hero from '@site/src/components/Hero';
 import ValueProps from '@site/src/components/ValueProps';
+import QuickStart from '@site/src/components/QuickStart';
 import WhatIsIncluded from '@site/src/components/WhatIsIncluded';
 import UseCases from '@site/src/components/UseCases';
 import CTA from '@site/src/components/CTA';
@@ -12,6 +13,7 @@ export default function Home(): ReactNode {
       <main>
         <Hero />
         <ValueProps />
+        <QuickStart />
         <WhatIsIncluded />
         <UseCases />
         <CTA />
