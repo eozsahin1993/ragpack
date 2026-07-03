@@ -13,10 +13,10 @@ import { CollectionCard } from "@/components/dashboard/collection-card";
 import { api, Collection, Job, HealthInfo } from "@/lib/api";
 
 const jobStatusColors: Record<string, string> = {
-  complete:   "bg-emerald-50 text-emerald-700 border-emerald-200",
-  processing: "bg-amber-50 text-amber-700 border-amber-200",
-  pending:    "bg-amber-50 text-amber-700 border-amber-200",
-  failed:     "bg-red-50 text-red-700 border-red-200",
+  complete:   "badge-success",
+  processing: "badge-warning",
+  pending:    "badge-warning",
+  failed:     "badge-error",
 };
 
 function friendlyUri(uri: string) {

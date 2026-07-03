@@ -17,9 +17,9 @@ export function Sidebar() {
   const path = usePathname();
 
   return (
-    <aside className="w-56 shrink-0 flex flex-col bg-zinc-900 border-r border-zinc-800 h-screen">
-      <div className="px-5 py-5 border-b border-zinc-800">
-        <span className="text-white font-semibold text-sm tracking-tight">ragpack</span>
+    <aside className="w-56 shrink-0 flex flex-col bg-card border-r border-border h-screen">
+      <div className="px-5 py-5 border-b border-border shrink-0">
+        <span className="font-semibold text-sm tracking-tight text-foreground">Ragpack</span>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-0.5">
         {nav.map(({ href, label, icon: Icon, exact }) => {
@@ -31,8 +31,8 @@ export function Sidebar() {
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
                 active
-                  ? "bg-zinc-800 text-white"
-                  : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60"
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
               )}
             >
               <Icon className="w-4 h-4 shrink-0" />
@@ -41,8 +41,8 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className="px-5 py-4 border-t border-zinc-800">
-        <p className="text-zinc-600 text-xs">v0.1</p>
+      <div className="px-5 py-4 border-t border-border">
+        <p className="text-muted-foreground text-xs">v0.1</p>
       </div>
     </aside>
   );

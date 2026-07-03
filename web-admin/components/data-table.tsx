@@ -19,10 +19,10 @@ interface DataTableProps {
 
 export function DataTable({ columns, children }: DataTableProps) {
   return (
-    <div className="rounded-lg border bg-white overflow-hidden">
+    <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
       <Table>
         <TableHeader>
-          <TableRow className="bg-zinc-50">
+          <TableRow className="bg-muted/60 hover:bg-muted/60">
             {columns.map((col, i) => (
               <TableHead key={i} className={col.className}>
                 {col.label}
