@@ -160,7 +160,7 @@ export default function PromptsPage() {
       <PageHeader
         title="Prompts"
         description={<>RAG prompt templates using <code className="text-xs bg-zinc-100 px-1 py-0.5 rounded">{"{{context}}"}</code> and <code className="text-xs bg-zinc-100 px-1 py-0.5 rounded">{"{{question}}"}</code></>}
-        action={<Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}><Plus className="w-4 h-4" /> New prompt</Button>}
+        action={<Button className="gap-2" onClick={() => setCreateOpen(true)}><Plus className="w-4 h-4" /> New prompt</Button>}
       />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

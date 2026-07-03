@@ -19,7 +19,9 @@ export function Sidebar() {
   return (
     <aside className="w-56 shrink-0 flex flex-col bg-card border-r border-border h-screen">
       <div className="px-5 py-5 border-b border-border shrink-0">
-        <span className="font-semibold text-sm tracking-tight text-foreground">Ragpack</span>
+        <div style={{ fontFamily: 'var(--font-logo)' }}>
+          <span className="font-bold text-base tracking-tight text-primary">RagPack</span>
+        </div>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-0.5">
         {nav.map(({ href, label, icon: Icon, exact }) => {

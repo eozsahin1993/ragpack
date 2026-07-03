@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Database, FileText, BriefcaseBusiness } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Database, FileText, BriefcaseBusiness } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { DataTable } from "@/components/data-table";
@@ -145,16 +144,11 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Overview</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            System health and activity at a glance
-          </p>
-        </div>
-        <Button size="sm" className="gap-2" onClick={() => router.push("/collections")}>
-          <Plus className="w-4 h-4" /> New collection
-        </Button>
+      <div>
+        <h1 className="text-xl font-semibold">Overview</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          System health and activity at a glance
+        </p>
       </div>
 
       {/* Health cards */}

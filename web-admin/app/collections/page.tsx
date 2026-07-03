@@ -86,7 +86,7 @@ export default function CollectionsPage() {
       <PageHeader
         title="Collections"
         description="Manage your vector collections and indexed documents"
-        action={<Button size="sm" className="gap-2" onClick={() => setOpen(true)}><Plus className="w-4 h-4" /> New collection</Button>}
+        action={<Button className="gap-2" onClick={() => setOpen(true)}><Plus className="w-4 h-4" /> New collection</Button>}
       />
       <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent>
