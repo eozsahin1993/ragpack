@@ -2,8 +2,10 @@ package jobs
 
 import "github.com/gofiber/fiber/v2"
 
-// Register mounts routes on the /:name group (e.g. /collections/:name).
+// Register mounts the top-level job routes.
 func Register(r fiber.Router, h *Handler) {
-	r.Get("/jobs", h.GetJobsByCollection)
-	r.Get("/jobs/:id", h.GetJob)
+	r.Get("", h.ListJobs)
+	r.Get("/:id", h.GetJob)
+	r.Delete("/:id", h.DeleteJob)
 }
+

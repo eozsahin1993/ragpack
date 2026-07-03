@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -43,78 +44,55 @@ func (s *MetaStore) GetJob(ctx context.Context, id string) (meta.Job, error) {
 	return j, nil
 }
 
-func (s *MetaStore) ListAllJobs(ctx context.Context, limit, offset int) ([]meta.Job, error) {
+func (s *MetaStore) ListJobs(ctx context.Context, filter meta.JobFilter, limit, offset int) ([]meta.Job, error) {
+	where, args := jobWhere(filter)
+	q := "SELECT * FROM jobs" + where + " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
 	var jobs []meta.Job
-	err := s.db.SelectContext(ctx, &jobs, `SELECT * FROM jobs ORDER BY created_at DESC LIMIT ? OFFSET ?`, limit, offset)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: list all jobs: %w", err)
+	if err := s.db.SelectContext(ctx, &jobs, q, args...); err != nil {
+		return nil, fmt.Errorf("sqlite: list jobs: %w", err)
 	}
 	return jobs, nil
 }
 
-func (s *MetaStore) ListJobsByCollection(ctx context.Context, collectionID string, limit, offset int) ([]meta.Job, error) {
-	var jobs []meta.Job
-	err := s.db.SelectContext(ctx, &jobs, `SELECT * FROM jobs WHERE collection_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`, collectionID, limit, offset)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: list jobs for collection %q: %w", collectionID, err)
-	}
-	return jobs, nil
-}
-
-func (s *MetaStore) ListJobsByCollectionAndStatus(ctx context.Context, collectionID string, status meta.JobStatus, limit, offset int) ([]meta.Job, error) {
-	var jobs []meta.Job
-	err := s.db.SelectContext(ctx, &jobs, `SELECT * FROM jobs WHERE collection_id = ? AND status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`, collectionID, status, limit, offset)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: list jobs for collection %q with status %q: %w", collectionID, status, err)
-	}
-	return jobs, nil
-}
-
-func (s *MetaStore) ListJobsByStatus(ctx context.Context, status meta.JobStatus, limit, offset int) ([]meta.Job, error) {
-	var jobs []meta.Job
-	err := s.db.SelectContext(ctx, &jobs, `SELECT * FROM jobs WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`, status, limit, offset)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: list jobs by status %q: %w", status, err)
-	}
-	return jobs, nil
-}
-
-func (s *MetaStore) CountAllJobs(ctx context.Context) (int, error) {
+func (s *MetaStore) CountJobs(ctx context.Context, filter meta.JobFilter) (int, error) {
+	where, args := jobWhere(filter)
 	var count int
-	if err := s.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM jobs`); err != nil {
-		return 0, fmt.Errorf("sqlite: count all jobs: %w", err)
+	if err := s.db.GetContext(ctx, &count, "SELECT COUNT(*) FROM jobs"+where, args...); err != nil {
+		return 0, fmt.Errorf("sqlite: count jobs: %w", err)
 	}
 	return count, nil
 }
 
-func (s *MetaStore) CountJobsByCollection(ctx context.Context, collectionID string) (int, error) {
-	var count int
-	if err := s.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM jobs WHERE collection_id = ?`, collectionID); err != nil {
-		return 0, fmt.Errorf("sqlite: count jobs for collection %q: %w", collectionID, err)
+func jobWhere(f meta.JobFilter) (string, []any) {
+	var clauses []string
+	var args []any
+	if f.CollectionID != nil {
+		clauses = append(clauses, "collection_id = ?")
+		args = append(args, *f.CollectionID)
 	}
-	return count, nil
-}
-
-func (s *MetaStore) CountJobsByCollectionAndStatus(ctx context.Context, collectionID string, status meta.JobStatus) (int, error) {
-	var count int
-	if err := s.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM jobs WHERE collection_id = ? AND status = ?`, collectionID, status); err != nil {
-		return 0, fmt.Errorf("sqlite: count jobs for collection %q with status %q: %w", collectionID, status, err)
+	if f.Status != nil {
+		clauses = append(clauses, "status = ?")
+		args = append(args, *f.Status)
 	}
-	return count, nil
-}
-
-func (s *MetaStore) CountJobsByStatus(ctx context.Context, status meta.JobStatus) (int, error) {
-	var count int
-	if err := s.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM jobs WHERE status = ?`, status); err != nil {
-		return 0, fmt.Errorf("sqlite: count jobs by status %q: %w", status, err)
+	if len(clauses) == 0 {
+		return "", args
 	}
-	return count, nil
+	return " WHERE " + strings.Join(clauses, " AND "), args
 }
 
 func (s *MetaStore) UpdateJobStatus(ctx context.Context, id string, status meta.JobStatus, jobError *string) error {
 	_, err := s.db.ExecContext(ctx, `UPDATE jobs SET status = ?, error = ?, updated_at = ? WHERE id = ?`, status, jobError, time.Now().UTC(), id)
 	if err != nil {
 		return fmt.Errorf("sqlite: update job %q status: %w", id, err)
+	}
+	return nil
+}
+
+func (s *MetaStore) DeleteJob(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM jobs WHERE id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("sqlite: delete job %q: %w", id, err)
 	}
 	return nil
 }

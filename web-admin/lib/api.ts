@@ -132,6 +132,8 @@ export const api = {
       req<{ jobs: Job[] }>(`/admin/collections/${slug}/jobs`),
     get: (slug: string, id: string) =>
       req<{ job: Job }>(`/admin/collections/${slug}/jobs/${id}`),
+    delete: (id: string) =>
+      req<void>(`/admin/jobs/${id}`, { method: "DELETE" }),
   },
   ingest: {
     uri: (slug: string, body: { file_uri: string; mime_type: string }) =>

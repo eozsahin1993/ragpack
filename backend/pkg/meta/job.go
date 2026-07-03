@@ -35,21 +35,23 @@ type Job struct {
 	UpdatedAt    time.Time  `db:"updated_at"    json:"updated_at"`
 }
 
+// JobFilter holds optional predicates for listing/counting jobs.
+// Nil fields are ignored (no filtering on that column).
+type JobFilter struct {
+	CollectionID *string
+	Status       *JobStatus
+}
+
 type JobReader interface {
 	GetJob(ctx context.Context, id string) (Job, error)
-	ListAllJobs(ctx context.Context, limit, offset int) ([]Job, error)
-	ListJobsByCollection(ctx context.Context, collectionID string, limit, offset int) ([]Job, error)
-	ListJobsByCollectionAndStatus(ctx context.Context, collectionID string, status JobStatus, limit, offset int) ([]Job, error)
-	ListJobsByStatus(ctx context.Context, status JobStatus, limit, offset int) ([]Job, error)
-	CountAllJobs(ctx context.Context) (int, error)
-	CountJobsByCollection(ctx context.Context, collectionID string) (int, error)
-	CountJobsByCollectionAndStatus(ctx context.Context, collectionID string, status JobStatus) (int, error)
-	CountJobsByStatus(ctx context.Context, status JobStatus) (int, error)
+	ListJobs(ctx context.Context, filter JobFilter, limit, offset int) ([]Job, error)
+	CountJobs(ctx context.Context, filter JobFilter) (int, error)
 }
 
 type JobWriter interface {
 	CreateJob(ctx context.Context, collectionID, fileUri, mimeType string, intent JobIntent, force bool) (Job, error)
 	UpdateJobStatus(ctx context.Context, id string, status JobStatus, jobError *string) error
+	DeleteJob(ctx context.Context, id string) error
 }
 
 type JobStore interface {

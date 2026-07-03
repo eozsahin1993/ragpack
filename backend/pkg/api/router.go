@@ -39,8 +39,7 @@ func RegisterAdmin(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry 
 }
 
 func mountRoutes(r fiber.Router, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string, maxUploadSize int) {
-	r.Get("/jobs", jobs.NewHandler(ms).GetAllJobs)
-	r.Get("/jobs/:id", jobs.NewHandler(ms).GetJob)
+	jobs.Register(r.Group("/jobs"), jobs.NewHandler(ms))
 
 	embedders.Register(r.Group("/embeddings"), embedders.NewHandler(registry))
 	llms.Register(r.Group("/llms"), llms.NewHandler(llmRegistry))
@@ -52,7 +51,8 @@ func mountRoutes(r fiber.Router, ms meta.MetaStore, vec db.VectorDb, registry *e
 	collections.Register(collGroup, collections.NewHandler(ms, vec, registry))
 
 	nameGroup := collGroup.Group("/:slug")
-	jobs.Register(nameGroup, jobs.NewHandler(ms))
+	nameGroup.Use(middleware.Collection(ms))
+	jobs.Register(nameGroup.Group("/jobs"), jobs.NewHandler(ms))
 	ingest.Register(nameGroup, ingest.NewHandler(ms, ing, maxUploadSize))
 	query.Register(nameGroup, query.NewHandler(ms, vec, registry, llmRegistry, defaultPromptSlug))
 	documents.Register(nameGroup, documents.NewHandler(ms, vec))
