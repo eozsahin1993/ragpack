@@ -35,6 +35,13 @@ export default function CollectionPage() {
 
   useEffect(() => { loadDocs(page); }, [page]);
 
+  const hasActive = docs.some(d => d.status === "ingesting");
+  useEffect(() => {
+    if (!hasActive) return;
+    const id = setInterval(() => loadDocs(page), 3000);
+    return () => clearInterval(id);
+  }, [hasActive, page, loadDocs]);
+
   async function handleDelete() {
     if (!confirm(`Delete "${collection?.name}"? This removes all indexed data.`)) return;
     setDeleting(true);

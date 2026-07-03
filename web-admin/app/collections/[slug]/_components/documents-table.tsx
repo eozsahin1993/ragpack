@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, RefreshCw } from "lucide-react";
+import { Trash2, RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { DataTable } from "@/components/data-table";
 import { Pagination } from "@/components/pagination";
 import { api, Document } from "@/lib/api";
+import { timeAgo } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
 
@@ -105,15 +106,20 @@ export function DocumentsTable({ slug, docs, total, page, onPageChange, onReload
             <TableCell className="text-xs text-zinc-500">{d.mime_type}</TableCell>
             <TableCell className="text-xs text-zinc-500">{d.chunk_count}</TableCell>
             <TableCell>
-              <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${statusColors[d.status] ?? ""}`}>
-                {d.status}
-              </span>
+              <div className="flex items-center gap-1.5">
+                {d.status === "ingesting" && (
+                  <Loader2 className="w-3 h-3 animate-spin text-amber-500 shrink-0" />
+                )}
+                <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${statusColors[d.status] ?? ""}`}>
+                  {d.status}
+                </span>
+              </div>
               {d.error && (
                 <p className="text-xs text-red-400 mt-0.5 max-w-xs truncate" title={d.error}>{d.error}</p>
               )}
             </TableCell>
-            <TableCell className="text-xs text-zinc-400">
-              {new Date(d.created_at).toLocaleString()}
+            <TableCell className="text-xs text-zinc-400" title={new Date(d.created_at).toLocaleString()}>
+              {timeAgo(d.created_at)}
             </TableCell>
             <TableCell>
               <div className="flex items-center gap-2">

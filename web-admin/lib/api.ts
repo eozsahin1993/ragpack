@@ -24,6 +24,7 @@ export interface Job {
   collection_id: string;
   file_uri: string;
   mime_type: string;
+  intent?: string;
   status: string;
   error?: string;
   created_at: string;

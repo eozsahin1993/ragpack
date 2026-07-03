@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Database, FileText, BriefcaseBusiness } from "lucide-react";
+import { timeAgo } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { DataTable } from "@/components/data-table";
@@ -51,8 +52,8 @@ function JobSection({ title, jobs, onViewAll }: { title: string; jobs: Job[]; on
                 </p>
               )}
             </TableCell>
-            <TableCell className="text-xs text-muted-foreground">
-              {new Date(j.updated_at).toLocaleString()}
+            <TableCell className="text-xs text-muted-foreground" title={new Date(j.updated_at).toLocaleString()}>
+              {timeAgo(j.updated_at)}
             </TableCell>
           </TableRow>
         ))}

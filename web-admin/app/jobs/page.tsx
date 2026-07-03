@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { RefreshCw, Trash2 } from "lucide-react";
+import { useEffect, useCallback, useState } from "react";
+import { RefreshCw, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { timeAgo } from "@/lib/utils";
 import {
   TableCell,
   TableRow,
@@ -23,26 +24,14 @@ function friendlyUri(uri: string) {
   return uri.replace(/^upload:\/\//, "").replace(/^file:\/\//, "");
 }
 
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-}
-
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [collectionNames, setCollectionNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  async function load() {
-    setLoading(true);
+  const fetchJobs = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     try {
       const [jobsData, collectionsData] = await Promise.all([
         api.jobs.all(),
@@ -55,11 +44,13 @@ export default function JobsPage() {
       }
       setCollectionNames(nameMap);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to load jobs");
+      if (showLoading) toast.error(e instanceof Error ? e.message : "Failed to load jobs");
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
-  }
+  }, []);
+
+  function load() { fetchJobs(true); }
 
   async function handleDelete(job: Job) {
     setDeletingId(job.id);
@@ -73,7 +64,14 @@ export default function JobsPage() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { fetchJobs(true); }, [fetchJobs]);
+
+  const hasActive = jobs.some(j => j.status === "pending" || j.status === "processing");
+  useEffect(() => {
+    if (!hasActive) return;
+    const id = setInterval(() => fetchJobs(false), 3000);
+    return () => clearInterval(id);
+  }, [hasActive, fetchJobs]);
 
   const canDelete = (j: Job) => j.status === "complete" || j.status === "failed";
 
@@ -109,11 +107,24 @@ export default function JobsPage() {
             <TableCell className="text-xs text-zinc-500">
               {collectionNames[j.collection_id] ?? j.collection_id.slice(0, 8) + "…"}
             </TableCell>
-            <TableCell className="text-xs text-zinc-500">{j.intent ?? j.mime_type}</TableCell>
             <TableCell>
-              <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${statusColors[j.status] ?? statusColors.queued}`}>
-                {j.status}
-              </span>
+              {j.intent ? (
+                <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${j.intent === "refresh" ? "bg-violet-50 text-violet-600 border-violet-200" : "bg-sky-50 text-sky-600 border-sky-200"}`}>
+                  {j.intent}
+                </span>
+              ) : (
+                <span className="text-xs text-zinc-400">{j.mime_type}</span>
+              )}
+            </TableCell>
+            <TableCell>
+              <div className="flex items-center gap-1.5">
+                {(j.status === "pending" || j.status === "processing") && (
+                  <Loader2 className="w-3 h-3 animate-spin text-amber-500 shrink-0" />
+                )}
+                <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${statusColors[j.status] ?? statusColors.queued}`}>
+                  {j.status}
+                </span>
+              </div>
               {j.error && (
                 <p className="text-xs text-red-400 mt-0.5 max-w-xs truncate" title={j.error}>{j.error}</p>
               )}

@@ -1,4 +1,5 @@
 import { Document } from "@/lib/api";
+import { timeAgo } from "@/lib/utils";
 
 const statusColors: Record<string, string> = {
   complete:  "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -29,7 +30,7 @@ export function DocumentDetails({ doc }: DocumentDetailsProps) {
       </div>
       <div>
         <p className="text-xs text-zinc-400 mb-0.5">Ingested</p>
-        <p className="text-zinc-700">{new Date(doc.created_at).toLocaleString()}</p>
+        <p className="text-zinc-700" title={new Date(doc.created_at).toLocaleString()}>{timeAgo(doc.created_at)}</p>
       </div>
       {doc.error && (
         <div className="col-span-2 sm:col-span-4">
