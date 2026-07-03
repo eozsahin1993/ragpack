@@ -7,7 +7,7 @@ export default function Hero() {
   return (
     <div className={styles.hero}>
       <div className={styles.heroInner}>
-        <div className={styles.heroLeft}>
+        <div className={styles.heroTop}>
           <div className={styles.badge}>Open Source · MIT</div>
           <h1 className={styles.heroTitle}>
             RAG and semantic search,<br />
@@ -32,7 +32,7 @@ export default function Hero() {
             </a>
           </div>
         </div>
-        <div className={styles.heroRight}>
+        <div className={styles.heroTerminals}>
           <Terminal />
         </div>
       </div>

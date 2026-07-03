@@ -1,3 +1,16 @@
+.terminals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .terminals {
+    grid-template-columns: 1fr;
+  }
+}
+
 .terminal {
   border-radius: 12px;
   overflow: hidden;
@@ -20,6 +33,13 @@
   display: inline-block;
 }
 
+.title {
+  margin-left: 8px;
+  font-size: 0.75rem;
+  color: #6c7086;
+  font-family: var(--ifm-font-family-monospace);
+}
+
 .body {
   background: #13131a;
   color: #cdd6f4;
@@ -29,4 +49,17 @@
   line-height: 1.7;
   overflow-x: auto;
   border-radius: 0;
+}
+
+.prompt {
+  color: #6c7086;
+  user-select: none;
+}
+
+.cmd {
+  color: #cdd6f4;
+}
+
+.success {
+  color: #a6e3a1;
 }
