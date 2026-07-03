@@ -4,12 +4,17 @@ Self-hostable semantic search and RAG infrastructure. High-performance, low-cost
 
 ## What it does
 
-- Ingest documents from URLs, file uploads, or S3 — RagPack fetches, parses, chunks, and embeds them automatically
-- Organize documents into **collections** and query them with natural language
-- Get back ranked chunks with similarity scores, ready to drop into any LLM prompt
+- Ingest documents from URLs, file uploads, or S3 — RagPack handles fetching, parsing, chunking, and embedding automatically
+- **Semantic search**: query a collection with natural language and get back ranked, scored chunks ready to use in any LLM prompt
+- **RAG**: send a question with a prompt template and a model — RagPack retrieves the relevant chunks and returns a grounded answer
+- Bring your own embedding model — Ollama or TEI for fully local inference, or any OpenAI-compatible provider
 - Manage everything via REST API or the built-in admin UI
 
 Supported formats: `.txt`, `.md`, `.html`, `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.csv`, `.json`, `.xml`
+
+## Who it's for
+
+Developers who want to add semantic search or RAG to an existing app without building and maintaining the infrastructure themselves. Designed to run on minimal infrastructure — spin it up with `npx ragpack start`, then use the TypeScript SDK or REST API. No pipeline code, no boilerplate, no cloud bill.
 
 ## Quick start
 
@@ -80,7 +85,7 @@ ragpack start --detach
 | Embeddings | Ollama (local), OpenAI, or HuggingFace TEI |
 | Admin UI | Next.js |
 
-The stack is chosen for **low memory footprint** (~20MB idle), a **single static binary** with no runtime dependencies, and **fast query performance** — so RagPack runs comfortably on a $5 VPS, a Raspberry Pi, or a spare Mac Mini.
+The stack is chosen for **low memory footprint** (~20MB idle), a **single static binary** with no runtime dependencies, and **fast query performance** — so RagPack runs comfortably on a $5 VPS or a spare Mac Mini.
 
 ## Configuration
 
@@ -107,6 +112,34 @@ EMBED_RATE_LIMIT=10            # max embed API calls/sec
 ```
 
 Storage defaults to `/data` inside the container, backed by a named Docker volume.
+
+## TypeScript SDK
+
+```bash
+npm install ragpack-js
+```
+
+```ts
+import { RagPack } from "ragpack-js";
+
+const client = new RagPack({ baseUrl: "http://localhost:9000", apiKey: "rp_..." });
+const collection = client.collection("my-docs");
+
+// Ingest a file
+await collection.ingest(file);
+
+// Semantic search — returns ranked chunks
+const results = await collection.findSimilar({ query: "what is RagPack?" });
+
+// RAG — retrieves chunks and returns an LLM answer
+const { answer, chunks } = await collection.rag({
+  query: "How do I configure authentication?",
+  promptSlug: "basic-rag",
+  model: "gpt-4o",
+});
+```
+
+For the full SDK reference, see [ragpack.dev/docs/sdk/js](https://ragpack.dev/docs/sdk/js).
 
 ## API
 
@@ -166,16 +199,24 @@ Supported formats: `.txt`, `.md`, `.html`, `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/collections/:slug/query` | Semantic search |
+| `POST` | `/collections/:slug/query` | Semantic search — returns ranked chunks |
+| `POST` | `/collections/:slug/rag` | RAG — retrieves chunks and returns an LLM answer |
 
 ```bash
+# Semantic search
 curl -X POST http://localhost:9000/api/v1/collections/my-docs/query \
   -H "Authorization: Bearer $RAGPACK_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"query": "how do I configure authentication?", "top_k": 5}'
+
+# RAG
+curl -X POST http://localhost:9000/api/v1/collections/my-docs/rag \
+  -H "Authorization: Bearer $RAGPACK_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "how do I configure authentication?", "top_k": 5, "prompt_slug": "my-prompt", "model": "llama3"}'
 ```
 
-Response includes matched chunks with `chunk_text`, `file_uri`, `distance`, and `similarity` score (0–100).
+The query response includes `chunk_text`, `file_uri`, `distance`, and `similarity` score (0–100). The RAG response adds `answer` and `formatted_prompt`.
 
 ### Documents
 
