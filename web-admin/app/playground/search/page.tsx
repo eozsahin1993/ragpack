@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +23,6 @@ export default function SearchPage() {
   const [topK, setTopK] = useState("5");
   const [results, setResults] = useState<QueryResultItem[] | null>(null);
   const [querying, setQuerying] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     api.collections.list().then(d => {
@@ -36,13 +36,12 @@ export default function SearchPage() {
     e.preventDefault();
     if (!slug) return;
     setQuerying(true);
-    setError("");
     setResults(null);
     try {
       const data = await api.query.run(slug, { query, top_k: parseInt(topK) });
       setResults(data.results ?? []);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Query failed");
+      toast.error(e instanceof Error ? e.message : "Query failed");
     } finally {
       setQuerying(false);
     }
@@ -94,7 +93,6 @@ export default function SearchPage() {
           </div>
         </div>
 
-        {error && <p className="text-red-500 text-sm">{error}</p>}
       </form>
 
       {results !== null && (

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { api, Chunk, Document } from "@/lib/api"; // Document used by useState type inference
 import { Pagination } from "@/components/pagination";
@@ -25,7 +26,6 @@ export default function ChunksPage() {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState("");
 
   async function handleDelete() {
     if (!doc) return;
@@ -35,7 +35,7 @@ export default function ChunksPage() {
       await api.documents.delete(slug, id);
       router.push(`/collections/${slug}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Delete failed");
+      toast.error(e instanceof Error ? e.message : "Delete failed");
       setDeleting(false);
     }
   }
@@ -49,7 +49,7 @@ export default function ChunksPage() {
         setDoc(d);
         setChunks(c.chunks ?? []);
       })
-      .catch(e => setError(e instanceof Error ? e.message : "Failed to load"))
+      .catch(e => toast.error(e instanceof Error ? e.message : "Failed to load"))
       .finally(() => setLoading(false));
   }, [slug, id]);
 
@@ -75,8 +75,6 @@ export default function ChunksPage() {
           </Button>
         )}
       </div>
-
-      {error && <p className="text-sm text-red-500">{error}</p>}
 
       {doc && <DocumentDetails doc={doc} />}
 

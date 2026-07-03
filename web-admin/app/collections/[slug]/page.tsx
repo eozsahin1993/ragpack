@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { api, Collection, Document } from "@/lib/api";
 import { FileUpload } from "./_components/file-upload";
@@ -18,7 +19,6 @@ export default function CollectionPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState("");
 
   const loadDocs = useCallback(async (p = page) => {
     try {
@@ -29,7 +29,7 @@ export default function CollectionPage() {
   }, [slug, page]);
 
   useEffect(() => {
-    api.collections.get(slug).then(setCollection).catch(() => setError("Collection not found"));
+    api.collections.get(slug).then(setCollection).catch(() => toast.error("Collection not found"));
     loadDocs(0);
   }, [slug]);
 
@@ -42,7 +42,7 @@ export default function CollectionPage() {
       await api.collections.delete(slug);
       router.push("/collections");
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Delete failed");
+      toast.error(e instanceof Error ? e.message : "Delete failed");
       setDeleting(false);
     }
   }
@@ -70,11 +70,9 @@ export default function CollectionPage() {
         </Button>
       </div>
 
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-
       <div className="rounded-lg border border-border bg-card shadow-sm p-6 space-y-3">
         <h2 className="text-sm font-medium">Ingest document</h2>
-        <UriIngest slug={slug} onComplete={() => loadDocs(page)} onError={setError} />
+        <UriIngest slug={slug} onComplete={() => loadDocs(page)} />
         <div className="flex items-center gap-3">
           <div className="flex-1 border-t border-border" />
           <span className="text-xs text-muted-foreground">or upload files</span>
@@ -90,7 +88,6 @@ export default function CollectionPage() {
         page={page}
         onPageChange={setPage}
         onReload={() => loadDocs(page)}
-        onError={setError}
       />
     </div>
   );

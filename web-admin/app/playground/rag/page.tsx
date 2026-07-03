@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, Copy, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,7 +28,6 @@ export default function RagPage() {
   const [minSimilarity, setMinSimilarity] = useState("");
   const [ragResult, setRagResult] = useState<RagResponse | null>(null);
   const [querying, setQuerying] = useState(false);
-  const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -53,7 +53,6 @@ export default function RagPage() {
     e.preventDefault();
     if (!slug || !promptSlug) return;
     setQuerying(true);
-    setError("");
     setRagResult(null);
     try {
       const minSim = minSimilarity !== "" ? parseFloat(minSimilarity) : undefined;
@@ -66,7 +65,7 @@ export default function RagPage() {
       });
       setRagResult(data);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "RAG failed");
+      toast.error(e instanceof Error ? e.message : "RAG failed");
     } finally {
       setQuerying(false);
     }
@@ -173,7 +172,6 @@ export default function RagPage() {
           </div>
         </div>
 
-        {error && <p className="text-red-500 text-sm">{error}</p>}
       </form>
 
       {ragResult !== null && (

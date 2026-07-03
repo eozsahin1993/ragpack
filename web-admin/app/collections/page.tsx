@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Trash2, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +31,6 @@ import { DataTable } from "@/components/data-table";
 export default function CollectionsPage() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", embed_model: "" });
   const [creating, setCreating] = useState(false);
@@ -41,7 +41,7 @@ export default function CollectionsPage() {
       const data = await api.collections.list();
       setCollections(data.collections ?? []);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load");
+      toast.error(e instanceof Error ? e.message : "Failed to load collections");
     } finally {
       setLoading(false);
     }
@@ -55,7 +55,6 @@ export default function CollectionsPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setCreating(true);
-    setError("");
     try {
       await api.collections.create({
         name: form.name,
@@ -65,7 +64,7 @@ export default function CollectionsPage() {
       setOpen(false);
       await load();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to create");
+      toast.error(e instanceof Error ? e.message : "Failed to create collection");
     } finally {
       setCreating(false);
     }
@@ -77,7 +76,7 @@ export default function CollectionsPage() {
       await api.collections.delete(slug);
       await load();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to delete");
+      toast.error(e instanceof Error ? e.message : "Failed to delete collection");
     }
   }
 
@@ -131,7 +130,6 @@ export default function CollectionsPage() {
                   </Select>
                 </div>
               )}
-              {error && <p className="text-red-500 text-sm">{error}</p>}
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={creating}>
@@ -141,8 +139,6 @@ export default function CollectionsPage() {
             </form>
           </DialogContent>
         </Dialog>
-
-      {error && !open && <p className="text-red-500 text-sm">{error}</p>}
 
       <DataTable columns={[
         { label: "Name" },

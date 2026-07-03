@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { DataTable } from "@/components/data-table";
 import { Pagination } from "@/components/pagination";
@@ -27,12 +28,11 @@ interface DocumentsTableProps {
   page: number;
   onPageChange: (page: number) => void;
   onReload: () => void;
-  onError: (msg: string) => void;
 }
 
 export { PAGE_SIZE };
 
-export function DocumentsTable({ slug, docs, total, page, onPageChange, onReload, onError }: DocumentsTableProps) {
+export function DocumentsTable({ slug, docs, total, page, onPageChange, onReload }: DocumentsTableProps) {
   const router = useRouter();
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
   const [refreshingDocId, setRefreshingDocId] = useState<string | null>(null);
@@ -43,7 +43,7 @@ export function DocumentsTable({ slug, docs, total, page, onPageChange, onReload
       await api.ingest.refresh(slug, { file_uri: doc.file_uri, mime_type: doc.mime_type });
       onReload();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Refresh failed");
+      toast.error(err instanceof Error ? err.message : "Refresh failed");
     } finally {
       setRefreshingDocId(null);
     }
@@ -56,7 +56,7 @@ export function DocumentsTable({ slug, docs, total, page, onPageChange, onReload
       await api.documents.delete(slug, docId);
       onReload();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Delete failed");
+      toast.error(err instanceof Error ? err.message : "Delete failed");
     } finally {
       setDeletingDocId(null);
     }

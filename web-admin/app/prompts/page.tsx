@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Pencil, Lock, ChevronDown, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +25,6 @@ export default function PromptsPage() {
   const [systemPrompts, setSystemPrompts] = useState<Prompt[]>([]);
   const [userPrompts, setUserPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({ name: "", content: "" });
@@ -41,7 +41,7 @@ export default function PromptsPage() {
       setSystemPrompts(data.system ?? []);
       setUserPrompts(data.user ?? []);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load");
+      toast.error(e instanceof Error ? e.message : "Failed to load prompts");
     } finally {
       setLoading(false);
     }
@@ -52,14 +52,13 @@ export default function PromptsPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setCreating(true);
-    setError("");
     try {
       await api.prompts.create({ name: createForm.name, content: createForm.content });
       setCreateForm({ name: "", content: "" });
       setCreateOpen(false);
       await load();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to create");
+      toast.error(e instanceof Error ? e.message : "Failed to create prompt");
     } finally {
       setCreating(false);
     }
@@ -74,7 +73,6 @@ export default function PromptsPage() {
     e.preventDefault();
     if (!editTarget) return;
     setSaving(true);
-    setError("");
     try {
       await api.prompts.update(editTarget.slug, {
         name: editForm.name !== editTarget.name ? editForm.name : undefined,
@@ -83,7 +81,7 @@ export default function PromptsPage() {
       setEditTarget(null);
       await load();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to save");
+      toast.error(e instanceof Error ? e.message : "Failed to save prompt");
     } finally {
       setSaving(false);
     }
@@ -95,7 +93,7 @@ export default function PromptsPage() {
       await api.prompts.delete(slug);
       await load();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to delete");
+      toast.error(e instanceof Error ? e.message : "Failed to delete prompt");
     }
   }
 
@@ -189,7 +187,6 @@ export default function PromptsPage() {
                   className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm font-mono outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 resize-none"
                 />
               </div>
-              {error && <p className="text-red-500 text-sm">{error}</p>}
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={creating}>{creating ? "Creating…" : "Create"}</Button>
@@ -222,7 +219,6 @@ export default function PromptsPage() {
                   className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm font-mono outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 resize-none"
                 />
               </div>
-              {error && <p className="text-red-500 text-sm">{error}</p>}
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setEditTarget(null)}>Cancel</Button>
                 <Button type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
@@ -230,8 +226,6 @@ export default function PromptsPage() {
             </form>
           </DialogContent>
         </Dialog>
-
-      {error && !createOpen && !editTarget && <p className="text-red-500 text-sm">{error}</p>}
 
       {/* System prompts */}
       <div className="space-y-2">

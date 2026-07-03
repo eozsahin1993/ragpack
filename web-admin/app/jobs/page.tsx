@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import {
   TableCell,
   TableRow,
@@ -20,7 +21,6 @@ const statusColors: Record<string, string> = {
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   async function load() {
     setLoading(true);
@@ -28,7 +28,7 @@ export default function JobsPage() {
       const data = await api.jobs.all();
       setJobs(data.jobs ?? []);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load");
+      toast.error(e instanceof Error ? e.message : "Failed to load jobs");
     } finally {
       setLoading(false);
     }
@@ -43,8 +43,6 @@ export default function JobsPage() {
         description="All ingest jobs across collections"
         action={<button onClick={load} className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-700"><RefreshCw className="w-3.5 h-3.5" /> Refresh</button>}
       />
-
-      {error && <p className="text-red-500 text-sm">{error}</p>}
 
       <DataTable columns={[
         { label: "File URI" },

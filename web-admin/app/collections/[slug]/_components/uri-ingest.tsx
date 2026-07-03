@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
@@ -8,10 +9,9 @@ import { api } from "@/lib/api";
 interface UriIngestProps {
   slug: string;
   onComplete: () => void;
-  onError: (msg: string) => void;
 }
 
-export function UriIngest({ slug, onComplete, onError }: UriIngestProps) {
+export function UriIngest({ slug, onComplete }: UriIngestProps) {
   const [uri, setUri] = useState("");
   const [ingesting, setIngesting] = useState(false);
 
@@ -23,7 +23,7 @@ export function UriIngest({ slug, onComplete, onError }: UriIngestProps) {
       setUri("");
       onComplete();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Ingest failed");
+      toast.error(err instanceof Error ? err.message : "Ingest failed");
     } finally {
       setIngesting(false);
     }
