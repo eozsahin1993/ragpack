@@ -48,6 +48,8 @@ func New(mimeType string) (Parser, error) {
 		return &CSVParser{}, nil
 	case mimeType == "application/json":
 		return &JSONParser{}, nil
+	case mimeType == "application/xml" || mimeType == "text/xml":
+		return &XMLParser{}, nil
 	case strings.HasPrefix(mimeType, "text/"):
 		return &TextParser{}, nil
 	case mimeType == "application/pdf":

@@ -13,6 +13,8 @@ func TestNew_KnownTypes(t *testing.T) {
 		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 		"text/csv",
 		"application/json",
+		"application/xml",
+		"text/xml",
 	}
 	for _, mimeType := range types {
 		result, err := New(mimeType)

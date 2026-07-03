@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -62,12 +63,17 @@ func flattenJSON(prefix string, v interface{}) string {
 func flattenJSONInto(sb *strings.Builder, prefix string, v interface{}) {
 	switch val := v.(type) {
 	case map[string]interface{}:
-		for k, child := range val {
+		keys := make([]string, 0, len(val))
+		for k := range val {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
 			key := k
 			if prefix != "" {
 				key = prefix + "." + k
 			}
-			flattenJSONInto(sb, key, child)
+			flattenJSONInto(sb, key, val[k])
 		}
 	case []interface{}:
 		for i, child := range val {

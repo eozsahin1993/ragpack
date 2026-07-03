@@ -90,19 +90,41 @@ func TestJSONParser_FlatFixture(t *testing.T) {
 	if len(units) != 3 {
 		t.Fatalf("want 3 units, got %d", len(units))
 	}
-	for _, unit := range units {
+
+	want := []string{
+		strings.TrimSpace(`
+department: Engineering
+email: alice@example.com
+id: 1
+joined: 2021-03-15
+location: London
+name: Alice Johnson
+role: Software Engineer`),
+		strings.TrimSpace(`
+department: Product
+email: bob@example.com
+id: 2
+joined: 2020-07-01
+location: Berlin
+name: Bob Smith
+role: Product Manager`),
+		strings.TrimSpace(`
+department: Engineering
+email: carol@example.com
+id: 3
+joined: 2022-01-10
+location: Amsterdam
+name: Carol White
+role: Data Scientist`),
+	}
+
+	for i, unit := range units {
 		if unit.Kind != UnitKindRow {
-			t.Errorf("want kind %q, got %q", UnitKindRow, unit.Kind)
+			t.Errorf("unit %d: want kind %q, got %q", i, UnitKindRow, unit.Kind)
 		}
-	}
-	if !strings.HasPrefix(units[0].Text, "id: 1") && !strings.Contains(units[0].Text, "name: Alice Johnson") {
-		t.Errorf("first unit unexpected content: %q", units[0].Text)
-	}
-	if !strings.Contains(units[0].Text, "role: Software Engineer") {
-		t.Errorf("first unit missing role: %q", units[0].Text)
-	}
-	if !strings.Contains(units[2].Text, "name: Carol White") {
-		t.Errorf("third unit missing name: %q", units[2].Text)
+		if unit.Text != want[i] {
+			t.Errorf("unit %d:\nwant:\n%s\n\ngot:\n%s", i, want[i], unit.Text)
+		}
 	}
 }
 
@@ -117,30 +139,39 @@ func TestJSONParser_NestedFixture(t *testing.T) {
 		t.Fatalf("want 2 units, got %d", len(units))
 	}
 
-	// Nested address fields should be flattened with dot notation
-	if !strings.Contains(units[0].Text, "address.street: 12 Baker Street") {
-		t.Errorf("first unit missing nested street: %q", units[0].Text)
-	}
-	if !strings.Contains(units[0].Text, "address.city: London") {
-		t.Errorf("first unit missing nested city: %q", units[0].Text)
-	}
-	if !strings.Contains(units[0].Text, "address.country: UK") {
-		t.Errorf("first unit missing nested country: %q", units[0].Text)
+	want := []string{
+		strings.TrimSpace(`
+address.city: London
+address.country: UK
+address.street: 12 Baker Street
+id: 1
+meta.active: true
+meta.score: 98.5
+name: Alice Johnson
+role: Software Engineer
+skills.0: Go
+skills.1: Python
+skills.2: Kubernetes`),
+		strings.TrimSpace(`
+address.city: Berlin
+address.country: Germany
+address.street: 45 Unter den Linden
+id: 2
+meta.active: true
+meta.score: 91
+name: Bob Smith
+role: Product Manager
+skills.0: Roadmapping
+skills.1: SQL
+skills.2: Figma`),
 	}
 
-	// Array fields should use index notation
-	if !strings.Contains(units[0].Text, "skills.0: Go") {
-		t.Errorf("first unit missing skills.0: %q", units[0].Text)
-	}
-	if !strings.Contains(units[0].Text, "skills.1: Python") {
-		t.Errorf("first unit missing skills.1: %q", units[0].Text)
-	}
-
-	// Nested meta fields
-	if !strings.Contains(units[0].Text, "meta.score: 98.5") {
-		t.Errorf("first unit missing meta.score: %q", units[0].Text)
-	}
-	if !strings.Contains(units[1].Text, "address.city: Berlin") {
-		t.Errorf("second unit missing nested city: %q", units[1].Text)
+	for i, unit := range units {
+		if unit.Kind != UnitKindRow {
+			t.Errorf("unit %d: want kind %q, got %q", i, UnitKindRow, unit.Kind)
+		}
+		if unit.Text != want[i] {
+			t.Errorf("unit %d:\nwant:\n%s\n\ngot:\n%s", i, want[i], unit.Text)
+		}
 	}
 }

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<employees>
+  <employee>
+    <id>1</id>
+    <name>Alice Johnson</name>
+    <role>Software Engineer</role>
+    <department>Engineering</department>
+    <address>
+      <street>12 Baker Street</street>
+      <city>London</city>
+      <country>UK</country>
+    </address>
+    <skills>
+      <skill>Go</skill>
+      <skill>Python</skill>
+      <skill>Kubernetes</skill>
+    </skills>
+  </employee>
+  <employee>
+    <id>2</id>
+    <name>Bob Smith</name>
+    <role>Product Manager</role>
+    <department>Product</department>
+    <address>
+      <street>45 Unter den Linden</street>
+      <city>Berlin</city>
+      <country>Germany</country>
+    </address>
+    <skills>
+      <skill>Roadmapping</skill>
+      <skill>SQL</skill>
+      <skill>Figma</skill>
+    </skills>
+  </employee>
+  <employee>
+    <id>3</id>
+    <name>Carol White</name>
+    <role>Data Scientist</role>
+    <department>Engineering</department>
+    <address>
+      <street>8 Prinsengracht</street>
+      <city>Amsterdam</city>
+      <country>Netherlands</country>
+    </address>
+    <skills>
+      <skill>Python</skill>
+      <skill>SQL</skill>
+      <skill>PyTorch</skill>
+    </skills>
+  </employee>
+</employees>

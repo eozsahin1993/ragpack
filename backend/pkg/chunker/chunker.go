@@ -85,6 +85,8 @@ func mimeStrategy(mimeType string) string {
 		return StrategySection
 	case mimeType == "text/csv" || mimeType == "application/json":
 		return StrategyRowGroup
+	case mimeType == "application/xml" || mimeType == "text/xml":
+		return StrategyRowGroup
 	case strings.HasPrefix(mimeType, "text/"):
 		return StrategyParagraph
 	case mimeType == "application/pdf":
