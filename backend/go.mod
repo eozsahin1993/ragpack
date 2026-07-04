@@ -13,8 +13,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/joho/godotenv v1.5.1
-	github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728
 	github.com/pressly/goose/v3 v3.27.1
+	golang.org/x/net v0.56.0
 	golang.org/x/time v0.15.0
 	modernc.org/sqlite v1.53.0
 )
@@ -62,7 +62,6 @@ require (
 	golang.org/x/crypto v0.53.0 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/mod v0.36.0 // indirect
-	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260508192327-42602be52be6 // indirect

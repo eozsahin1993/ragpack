@@ -17,7 +17,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     go build -ldflags "-X ragpack/pkg/api.Version=${VERSION}" -o /ragpack ./cmd
 
 FROM ubuntu:24.04
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates poppler-utils && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /ragpack /ragpack
 

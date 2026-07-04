@@ -19,16 +19,16 @@ type Chunk struct {
 //
 //   - Auto:          picks the strategy below based on the file's MIME type.
 //   - Paragraph:     groups blank-line-separated paragraphs up to ChunkSize chars,
-//                    carrying Overlap chars of the previous group into the next.
-//                    Best for prose: plain text, DOCX.
+//     carrying Overlap chars of the previous group into the next.
+//     Best for prose: plain text, DOCX.
 //   - SlidingWindow: fixed-size rolling window over raw text with Overlap chars
-//                    of carry-over. Best for dense continuous text: PDFs.
+//     of carry-over. Best for dense continuous text.
 //   - Section:       one chunk per heading section; oversized sections are split
-//                    with the sliding-window fallback. Best for Markdown, HTML.
-//   - Unit:          one chunk per parser unit (e.g. one slide). Oversized units
-//                    are split. Best for PPTX and other slide-based formats.
+//     with the sliding-window fallback. Best for Markdown, HTML.
+//   - Unit:          one chunk per parser unit (e.g. one paragraph or slide).
+//     Oversized units are split. Best for PDF, PPTX.
 //   - RowGroup:      groups spreadsheet rows up to ChunkSize chars, prepending
-//                    the header row to each group. Best for XLSX.
+//     the header row to each group. Best for XLSX.
 const (
 	StrategyAuto          = "auto"
 	StrategyUnit          = "unit"
@@ -90,7 +90,7 @@ func mimeStrategy(mimeType string) string {
 	case strings.HasPrefix(mimeType, "text/"):
 		return StrategyParagraph
 	case mimeType == "application/pdf":
-		return StrategySlidingWindow
+		return StrategyUnit
 	case mimeType == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
 		return StrategyParagraph
 	case mimeType == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
