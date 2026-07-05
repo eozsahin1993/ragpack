@@ -3,63 +3,15 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Database, FileText, BriefcaseBusiness } from "lucide-react";
-import { timeAgo } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { TableCell, TableRow } from "@/components/ui/table";
-import { DataTable } from "@/components/data-table";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { HealthCard, HealthStatus } from "@/components/dashboard/health-card";
 import { CollectionCard } from "@/components/dashboard/collection-card";
+import { JobsTable } from "@/components/jobs-table";
 import { api, Collection, Job, HealthInfo } from "@/lib/api";
-
-const jobStatusColors: Record<string, string> = {
-  complete:   "badge-success",
-  processing: "badge-warning",
-  pending:    "badge-warning",
-  failed:     "badge-error",
-};
-
-function friendlyUri(uri: string) {
-  return uri.replace(/^upload:\/\//, "").replace(/^file:\/\//, "");
-}
 
 interface CollectionWithDocs extends Collection {
   docCount: number | null;
-}
-
-function JobSection({ title, jobs, onViewAll }: { title: string; jobs: Job[]; onViewAll: () => void }) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{title}</h2>
-        <button className="text-xs text-muted-foreground hover:text-foreground" onClick={onViewAll}>
-          View all →
-        </button>
-      </div>
-      <DataTable columns={[{ label: "File" }, { label: "Status" }, { label: "Updated" }]}>
-        {jobs.map(j => (
-          <TableRow key={j.id}>
-            <TableCell className="font-mono text-xs text-muted-foreground max-w-xs truncate">
-              {friendlyUri(j.file_uri)}
-            </TableCell>
-            <TableCell>
-              <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${jobStatusColors[j.status] ?? ""}`}>
-                {j.status}
-              </span>
-              {j.error && (
-                <p className="text-xs text-red-400 mt-0.5 max-w-xs truncate" title={j.error}>
-                  {j.error}
-                </p>
-              )}
-            </TableCell>
-            <TableCell className="text-xs text-muted-foreground" title={new Date(j.updated_at).toLocaleString()}>
-              {timeAgo(j.updated_at)}
-            </TableCell>
-          </TableRow>
-        ))}
-      </DataTable>
-    </div>
-  );
 }
 
 export default function DashboardPage() {
@@ -254,12 +206,28 @@ export default function DashboardPage() {
 
       {/* Recent jobs */}
       {recentJobs.length > 0 && (
-        <JobSection title="Recent jobs" jobs={recentJobs} onViewAll={() => router.push("/jobs")} />
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recent jobs</h2>
+            <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => router.push("/jobs")}>
+              View all →
+            </button>
+          </div>
+          <JobsTable jobs={recentJobs} />
+        </div>
       )}
 
       {/* Recent failed jobs */}
       {recentFailedJobs.length > 0 && (
-        <JobSection title="Recent failed jobs" jobs={recentFailedJobs} onViewAll={() => router.push("/jobs")} />
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recent failed jobs</h2>
+            <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => router.push("/jobs")}>
+              View all →
+            </button>
+          </div>
+          <JobsTable jobs={recentFailedJobs} />
+        </div>
       )}
     </div>
   );

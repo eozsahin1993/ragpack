@@ -10,13 +10,9 @@ import { Pagination } from "@/components/pagination";
 import { ChunkCard } from "@/components/chunk-card";
 import { DocumentDetails } from "./_components/document-details";
 import { useBreadcrumbLabel } from "@/components/breadcrumb-context";
+import { friendlyUri } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
-
-
-function friendlyUri(uri: string) {
-  return uri.replace(/^upload:\/\//, "").replace(/^file:\/\//, "");
-}
 
 function docLabel(doc: Document) {
   return doc.name ?? friendlyUri(doc.file_uri);

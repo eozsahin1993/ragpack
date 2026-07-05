@@ -8,7 +8,7 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { DataTable } from "@/components/data-table";
 import { Pagination } from "@/components/pagination";
 import { api, Document } from "@/lib/api";
-import { timeAgo } from "@/lib/utils";
+import { timeAgo, friendlyUri, friendlyMimeType } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
 
@@ -18,13 +18,11 @@ const statusColors: Record<string, string> = {
   failed:    "badge-error",
 };
 
-function friendlyUri(uri: string) {
-  return uri.replace(/^upload:\/\//, "").replace(/^file:\/\//, "");
-}
 
 function docLabel(doc: Document) {
   return doc.name ?? friendlyUri(doc.file_uri);
 }
+
 
 interface DocumentsTableProps {
   slug: string;
@@ -108,7 +106,7 @@ export function DocumentsTable({ slug, docs, total, page, onPageChange, onReload
               <p className="text-xs text-zinc-700 truncate">{docLabel(d)}</p>
               {d.name && <p className="text-[10px] text-zinc-400 truncate mt-0.5 font-mono">{friendlyUri(d.file_uri)}</p>}
             </TableCell>
-            <TableCell className="text-xs text-zinc-500">{d.mime_type}</TableCell>
+            <TableCell className="text-xs text-zinc-500">{friendlyMimeType(d.mime_type)}</TableCell>
             <TableCell className="text-xs text-zinc-500">{d.chunk_count}</TableCell>
             <TableCell>
               <div className="flex items-center gap-1.5">

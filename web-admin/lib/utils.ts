@@ -5,6 +5,28 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function friendlyUri(uri: string) {
+  return uri.replace(/^upload:\/\//, "").replace(/^file:\/\//, "");
+}
+
+const MIME_LABELS: Record<string, string> = {
+  "application/pdf":                                                                        "PDF",
+  "text/html":                                                                              "HTML",
+  "text/plain":                                                                             "Text",
+  "text/markdown":                                                                          "Markdown",
+  "text/csv":                                                                               "CSV",
+  "application/json":                                                                       "JSON",
+  "text/xml":                                                                               "XML",
+  "application/xml":                                                                        "XML",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":               "Word",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":                     "Excel",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation":             "PowerPoint",
+};
+
+export function friendlyMimeType(mime: string) {
+  return MIME_LABELS[mime] ?? mime.split("/").pop() ?? mime;
+}
+
 export function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60_000);
