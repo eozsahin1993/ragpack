@@ -128,7 +128,8 @@ export const api = {
       req<void>(`/admin/collections/${slug}`, { method: "DELETE" }),
   },
   jobs: {
-    all: () => req<{ jobs: Job[] }>("/admin/jobs"),
+    all: (limit = 50, offset = 0) =>
+      req<{ jobs: Job[]; total: number; limit: number; offset: number }>(`/admin/jobs?limit=${limit}&offset=${offset}`),
     byCollection: (slug: string) =>
       req<{ jobs: Job[] }>(`/admin/collections/${slug}/jobs`),
     get: (slug: string, id: string) =>

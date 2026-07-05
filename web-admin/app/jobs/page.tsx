@@ -11,6 +11,7 @@ import {
 import { api, Job, Collection } from "@/lib/api";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
+import { Pagination } from "@/components/pagination";
 
 const statusColors: Record<string, string> = {
   complete: "badge-success",
@@ -24,20 +25,25 @@ function friendlyUri(uri: string) {
   return uri.replace(/^upload:\/\//, "").replace(/^file:\/\//, "");
 }
 
+const PAGE_SIZE = 50;
+
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
   const [collectionNames, setCollectionNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchJobs = useCallback(async (showLoading = false) => {
+  const fetchJobs = useCallback(async (showLoading = false, currentPage = page) => {
     if (showLoading) setLoading(true);
     try {
       const [jobsData, collectionsData] = await Promise.all([
-        api.jobs.all(),
+        api.jobs.all(PAGE_SIZE, currentPage * PAGE_SIZE),
         api.collections.list(),
       ]);
       setJobs(jobsData.jobs ?? []);
+      setTotal(jobsData.total ?? 0);
       const nameMap: Record<string, string> = {};
       for (const c of (collectionsData.collections ?? []) as Collection[]) {
         nameMap[c.id] = c.name;
@@ -50,7 +56,12 @@ export default function JobsPage() {
     }
   }, []);
 
-  function load() { fetchJobs(true); }
+  function load() { fetchJobs(true, page); }
+
+  function handlePageChange(newPage: number) {
+    setPage(newPage);
+    fetchJobs(true, newPage);
+  }
 
   async function handleDelete(job: Job) {
     setDeletingId(job.id);
@@ -64,12 +75,12 @@ export default function JobsPage() {
     }
   }
 
-  useEffect(() => { fetchJobs(true); }, [fetchJobs]);
+  useEffect(() => { fetchJobs(true, 0); }, [fetchJobs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasActive = jobs.some(j => j.status === "pending" || j.status === "processing");
   useEffect(() => {
     if (!hasActive) return;
-    const id = setInterval(() => fetchJobs(false), 3000);
+    const id = setInterval(() => fetchJobs(false), 1000);
     return () => clearInterval(id);
   }, [hasActive, fetchJobs]);
 
@@ -145,6 +156,14 @@ export default function JobsPage() {
           </TableRow>
         ))}
       </DataTable>
+
+      <Pagination
+        page={page}
+        totalPages={Math.ceil(total / PAGE_SIZE)}
+        total={total}
+        pageSize={PAGE_SIZE}
+        onPageChange={handlePageChange}
+      />
     </div>
   );
 }

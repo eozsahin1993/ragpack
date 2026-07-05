@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/playground", destination: "/playground/search", permanent: false },
+      { source: "/collections/:slug/documents/:id", destination: "/collections/:slug/documents/:id/chunks", permanent: false },
     ];
   },
 };

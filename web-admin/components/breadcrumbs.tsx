@@ -15,6 +15,8 @@ const LABELS: Record<string, string> = {
   chunks:      "Chunks",
 };
 
+const NO_LINK = new Set(["documents"]);
+
 function isUUID(s: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(s);
 }
@@ -41,8 +43,8 @@ export function Breadcrumbs() {
       {crumbs.map((crumb, i) => (
         <span key={crumb.href} className="flex items-center gap-1.5">
           {i > 0 && <ChevronRight className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />}
-          {i === crumbs.length - 1 ? (
-            <span className="font-medium text-foreground">{crumb.label}</span>
+          {i === crumbs.length - 1 || NO_LINK.has(segments[i]) ? (
+            <span className={i === crumbs.length - 1 ? "font-medium text-foreground" : "text-muted-foreground"}>{crumb.label}</span>
           ) : (
             <Link href={crumb.href} className="text-muted-foreground hover:text-foreground transition-colors">
               {crumb.label}
