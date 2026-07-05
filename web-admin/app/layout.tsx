@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Inter, DM_Sans } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/sidebar";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
-const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-logo" });
+const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-display" });
 
 export const metadata: Metadata = {
   title: "Ragpack",
@@ -15,8 +15,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className={`${spaceGrotesk.variable} flex h-screen bg-background text-foreground antialiased`}>
+    <html lang="en" className={`${inter.variable} ${dmSans.variable}`}>
+      <body className="flex h-screen bg-background text-foreground antialiased">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <main className="flex-1 overflow-y-auto px-6 py-6">

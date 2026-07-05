@@ -127,7 +127,7 @@ export function DocumentsTable({ slug, docs, total, page, onPageChange, onReload
                   <button
                     onClick={e => { e.stopPropagation(); handleRefresh(d); }}
                     disabled={refreshingDocId === d.id || deletingDocId === d.id}
-                    className="text-zinc-300 hover:text-blue-500 transition-colors disabled:opacity-40"
+                    className="text-zinc-300 hover:text-primary transition-colors disabled:opacity-40"
                     title="Re-ingest document"
                   >
                     <RefreshCw className={`w-4 h-4 ${refreshingDocId === d.id ? "animate-spin" : ""}`} />

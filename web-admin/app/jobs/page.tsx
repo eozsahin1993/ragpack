@@ -109,7 +109,7 @@ export default function JobsPage() {
             </TableCell>
             <TableCell>
               {j.intent ? (
-                <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${j.intent === "refresh" ? "bg-violet-50 text-violet-600 border-violet-200" : "bg-sky-50 text-sky-600 border-sky-200"}`}>
+                <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-accent text-primary border-primary/20">
                   {j.intent}
                 </span>
               ) : (

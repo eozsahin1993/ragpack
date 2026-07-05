@@ -52,7 +52,7 @@ export function ChunkCard({
 
       {chunkHeader && (
         <>
-          <div className="flex items-center gap-1.5 text-xs text-indigo-500 font-medium">
+          <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
             <Hash className="w-3 h-3 shrink-0" />
             <span>{chunkHeader}</span>
           </div>
