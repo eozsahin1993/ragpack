@@ -26,6 +26,7 @@ type Job struct {
 	CollectionID string     `db:"collection_id" json:"collection_id"`
 	FileUri      string     `db:"file_uri"      json:"file_uri"`
 	MimeType     string     `db:"mime_type"     json:"mime_type"`
+	DisplayName  *string    `db:"display_name"  json:"display_name,omitempty"`
 	Intent       JobIntent  `db:"intent"        json:"intent"`
 	Force        bool       `db:"force"         json:"force"`
 	Status       JobStatus  `db:"status"        json:"status"`

@@ -19,6 +19,7 @@ type Document struct {
 	JobID        string         `db:"job_id"        json:"job_id"`
 	FileUri      string         `db:"file_uri"      json:"file_uri"`
 	MimeType     string         `db:"mime_type"     json:"mime_type"`
+	Name         *string        `db:"name"          json:"name,omitempty"`
 	ExternalId   *string        `db:"external_id"   json:"external_id,omitempty"`
 	ExtraJSON    *string        `db:"extra_json"    json:"extra_json,omitempty"`
 	ChunkCount   int            `db:"chunk_count"   json:"chunk_count"`
@@ -39,6 +40,7 @@ type DocumentWriter interface {
 	CreateDocument(ctx context.Context, collectionID, jobID, fileUri, mimeType string) (Document, error)
 	ResetDocument(ctx context.Context, docID, newJobID string) (Document, error)
 	UpdateDocumentStatus(ctx context.Context, id string, status DocumentStatus, chunkCount int, docError *string) error
+	UpdateDocumentName(ctx context.Context, id, name string) error
 	DeleteDocument(ctx context.Context, id string) error
 	DeleteDocumentsByCollection(ctx context.Context, collectionID string) error
 }

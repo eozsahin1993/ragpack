@@ -17,7 +17,7 @@ func TestNew_KnownTypes(t *testing.T) {
 		"text/xml",
 	}
 	for _, mimeType := range types {
-		result, err := New(mimeType)
+		result, err := New(mimeType, "")
 		if err != nil {
 			t.Errorf("New(%q) returned error: %v", mimeType, err)
 		}
@@ -28,7 +28,7 @@ func TestNew_KnownTypes(t *testing.T) {
 }
 
 func TestNew_UnknownType(t *testing.T) {
-	_, err := New("application/octet-stream")
+	_, err := New("application/octet-stream", "")
 	if err == nil {
 		t.Error("want error for unknown mime type, got nil")
 	}

@@ -29,8 +29,8 @@ func (s *MetaStore) CreateDocument(ctx context.Context, collectionID, jobID, fil
 	// ON CONFLICT handles the requeue case: a job that was processing when the
 	// server crashed is re-run from scratch, so we reset its document back to ingesting.
 	_, err := s.db.NamedExecContext(ctx, `
-		INSERT INTO documents (id, collection_id, job_id, file_uri, mime_type, external_id, extra_json, chunk_count, status, error, created_at, updated_at)
-		VALUES (:id, :collection_id, :job_id, :file_uri, :mime_type, :external_id, :extra_json, :chunk_count, :status, :error, :created_at, :updated_at)
+		INSERT INTO documents (id, collection_id, job_id, file_uri, mime_type, name, external_id, extra_json, chunk_count, status, error, created_at, updated_at)
+		VALUES (:id, :collection_id, :job_id, :file_uri, :mime_type, :name, :external_id, :extra_json, :chunk_count, :status, :error, :created_at, :updated_at)
 		ON CONFLICT(job_id) DO UPDATE SET
 			status      = 'ingesting',
 			chunk_count = 0,
@@ -44,7 +44,7 @@ func (s *MetaStore) CreateDocument(ctx context.Context, collectionID, jobID, fil
 	// Re-fetch to get the canonical row (may have been the existing record).
 	var existing meta.Document
 	if err := s.db.GetContext(ctx, &existing, `
-		SELECT id, collection_id, job_id, file_uri, mime_type, external_id, extra_json, chunk_count, status, error, created_at, updated_at
+		SELECT id, collection_id, job_id, file_uri, mime_type, name, external_id, extra_json, chunk_count, status, error, created_at, updated_at
 		FROM documents WHERE job_id = ?
 	`, jobID); err != nil {
 		return meta.Document{}, fmt.Errorf("sqlite: fetch document after upsert: %w", err)
@@ -55,7 +55,7 @@ func (s *MetaStore) CreateDocument(ctx context.Context, collectionID, jobID, fil
 func (s *MetaStore) FindDocumentByFileUri(ctx context.Context, collectionID, fileUri string) (*meta.Document, error) {
 	var d meta.Document
 	err := s.db.GetContext(ctx, &d, `
-		SELECT id, collection_id, job_id, file_uri, mime_type, external_id, extra_json, chunk_count, status, error, created_at, updated_at
+		SELECT id, collection_id, job_id, file_uri, mime_type, name, external_id, extra_json, chunk_count, status, error, created_at, updated_at
 		FROM documents
 		WHERE collection_id = ? AND file_uri = ?
 		ORDER BY created_at DESC
@@ -85,7 +85,7 @@ func (s *MetaStore) ResetDocument(ctx context.Context, docID, newJobID string) (
 func (s *MetaStore) GetDocument(ctx context.Context, id string) (meta.Document, error) {
 	var d meta.Document
 	err := s.db.GetContext(ctx, &d, `
-		SELECT id, collection_id, job_id, file_uri, mime_type, external_id, extra_json, chunk_count, status, error, created_at, updated_at
+		SELECT id, collection_id, job_id, file_uri, mime_type, name, external_id, extra_json, chunk_count, status, error, created_at, updated_at
 		FROM documents
 		WHERE id = ?
 	`, id)
@@ -98,7 +98,7 @@ func (s *MetaStore) GetDocument(ctx context.Context, id string) (meta.Document, 
 func (s *MetaStore) ListDocumentsByCollection(ctx context.Context, collectionID string, limit, offset int) ([]meta.Document, error) {
 	var docs []meta.Document
 	err := s.db.SelectContext(ctx, &docs, `
-		SELECT id, collection_id, job_id, file_uri, mime_type, external_id, extra_json, chunk_count, status, error, created_at, updated_at
+		SELECT id, collection_id, job_id, file_uri, mime_type, name, external_id, extra_json, chunk_count, status, error, created_at, updated_at
 		FROM documents
 		WHERE collection_id = ?
 		ORDER BY created_at DESC
@@ -119,6 +119,16 @@ func (s *MetaStore) CountDocumentsByCollection(ctx context.Context, collectionID
 		return 0, fmt.Errorf("sqlite: count documents for collection %q: %w", collectionID, err)
 	}
 	return count, nil
+}
+
+func (s *MetaStore) UpdateDocumentName(ctx context.Context, id, name string) error {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE documents SET name = ?, updated_at = ? WHERE id = ?
+	`, name, time.Now().UTC(), id)
+	if err != nil {
+		return fmt.Errorf("sqlite: update document %q name: %w", id, err)
+	}
+	return nil
 }
 
 func (s *MetaStore) UpdateDocumentStatus(ctx context.Context, id string, status meta.DocumentStatus, chunkCount int, docError *string) error {

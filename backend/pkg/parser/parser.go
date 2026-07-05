@@ -33,17 +33,20 @@ type Unit struct {
 // Parser streams semantic units from a document.
 // Implementations read r and yield one Unit at a time; the caller drives
 // iteration via range, so only a small buffer is in memory at once.
+// Title() returns a human-readable title extracted during Parse(), or nil.
 type Parser interface {
 	Parse(ctx context.Context, r io.ReadCloser) iter.Seq2[Unit, error]
+	Title() *string
 }
 
 // New returns the appropriate Parser for the given MIME type.
-func New(mimeType string) (Parser, error) {
+// sourceURL is passed to the HTML parser for readability; other parsers ignore it.
+func New(mimeType, sourceURL string) (Parser, error) {
 	switch {
 	case mimeType == "text/markdown":
 		return &MarkdownParser{}, nil
 	case mimeType == "text/html":
-		return &HTMLParser{}, nil
+		return &HTMLParser{SourceURL: sourceURL}, nil
 	case mimeType == "text/csv":
 		return &CSVParser{}, nil
 	case mimeType == "application/json":

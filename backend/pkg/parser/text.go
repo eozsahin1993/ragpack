@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"ragpack/pkg/util"
 	"bufio"
 	"context"
 	"io"
@@ -11,7 +12,7 @@ import (
 // TextParser streams paragraphs from plain text files.
 // A blank line signals a paragraph boundary; if no blank lines exist the
 // whole file is emitted as a single unit.
-type TextParser struct{}
+type TextParser struct{ title string }
 
 func (p *TextParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, error] {
 	return func(yield func(Unit, error) bool) {
@@ -38,6 +39,8 @@ func (p *TextParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, e
 			} else {
 				if cur.Len() > 0 {
 					cur.WriteByte('\n')
+				} else if p.title == "" {
+					p.title = line
 				}
 				cur.WriteString(line)
 			}
@@ -49,3 +52,5 @@ func (p *TextParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, e
 		}
 	}
 }
+
+func (p *TextParser) Title() *string { return util.NonEmptyStr(p.title) }

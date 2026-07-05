@@ -22,6 +22,10 @@ function friendlyUri(uri: string) {
   return uri.replace(/^upload:\/\//, "").replace(/^file:\/\//, "");
 }
 
+function docLabel(doc: Document) {
+  return doc.name ?? friendlyUri(doc.file_uri);
+}
+
 interface DocumentsTableProps {
   slug: string;
   docs: Document[];
@@ -100,8 +104,9 @@ export function DocumentsTable({ slug, docs, total, page, onPageChange, onReload
             className="cursor-pointer hover:bg-zinc-50"
             onClick={() => router.push(`/collections/${slug}/documents/${d.id}/chunks`)}
           >
-            <TableCell className="font-mono text-xs text-zinc-600 max-w-xs truncate">
-              {friendlyUri(d.file_uri)}
+            <TableCell className="max-w-xs">
+              <p className="text-xs text-zinc-700 truncate">{docLabel(d)}</p>
+              {d.name && <p className="text-[10px] text-zinc-400 truncate mt-0.5 font-mono">{friendlyUri(d.file_uri)}</p>}
             </TableCell>
             <TableCell className="text-xs text-zinc-500">{d.mime_type}</TableCell>
             <TableCell className="text-xs text-zinc-500">{d.chunk_count}</TableCell>
@@ -134,7 +139,7 @@ export function DocumentsTable({ slug, docs, total, page, onPageChange, onReload
                   </button>
                 )}
                 <button
-                  onClick={e => { e.stopPropagation(); handleDelete(d.id, friendlyUri(d.file_uri)); }}
+                  onClick={e => { e.stopPropagation(); handleDelete(d.id, docLabel(d)); }}
                   disabled={deletingDocId === d.id || refreshingDocId === d.id}
                   className="text-zinc-300 hover:text-red-500 transition-colors disabled:opacity-40"
                   title="Delete document"

@@ -1,20 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { api, Chunk, Document } from "@/lib/api"; // Document used by useState type inference
 import { Pagination } from "@/components/pagination";
 import { ChunkCard } from "@/components/chunk-card";
 import { DocumentDetails } from "./_components/document-details";
+import { useBreadcrumbLabel } from "@/components/breadcrumb-context";
 
 const PAGE_SIZE = 20;
 
 
 function friendlyUri(uri: string) {
   return uri.replace(/^upload:\/\//, "").replace(/^file:\/\//, "");
+}
+
+function docLabel(doc: Document) {
+  return doc.name ?? friendlyUri(doc.file_uri);
 }
 
 export default function ChunksPage() {
@@ -26,10 +31,34 @@ export default function ChunksPage() {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const nameRef = useRef<HTMLInputElement>(null);
+  const setBreadcrumbLabel = useBreadcrumbLabel();
+
+  function startEdit() {
+    if (!doc) return;
+    setNameInput(doc.name ?? docLabel(doc));
+    setEditingName(true);
+    setTimeout(() => nameRef.current?.select(), 0);
+  }
+
+  async function handleSaveName() {
+    if (!doc || !nameInput.trim()) return;
+    try {
+      const updated = await api.documents.update(slug, id, { name: nameInput.trim() });
+      setDoc(updated);
+      setEditingName(false);
+      const label = docLabel(updated);
+      setBreadcrumbLabel(id, label.length > 30 ? label.slice(0, 30) + "…" : label);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update name");
+    }
+  }
 
   async function handleDelete() {
     if (!doc) return;
-    if (!confirm(`Delete "${friendlyUri(doc.file_uri)}"? This removes all indexed chunks.`)) return;
+    if (!confirm(`Delete "${docLabel(doc)}"? This removes all indexed chunks.`)) return;
     setDeleting(true);
     try {
       await api.documents.delete(slug, id);
@@ -48,6 +77,8 @@ export default function ChunksPage() {
       .then(([d, c]) => {
         setDoc(d);
         setChunks(c.chunks ?? []);
+        const label = docLabel(d);
+        setBreadcrumbLabel(id, label.length > 30 ? label.slice(0, 30) + "…" : label);
       })
       .catch(e => toast.error(e instanceof Error ? e.message : "Failed to load"))
       .finally(() => setLoading(false));
@@ -59,9 +90,32 @@ export default function ChunksPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
-        <h1 className="text-xl font-semibold truncate">
-          {doc ? friendlyUri(doc.file_uri) : "Chunks"}
-        </h1>
+        <div className="min-w-0">
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <input
+                ref={nameRef}
+                value={nameInput}
+                onChange={e => setNameInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") handleSaveName(); if (e.key === "Escape") setEditingName(false); }}
+                className="text-xl font-semibold border-b border-primary outline-none bg-transparent w-80"
+                autoFocus
+              />
+              <button onClick={handleSaveName} className="text-xs text-primary hover:underline">Save</button>
+              <button onClick={() => setEditingName(false)} className="text-xs text-zinc-400 hover:underline">Cancel</button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-xl font-semibold truncate">{doc ? docLabel(doc) : "Chunks"}</h1>
+              {doc && (
+                <button onClick={startEdit} className="text-zinc-300 hover:text-zinc-500 shrink-0">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
+          {doc && <p className="text-xs text-zinc-400 font-mono mt-0.5 truncate">{friendlyUri(doc.file_uri)}</p>}
+        </div>
         {doc && (
           <Button
             variant="ghost"

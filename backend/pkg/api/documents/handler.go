@@ -70,6 +70,21 @@ func (h *Handler) Chunks(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"chunks": chunks, "total": len(chunks)})
 }
 
+func (h *Handler) Update(c *fiber.Ctx) error {
+	var req UpdateRequest
+	if err := validate.Body(c, &req); err != nil {
+		return err
+	}
+	if err := h.meta.UpdateDocumentName(c.Context(), c.Params("id"), req.Name); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	doc, err := h.meta.GetDocument(c.Context(), c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(doc)
+}
+
 func (h *Handler) Delete(c *fiber.Ctx) error {
 	doc, err := h.meta.GetDocument(c.Context(), c.Params("id"))
 	if err != nil {

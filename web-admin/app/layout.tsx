@@ -3,6 +3,7 @@ import { Inter, DM_Sans } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/sidebar";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { BreadcrumbProvider } from "@/components/breadcrumb-context";
 import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -20,8 +21,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <main className="flex-1 overflow-y-auto px-6 py-6">
-            <Breadcrumbs />
-            {children}
+            <BreadcrumbProvider>
+              <Breadcrumbs />
+              {children}
+            </BreadcrumbProvider>
           </main>
         </div>
         <Toaster position="bottom-right" richColors />

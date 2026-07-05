@@ -16,6 +16,7 @@ import (
 	"ragpack/pkg/fetcher"
 	"ragpack/pkg/meta"
 	parserpkg "ragpack/pkg/parser"
+	"ragpack/pkg/util"
 )
 
 // failJob marks the job as failed and returns the original error.
@@ -111,7 +112,7 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 		return 0, fmt.Errorf("delete stale chunks: %w", err)
 	}
 
-	p, err := parserpkg.New(job.MimeType)
+	p, err := parserpkg.New(job.MimeType, job.FileUri)
 	if err != nil {
 		return 0, fmt.Errorf("build parser: %w", err)
 	}
@@ -204,5 +205,19 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 		return 0, err
 	}
 
+	name := ""
+	if t := p.Title(); t != nil {
+		name = *t
+	}
+	if name == "" {
+		name = util.NameFromURI(job.FileUri)
+	}
+	if name != "" {
+		if err := wp.metaStore.UpdateDocumentName(ctx, documentID, name); err != nil {
+			log.Printf("ingester: job %s: failed to save document name: %v", job.ID, err)
+		}
+	}
+
 	return chunkCount, nil
 }
+

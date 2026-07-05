@@ -108,3 +108,5 @@ func flattenJSONInto(sb *strings.Builder, prefix string, v interface{}) {
 		// skip null values
 	}
 }
+
+func (p *JSONParser) Title() *string { return nil }

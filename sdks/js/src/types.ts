@@ -49,6 +49,7 @@ export interface Job {
   collection_id: string;
   file_uri: string;
   mime_type: string;
+  display_name?: string;
   status: "pending" | "processing" | "complete" | "failed";
   error?: string;
   created_at: string;
@@ -61,6 +62,7 @@ export interface Document {
   job_id: string;
   file_uri: string;
   mime_type: string;
+  name?: string;
   chunk_count: number;
   status: "ingesting" | "complete" | "failed";
   error?: string;

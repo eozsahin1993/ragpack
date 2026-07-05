@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"ragpack/pkg/util"
 	"bufio"
 	"context"
 	"io"
@@ -11,7 +12,7 @@ import (
 // MarkdownParser streams sections from Markdown documents.
 // Each section spans from one ATX heading to the next; the heading breadcrumb
 // is attached as metadata["heading"] and the body text is emitted separately.
-type MarkdownParser struct{}
+type MarkdownParser struct{ title string }
 
 func (p *MarkdownParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, error] {
 	return func(yield func(Unit, error) bool) {
@@ -45,6 +46,9 @@ func (p *MarkdownParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Uni
 					return
 				}
 				title := strings.TrimSpace(line[level+1:])
+				if p.title == "" && level == 1 {
+					p.title = title
+				}
 				for len(stack) > 0 && stack[len(stack)-1].level >= level {
 					stack = stack[:len(stack)-1]
 				}
@@ -88,3 +92,6 @@ func markdownHeaderLevel(line string) int {
 	}
 	return level
 }
+
+
+func (p *MarkdownParser) Title() *string { return util.NonEmptyStr(p.title) }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
+import { useBreadcrumbLabels } from "@/components/breadcrumb-context";
 
 const LABELS: Record<string, string> = {
   collections: "Collections",
@@ -30,12 +31,13 @@ function labelFor(segment: string): string {
 
 export function Breadcrumbs() {
   const pathname = usePathname();
+  const overrides = useBreadcrumbLabels();
   const segments = pathname.split("/").filter(Boolean);
 
   if (segments.length <= 1 || NO_BREADCRUMB.has(segments[0])) return null;
 
   const crumbs = segments.map((seg, i) => ({
-    label: labelFor(seg),
+    label: overrides[seg] ?? labelFor(seg),
     href: "/" + segments.slice(0, i + 1).join("/"),
   }));
 

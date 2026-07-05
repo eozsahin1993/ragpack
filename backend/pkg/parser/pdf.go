@@ -101,3 +101,5 @@ func parsePdftohtmlOutput(src string) []Unit {
 	}
 	return units
 }
+
+func (p *PDFParser) Title() *string { return nil }

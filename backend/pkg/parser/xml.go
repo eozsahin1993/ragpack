@@ -83,3 +83,5 @@ func (p *XMLParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, er
 		}
 	}
 }
+
+func (p *XMLParser) Title() *string { return nil }

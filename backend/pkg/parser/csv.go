@@ -54,3 +54,5 @@ func (p *CSVParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, er
 		}
 	}
 }
+
+func (p *CSVParser) Title() *string { return nil }

@@ -112,8 +112,9 @@ export default function JobsPage() {
           </TableRow>
         ) : jobs.map(j => (
           <TableRow key={j.id} className="group">
-            <TableCell className="font-mono text-xs text-zinc-600 max-w-xs truncate">
-              {friendlyUri(j.file_uri)}
+            <TableCell className="max-w-xs">
+              <p className="text-xs text-zinc-700 truncate">{j.display_name ?? friendlyUri(j.file_uri)}</p>
+              {j.display_name && <p className="text-[10px] text-zinc-400 truncate mt-0.5 font-mono">{friendlyUri(j.file_uri)}</p>}
             </TableCell>
             <TableCell className="text-xs text-zinc-500">
               {collectionNames[j.collection_id] ?? j.collection_id.slice(0, 8) + "…"}

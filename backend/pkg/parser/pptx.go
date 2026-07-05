@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"ragpack/pkg/util"
 	"context"
 	"fmt"
 	"io"
@@ -10,7 +11,7 @@ import (
 )
 
 // PptxParser streams one Unit per slide from PowerPoint Open XML files.
-type PptxParser struct{}
+type PptxParser struct{ title string }
 
 func (p *PptxParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, error] {
 	return func(yield func(Unit, error) bool) {
@@ -51,6 +52,9 @@ func (p *PptxParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, e
 			if text == "" {
 				continue
 			}
+			if p.title == "" {
+				p.title = strings.SplitN(text, "\n", 2)[0]
+			}
 
 			meta := map[string]string{"slide": fmt.Sprintf("%d", i+1)}
 			if !yield(Unit{Kind: UnitKindSlide, Text: text, Metadata: meta}, nil) {
@@ -59,3 +63,6 @@ func (p *PptxParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, e
 		}
 	}
 }
+
+
+func (p *PptxParser) Title() *string { return util.NonEmptyStr(p.title) }

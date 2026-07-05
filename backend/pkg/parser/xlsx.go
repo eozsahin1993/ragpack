@@ -163,3 +163,5 @@ func xlsxRows(r io.Reader, shared []string) ([][]string, error) {
 	}
 	return rows, nil
 }
+
+func (p *XlsxParser) Title() *string { return nil }

@@ -24,6 +24,7 @@ export interface Job {
   collection_id: string;
   file_uri: string;
   mime_type: string;
+  display_name?: string;
   intent?: string;
   status: string;
   error?: string;
@@ -37,6 +38,7 @@ export interface Document {
   job_id: string;
   file_uri: string;
   mime_type: string;
+  name?: string;
   external_id?: string;
   extra_json?: string;
   chunk_count: number;
@@ -169,6 +171,8 @@ export const api = {
       req<Document>(`/admin/collections/${slug}/documents/${id}`),
     chunks: (slug: string, id: string) =>
       req<{ chunks: Chunk[]; total: number }>(`/admin/collections/${slug}/documents/${id}/chunks`),
+    update: (slug: string, id: string, body: { name: string }) =>
+      req<Document>(`/admin/collections/${slug}/documents/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
     delete: (slug: string, id: string) =>
       req<void>(`/admin/collections/${slug}/documents/${id}`, { method: "DELETE" }),
   },

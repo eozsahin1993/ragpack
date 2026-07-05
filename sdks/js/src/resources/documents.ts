@@ -24,6 +24,18 @@ export class DocumentsResource {
   }
 
   /**
+   * Rename a document.
+   * @param id - The document ID.
+   * @param name - The new display name.
+   */
+  rename(id: string, name: string): Promise<Document> {
+    return this.req<Document>(`/collections/${this.slug}/documents/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    });
+  }
+
+  /**
    * Delete a document and all its chunks from this collection.
    * @param id - The document ID.
    */
