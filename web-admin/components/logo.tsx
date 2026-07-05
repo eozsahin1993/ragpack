@@ -1,7 +1,7 @@
 export function LogoIcon({ size = 48 }: { size?: number }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src="/logo-icon.svg" alt="Ragpack" width={size} height={size} style={{ display: "block" }} />
+    <img src="/logo-only.svg" alt="Ragpack" width={size} height={size} style={{ display: "block" }} />
   );
 }
 

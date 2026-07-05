@@ -51,6 +51,10 @@ const config: Config = {
     },
     navbar: {
       title: 'RagPack',
+      logo: {
+        alt: 'RagPack',
+        src: 'img/logo.svg',
+      },
       items: [
         {
           type: 'docSidebar',

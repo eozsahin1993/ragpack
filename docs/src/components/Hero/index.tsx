@@ -6,6 +6,7 @@ export default function Hero() {
   return (
     <div className={styles.hero}>
       <div className={styles.heroInner}>
+        <img src="/img/logo.svg" alt="RagPack" width={72} height={72} style={{ marginBottom: '1.5rem' }} />
         <div className={styles.badge}>Open Source · MIT</div>
         <h1 className={styles.heroTitle}>
           RAG and semantic search,<br />

@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-display" });
 
 export const metadata: Metadata = {
-  title: "Ragpack",
+  title: "RagPack",
   description: "Ragpack admin dashboard",
 };
 

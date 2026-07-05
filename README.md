@@ -1,20 +1,24 @@
-# RagPack
+<p align="center">
+  <img src="web-admin/public/logo-with-text.svg" width="320" alt="RagPack" />
+</p>
 
-Self-hostable semantic search and RAG infrastructure. High-performance, low-cost, and up in minutes. Bring your own AI — Ollama for local models or any OpenAI-compatible provider.
+<p align="center">
+  Open-source, self-hosted RAG infrastructure built for early-stage startups. High performance, low cost, and simple to run.
+</p>
 
 ## What it does
 
-- Ingest documents from URLs, file uploads, or S3 — RagPack handles fetching, parsing, chunking, and embedding automatically
+- Ingest documents from URLs, file uploads, or S3. RagPack handles fetching, parsing, chunking, and embedding automatically
 - **Semantic search**: query a collection with natural language and get back ranked, scored chunks ready to use in any LLM prompt
-- **RAG**: send a question with a prompt template and a model — RagPack retrieves the relevant chunks and returns a grounded answer
-- Bring your own embedding model — Ollama or TEI for fully local inference, or any OpenAI-compatible provider
+- **RAG**: send a question with a prompt template and a model. RagPack retrieves the relevant chunks and returns a grounded answer
+- Bring your own embedding model. Ollama or TEI for fully local inference, or any OpenAI-compatible provider
 - Manage everything via REST API or the built-in admin UI
 
 Supported formats: `.txt`, `.md`, `.html`, `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.csv`, `.json`, `.xml`
 
 ## Who it's for
 
-Developers who want to add semantic search or RAG to an existing app without building and maintaining the infrastructure themselves. Designed to run on minimal infrastructure — spin it up with `npx ragpack start`, then use the TypeScript SDK or REST API. No pipeline code, no boilerplate, no cloud bill.
+Developers who want to add semantic search or RAG to an existing app without building and maintaining the infrastructure themselves. Designed to run on minimal infrastructure. Spin it up with `npx ragpack start`, then use the TypeScript SDK or REST API. No pipeline code, no boilerplate, no cloud bill.
 
 ## Quick start
 
@@ -45,7 +49,7 @@ With Ollama (fully local):
 npx ragpack start --profile ollama
 ```
 
-With OpenAI — edit `.env.ragpack` first:
+With OpenAI, edit `.env.ragpack` first:
 
 ```env
 EMBED_PROVIDER=openai
@@ -55,7 +59,7 @@ OPENAI_EMBED_MODEL=text-embedding-3-small
 
 Then `npx ragpack start`.
 
-The admin UI opens automatically at [http://localhost:3000](http://localhost:3000). Logs stream in the terminal — Ctrl+C stops following logs without stopping the stack.
+The admin UI opens automatically at [http://localhost:3000](http://localhost:3000). Logs stream in the terminal. Ctrl+C stops following logs without stopping the stack.
 
 For headless/VPS use, start in the background:
 
@@ -85,7 +89,7 @@ ragpack start --detach
 | Embeddings | Ollama (local), OpenAI, or HuggingFace TEI |
 | Admin UI | Next.js |
 
-The stack is chosen for **low memory footprint** (~20MB idle), a **single static binary** with no runtime dependencies, and **fast query performance** — so RagPack runs comfortably on a $5 VPS or a spare Mac Mini.
+The stack is chosen for **low memory footprint** (~20MB idle), a **single static binary** with no runtime dependencies, and **fast query performance**. RagPack runs comfortably on a $5 VPS or a spare Mac Mini.
 
 ## Configuration
 
@@ -128,10 +132,10 @@ const collection = client.collection("my-docs");
 // Ingest a file
 await collection.ingest(file);
 
-// Semantic search — returns ranked chunks
+// Semantic search: returns ranked chunks
 const results = await collection.findSimilar({ query: "what is RagPack?" });
 
-// RAG — retrieves chunks and returns an LLM answer
+// RAG: retrieves chunks and returns an LLM answer
 const { answer, chunks } = await collection.rag({
   query: "How do I configure authentication?",
   promptSlug: "basic-rag",
@@ -199,8 +203,8 @@ Supported formats: `.txt`, `.md`, `.html`, `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/collections/:slug/query` | Semantic search — returns ranked chunks |
-| `POST` | `/collections/:slug/rag` | RAG — retrieves chunks and returns an LLM answer |
+| `POST` | `/collections/:slug/query` | Semantic search, returns ranked chunks |
+| `POST` | `/collections/:slug/rag` | RAG, retrieves chunks and returns an LLM answer |
 
 ```bash
 # Semantic search
@@ -255,10 +259,10 @@ To add a model, edit `backend/pkg/embedder/dimensions.go`.
 
 ## Chunking
 
-- **Markdown** — splits on headers, prepending parent breadcrumbs to each chunk for context
-- **HTML** — converted to Markdown (stripping nav, footer, scripts) then chunked as above
-- **PDF** — text extracted page-by-page, chunked as plain text
-- **Plain text** — sliding window (2000 chars, 200 char overlap)
+- **Markdown**: splits on headers, prepending parent breadcrumbs to each chunk for context
+- **HTML**: converted to Markdown (stripping nav, footer, scripts) then chunked as above
+- **PDF**: text extracted page-by-page, chunked as plain text
+- **Plain text**: sliding window (2000 chars, 200 char overlap)
 
 ## Contributing / local development
 
