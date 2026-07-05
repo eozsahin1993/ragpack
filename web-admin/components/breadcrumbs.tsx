@@ -16,6 +16,7 @@ const LABELS: Record<string, string> = {
 };
 
 const NO_LINK = new Set(["documents"]);
+const NO_BREADCRUMB = new Set(["playground"]);
 
 function isUUID(s: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(s);
@@ -31,7 +32,7 @@ export function Breadcrumbs() {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
 
-  if (segments.length <= 1) return null;
+  if (segments.length <= 1 || NO_BREADCRUMB.has(segments[0])) return null;
 
   const crumbs = segments.map((seg, i) => ({
     label: labelFor(seg),

@@ -1,4 +1,5 @@
 FROM ghcr.io/eozsahin1993/ragpack-builder:latest
+RUN apt-get update && apt-get install -y poppler-utils && rm -rf /var/lib/apt/lists/*
 RUN go install github.com/air-verse/air@latest
 WORKDIR /app
 CMD ["air"]
