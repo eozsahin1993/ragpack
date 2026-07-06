@@ -45,6 +45,13 @@ const config: Config = {
   ],
 
   themeConfig: {
+    image: 'img/social-card.png',
+    metadata: [
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:site', content: '@ragpackdev' },
+      { property: 'og:type', content: 'website' },
+      { property: 'og:site_name', content: 'RagPack' },
+    ],
     colorMode: {
       defaultMode: 'dark',
       respectPrefersColorScheme: true,
