@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"ragpack/pkg/util"
 	"context"
 	"fmt"
 	"io"
@@ -16,7 +17,7 @@ import (
 // PDFParser extracts one Unit per paragraph using pdftohtml (poppler).
 // pdftohtml marks blank lines with &#160;<br/> pairs which we use as
 // paragraph separators — no position heuristics needed.
-type PDFParser struct{}
+type PDFParser struct{ title string }
 
 func (p *PDFParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, error] {
 	return func(yield func(Unit, error) bool) {
@@ -34,7 +35,10 @@ func (p *PDFParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Unit, er
 			return
 		}
 
-		for _, u := range units {
+		for i, u := range units {
+			if i == 0 {
+				p.title = u.Text
+			}
 			if !yield(u, nil) {
 				return
 			}
@@ -102,4 +106,4 @@ func parsePdftohtmlOutput(src string) []Unit {
 	return units
 }
 
-func (p *PDFParser) Title() *string { return nil }
+func (p *PDFParser) Title() *string { return util.NonEmptyStr(p.title) }
