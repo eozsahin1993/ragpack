@@ -77,5 +77,6 @@ Response includes matched chunks with `chunk_text`, `file_uri`, `distance`, and 
 |---|---|---|
 | `GET` | `/collections/:slug/documents` | List ingested documents (paginated) |
 | `GET` | `/collections/:slug/documents/:id` | Get a document |
+| `PATCH` | `/collections/:slug/documents/:id` | Rename a document (`{"name": "New Name"}`) |
 | `DELETE` | `/collections/:slug/documents/:id` | Delete a document and its chunks |
 | `GET` | `/collections/:slug/documents/:id/chunks` | List all chunks |

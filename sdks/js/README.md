@@ -77,6 +77,7 @@ Returns a `CollectionClient` scoped to that collection.
 | `jobs.get(id)`                      | Get a single job by ID                   |
 | `jobs.waitUntilComplete(id)`        | Poll until job is `complete` or `failed` |
 | `documents.list(options?)`          | List indexed documents                   |
+| `documents.rename(id, name)`        | Set the display name of a document       |
 | `documents.delete(id)`              | Delete a document and its chunks         |
 
 #### `rag(options)`
