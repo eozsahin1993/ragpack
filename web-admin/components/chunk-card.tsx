@@ -4,6 +4,7 @@ interface ChunkCardProps {
   chunkIndex: number;
   chunkText?: string | null;
   chunkHeader?: string | null;
+  extraJSON?: string | null;
   /** Source document name — shown in search/RAG context */
   source?: string;
   /** File URI shown below the text */
@@ -18,6 +19,7 @@ export function ChunkCard({
   chunkIndex,
   chunkText,
   chunkHeader,
+  extraJSON,
   source,
   fileUri,
   similarity,
@@ -65,6 +67,20 @@ export function ChunkCard({
       </p>
 
       {fileUri && <p className="text-xs text-zinc-400 font-mono">{fileUri}</p>}
+
+      {extraJSON && (
+        <pre className="text-xs font-mono bg-zinc-50 border border-zinc-100 rounded p-2 overflow-x-auto text-zinc-500 whitespace-pre-wrap break-all">
+          {formatJSON(extraJSON)}
+        </pre>
+      )}
     </div>
   );
+}
+
+function formatJSON(raw: string): string {
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw;
+  }
 }

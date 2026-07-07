@@ -23,6 +23,7 @@ export default function SearchPage() {
   const [topK, setTopK] = useState("5");
   const [results, setResults] = useState<QueryResultItem[] | null>(null);
   const [querying, setQuerying] = useState(false);
+  const [showProperties, setShowProperties] = useState(false);
 
   useEffect(() => {
     api.collections.list().then(d => {
@@ -97,7 +98,20 @@ export default function SearchPage() {
 
       {results !== null && (
         <div className="space-y-3">
-          <p className="text-sm text-zinc-500">{results.length} result{results.length !== 1 ? "s" : ""}</p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-zinc-500">{results.length} result{results.length !== 1 ? "s" : ""}</p>
+            {results.some(r => r.extra_json) && (
+              <label className="flex items-center gap-2 text-xs text-zinc-500 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={showProperties}
+                  onChange={e => setShowProperties(e.target.checked)}
+                  className="rounded"
+                />
+                Show file properties
+              </label>
+            )}
+          </div>
           {results.length === 0 ? (
             <div className="rounded-lg border bg-white px-6 py-10 text-center text-zinc-400 text-sm">
               No results found.
@@ -111,6 +125,7 @@ export default function SearchPage() {
               similarity={r.similarity}
               chunkHeader={r.chunk_header}
               chunkText={r.chunk_text}
+              extraJSON={showProperties ? r.extra_json : null}
             />
           ))}
         </div>

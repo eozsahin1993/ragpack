@@ -21,18 +21,36 @@ interface FileUploadProps {
 export function FileUpload({ slug, onComplete }: FileUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [queue, setQueue] = useState<UploadItem[]>([]);
+  const [extraJSON, setExtraJSON] = useState("");
+  const [jsonError, setJsonError] = useState(false);
+
+  function handleExtraJSONChange(value: string) {
+    setExtraJSON(value);
+    if (value.trim() === "") {
+      setJsonError(false);
+    } else {
+      try {
+        JSON.parse(value);
+        setJsonError(false);
+      } catch {
+        setJsonError(true);
+      }
+    }
+  }
 
   async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (jsonError) return;
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
     if (fileInputRef.current) fileInputRef.current.value = "";
 
+    const metadata = extraJSON.trim() || undefined;
     setQueue(files.map(f => ({ name: f.name, status: "pending" })));
 
     for (let i = 0; i < files.length; i++) {
       setQueue(q => q.map((item, idx) => idx === i ? { ...item, status: "uploading" } : item));
       try {
-        await api.ingest.upload(slug, files[i]);
+        await api.ingest.upload(slug, files[i], metadata);
         setQueue(q => q.map((item, idx) => idx === i ? { ...item, status: "done" } : item));
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Upload failed";
@@ -46,7 +64,23 @@ export function FileUpload({ slug, onComplete }: FileUploadProps) {
   const uploading = queue.some(f => f.status === "uploading");
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
+      <div>
+        <textarea
+          value={extraJSON}
+          onChange={e => handleExtraJSONChange(e.target.value)}
+          placeholder='Metadata JSON (optional) — e.g. {"author": "Alice"}'
+          rows={2}
+          className={`w-full rounded-md border px-3 py-2 text-xs font-mono resize-none bg-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 ${
+            jsonError
+              ? "border-red-300 focus:ring-red-300"
+              : "border-zinc-200 focus:ring-zinc-300"
+          }`}
+        />
+        {jsonError && (
+          <p className="text-xs text-red-500 mt-0.5">Must be valid JSON</p>
+        )}
+      </div>
       <input
         ref={fileInputRef}
         type="file"
@@ -57,7 +91,7 @@ export function FileUpload({ slug, onComplete }: FileUploadProps) {
       />
       <Button
         type="button"
-        disabled={uploading}
+        disabled={uploading || jsonError}
         onClick={() => fileInputRef.current?.click()}
         className="gap-2 w-full"
       >

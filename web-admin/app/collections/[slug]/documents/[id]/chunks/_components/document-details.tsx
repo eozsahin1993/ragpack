@@ -32,6 +32,14 @@ export function DocumentDetails({ doc }: DocumentDetailsProps) {
         <p className="text-xs text-zinc-400 mb-0.5">Ingested</p>
         <p className="text-zinc-700" title={new Date(doc.created_at).toLocaleString()}>{timeAgo(doc.created_at)}</p>
       </div>
+      {doc.extra_json && (
+        <div className="col-span-2 sm:col-span-4">
+          <p className="text-xs text-zinc-400 mb-0.5">Metadata</p>
+          <pre className="text-xs font-mono bg-zinc-50 border border-zinc-100 rounded p-2 overflow-x-auto text-zinc-700 whitespace-pre-wrap break-all">
+            {formatJSON(doc.extra_json)}
+          </pre>
+        </div>
+      )}
       {doc.error && (
         <div className="col-span-2 sm:col-span-4">
           <p className="text-xs text-red-400">{doc.error}</p>
@@ -39,4 +47,12 @@ export function DocumentDetails({ doc }: DocumentDetailsProps) {
       )}
     </div>
   );
+}
+
+function formatJSON(raw: string): string {
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw;
+  }
 }

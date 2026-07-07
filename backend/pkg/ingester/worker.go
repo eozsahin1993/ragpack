@@ -64,7 +64,7 @@ func (wp *WorkerPool) processJob(ctx context.Context, item queueItem) error {
 		}
 		docID = doc.ID
 	} else {
-		doc, err := wp.metaStore.CreateDocument(ctx, job.CollectionID, jobID, job.FileUri, job.MimeType)
+		doc, err := wp.metaStore.CreateDocument(ctx, job.CollectionID, jobID, job.FileUri, job.MimeType, job.ExtraJSON)
 		if err != nil {
 			return wp.failJob(ctx, jobID, err)
 		}
@@ -180,6 +180,7 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 				SourceName:  collection.Name,
 				ChunkText:   &ch.Text,
 				ChunkHeader: ch.Header,
+				ExtraJSON:   job.ExtraJSON,
 			}
 		}
 		if err := wp.vectorDb.InsertBatch(ctx, collection.TableName, records); err != nil {

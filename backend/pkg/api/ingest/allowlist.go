@@ -7,9 +7,13 @@ import (
 )
 
 var allowedMIMETypes = map[string]struct{}{
-	"text/plain":    {},
-	"text/markdown": {},
-	"text/html":     {},
+	"text/plain":       {},
+	"text/markdown":    {},
+	"text/html":        {},
+	"text/csv":         {},
+	"text/xml":         {},
+	"application/json": {},
+	"application/xml":  {},
 	"application/pdf":                                                             {},
 	"application/vnd.openxmlformats-officedocument.wordprocessingml.document":   {},
 	"application/vnd.openxmlformats-officedocument.presentationml.presentation": {},
@@ -26,6 +30,9 @@ var allowedExtensions = map[string]struct{}{
 	".docx":     {},
 	".pptx":     {},
 	".xlsx":     {},
+	".csv":      {},
+	".json":     {},
+	".xml":      {},
 }
 
 // validateFile checks both the file extension and MIME type against the allowlists.

@@ -37,7 +37,7 @@ type DocumentReader interface {
 }
 
 type DocumentWriter interface {
-	CreateDocument(ctx context.Context, collectionID, jobID, fileUri, mimeType string) (Document, error)
+	CreateDocument(ctx context.Context, collectionID, jobID, fileUri, mimeType string, extraJSON *string) (Document, error)
 	ResetDocument(ctx context.Context, docID, newJobID string) (Document, error)
 	UpdateDocumentStatus(ctx context.Context, id string, status DocumentStatus, chunkCount int, docError *string) error
 	UpdateDocumentName(ctx context.Context, id, name string) error

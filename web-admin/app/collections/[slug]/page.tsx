@@ -6,8 +6,6 @@ import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { api, Collection, Document } from "@/lib/api";
-import { FileUpload } from "./_components/file-upload";
-import { UriIngest } from "./_components/uri-ingest";
 import { DocumentsTable, PAGE_SIZE } from "./_components/documents-table";
 
 export default function CollectionPage() {
@@ -77,17 +75,6 @@ export default function CollectionPage() {
         </Button>
       </div>
 
-      <div className="rounded-lg border border-border bg-card shadow-sm p-6 space-y-3">
-        <h2 className="text-sm font-medium">Ingest document</h2>
-        <UriIngest slug={slug} onComplete={() => loadDocs(page)} />
-        <div className="flex items-center gap-3">
-          <div className="flex-1 border-t border-border" />
-          <span className="text-xs text-muted-foreground">or upload files</span>
-          <div className="flex-1 border-t border-border" />
-        </div>
-        <FileUpload slug={slug} onComplete={() => loadDocs(page)} />
-      </div>
-
       <DocumentsTable
         slug={slug}
         docs={docs}
@@ -95,6 +82,7 @@ export default function CollectionPage() {
         page={page}
         onPageChange={setPage}
         onReload={() => loadDocs(page)}
+        onIngest={() => router.push(`/collections/${slug}/ingest`)}
       />
     </div>
   );

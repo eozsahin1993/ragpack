@@ -27,6 +27,7 @@ type Job struct {
 	FileUri      string     `db:"file_uri"      json:"file_uri"`
 	MimeType     string     `db:"mime_type"     json:"mime_type"`
 	DisplayName  *string    `db:"display_name"  json:"display_name,omitempty"`
+	ExtraJSON    *string    `db:"extra_json"    json:"extra_json,omitempty"`
 	Intent       JobIntent  `db:"intent"        json:"intent"`
 	Force        bool       `db:"force"         json:"force"`
 	Status       JobStatus  `db:"status"        json:"status"`
@@ -50,7 +51,7 @@ type JobReader interface {
 }
 
 type JobWriter interface {
-	CreateJob(ctx context.Context, collectionID, fileUri, mimeType string, intent JobIntent, force bool) (Job, error)
+	CreateJob(ctx context.Context, collectionID, fileUri, mimeType string, intent JobIntent, force bool, extraJSON *string) (Job, error)
 	UpdateJobStatus(ctx context.Context, id string, status JobStatus, jobError *string) error
 	DeleteJob(ctx context.Context, id string) error
 }

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, RefreshCw, Loader2 } from "lucide-react";
+import { Trash2, RefreshCw, Loader2, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { DataTable } from "@/components/data-table";
@@ -31,11 +32,12 @@ interface DocumentsTableProps {
   page: number;
   onPageChange: (page: number) => void;
   onReload: () => void;
+  onIngest: () => void;
 }
 
 export { PAGE_SIZE };
 
-export function DocumentsTable({ slug, docs, total, page, onPageChange, onReload }: DocumentsTableProps) {
+export function DocumentsTable({ slug, docs, total, page, onPageChange, onReload, onIngest }: DocumentsTableProps) {
   const router = useRouter();
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
   const [refreshingDocId, setRefreshingDocId] = useState<string | null>(null);
@@ -74,12 +76,10 @@ export function DocumentsTable({ slug, docs, total, page, onPageChange, onReload
           <h2 className="font-medium">Documents</h2>
           {total > 0 && <p className="text-xs text-zinc-400 mt-0.5">{total} total</p>}
         </div>
-        <button
-          onClick={onReload}
-          className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-700"
-        >
-          <RefreshCw className="w-3.5 h-3.5" /> Refresh
-        </button>
+        <Button size="sm" onClick={onIngest}>
+          <Plus className="w-4 h-4 mr-1" />
+          Ingest
+        </Button>
       </div>
 
       <DataTable columns={[

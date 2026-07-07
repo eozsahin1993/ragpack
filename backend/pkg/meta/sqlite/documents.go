@@ -12,7 +12,7 @@ import (
 	"ragpack/pkg/meta"
 )
 
-func (s *MetaStore) CreateDocument(ctx context.Context, collectionID, jobID, fileUri, mimeType string) (meta.Document, error) {
+func (s *MetaStore) CreateDocument(ctx context.Context, collectionID, jobID, fileUri, mimeType string, extraJSON *string) (meta.Document, error) {
 	now := time.Now().UTC()
 	d := meta.Document{
 		ID:           uuid.NewString(),
@@ -20,6 +20,7 @@ func (s *MetaStore) CreateDocument(ctx context.Context, collectionID, jobID, fil
 		JobID:        jobID,
 		FileUri:      fileUri,
 		MimeType:     mimeType,
+		ExtraJSON:    extraJSON,
 		ChunkCount:   0,
 		Status:       meta.DocumentStatusIngesting,
 		CreatedAt:    now,

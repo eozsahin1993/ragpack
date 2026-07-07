@@ -140,19 +140,20 @@ export const api = {
       req<void>(`/admin/jobs/${id}`, { method: "DELETE" }),
   },
   ingest: {
-    uri: (slug: string, body: { file_uri: string; mime_type: string }) =>
+    uri: (slug: string, body: { file_uri: string; mime_type: string; extra_json?: string }) =>
       req<Job>(`/admin/collections/${slug}/ingest`, {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    refresh: (slug: string, body: { file_uri: string; mime_type: string }) =>
+    refresh: (slug: string, body: { file_uri: string; mime_type: string; extra_json?: string }) =>
       req<Job>(`/admin/collections/${slug}/ingest?refresh=true`, {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    upload: async (slug: string, file: File): Promise<Job> => {
+    upload: async (slug: string, file: File, extraJSON?: string): Promise<Job> => {
       const form = new FormData();
       form.append("file", file);
+      if (extraJSON) form.append("extra_json", extraJSON);
       const res = await fetch(`/admin/collections/${slug}/ingest`, {
         method: "POST",
         body: form,

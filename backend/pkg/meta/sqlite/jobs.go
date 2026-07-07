@@ -12,7 +12,7 @@ import (
 	"ragpack/pkg/util"
 )
 
-func (s *MetaStore) CreateJob(ctx context.Context, collectionID, fileUri, mimeType string, intent meta.JobIntent, force bool) (meta.Job, error) {
+func (s *MetaStore) CreateJob(ctx context.Context, collectionID, fileUri, mimeType string, intent meta.JobIntent, force bool, extraJSON *string) (meta.Job, error) {
 	now := time.Now().UTC()
 	displayName := util.NameFromURI(fileUri)
 	j := meta.Job{
@@ -21,6 +21,7 @@ func (s *MetaStore) CreateJob(ctx context.Context, collectionID, fileUri, mimeTy
 		FileUri:      fileUri,
 		MimeType:     mimeType,
 		DisplayName:  util.NonEmptyStr(displayName),
+		ExtraJSON:    extraJSON,
 		Intent:       intent,
 		Force:        force,
 		Status:       meta.JobStatusPending,
@@ -29,8 +30,8 @@ func (s *MetaStore) CreateJob(ctx context.Context, collectionID, fileUri, mimeTy
 	}
 
 	_, err := s.db.NamedExecContext(ctx, `
-		INSERT INTO jobs (id, collection_id, file_uri, mime_type, display_name, intent, force, status, executed_at, created_at, updated_at)
-		VALUES (:id, :collection_id, :file_uri, :mime_type, :display_name, :intent, :force, :status, :executed_at, :created_at, :updated_at)
+		INSERT INTO jobs (id, collection_id, file_uri, mime_type, display_name, extra_json, intent, force, status, executed_at, created_at, updated_at)
+		VALUES (:id, :collection_id, :file_uri, :mime_type, :display_name, :extra_json, :intent, :force, :status, :executed_at, :created_at, :updated_at)
 	`, j)
 	if err != nil {
 		return meta.Job{}, fmt.Errorf("sqlite: create job: %w", err)
