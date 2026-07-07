@@ -39,4 +39,5 @@ type VectorDb interface {
 	QuerySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int) ([]ChunkQueryResult, error)
 	DeleteChunksByDocument(ctx context.Context, tableName, documentID string) error
 	ListChunksByDocument(ctx context.Context, tableName, documentID string) ([]ChunkDbRecord, error)
+	UpdateChunksExtraJSON(ctx context.Context, tableName, documentID string, extraJSON *string) error
 }

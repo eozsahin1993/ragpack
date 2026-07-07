@@ -72,13 +72,37 @@ func (h *Handler) Chunks(c *fiber.Ctx) error {
 
 func (h *Handler) Update(c *fiber.Ctx) error {
 	var req UpdateRequest
-	if err := validate.Body(c, &req); err != nil {
-		return err
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
 	}
-	if err := h.meta.UpdateDocumentName(c.Context(), c.Params("id"), req.Name); err != nil {
+	if err := req.Validate(); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	docID := c.Params("id")
+
+	if err := h.meta.UpdateDocument(c.Context(), docID, meta.DocumentPatch{
+		Name:      req.Name,
+		ExtraJSON: req.ExtraJSON,
+	}); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	doc, err := h.meta.GetDocument(c.Context(), c.Params("id"))
+
+	if req.ExtraJSON != nil {
+		doc, err := h.meta.GetDocument(c.Context(), docID)
+		if err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "document not found"})
+		}
+		col, err := h.meta.GetCollectionByID(c.Context(), doc.CollectionID)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "collection not found"})
+		}
+		if err := h.vec.UpdateChunksExtraJSON(c.Context(), col.TableName, docID, req.ExtraJSON); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+	}
+
+	doc, err := h.meta.GetDocument(c.Context(), docID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

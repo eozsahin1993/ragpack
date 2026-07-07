@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -122,12 +123,28 @@ func (s *MetaStore) CountDocumentsByCollection(ctx context.Context, collectionID
 	return count, nil
 }
 
-func (s *MetaStore) UpdateDocumentName(ctx context.Context, id, name string) error {
-	_, err := s.db.ExecContext(ctx, `
-		UPDATE documents SET name = ?, updated_at = ? WHERE id = ?
-	`, name, time.Now().UTC(), id)
+func (s *MetaStore) UpdateDocument(ctx context.Context, id string, patch meta.DocumentPatch) error {
+	var clauses []string
+	var args []interface{}
+
+	if patch.Name != nil {
+		clauses = append(clauses, "name = ?")
+		args = append(args, *patch.Name)
+	}
+	if patch.ExtraJSON != nil {
+		clauses = append(clauses, "extra_json = ?")
+		args = append(args, *patch.ExtraJSON)
+	}
+	if len(clauses) == 0 {
+		return nil
+	}
+
+	clauses = append(clauses, "updated_at = ?")
+	args = append(args, time.Now().UTC(), id)
+
+	_, err := s.db.ExecContext(ctx, "UPDATE documents SET "+strings.Join(clauses, ", ")+" WHERE id = ?", args...)
 	if err != nil {
-		return fmt.Errorf("sqlite: update document %q name: %w", id, err)
+		return fmt.Errorf("sqlite: update document %q: %w", id, err)
 	}
 	return nil
 }

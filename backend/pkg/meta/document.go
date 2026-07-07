@@ -29,6 +29,13 @@ type Document struct {
 	UpdatedAt    time.Time      `db:"updated_at"    json:"updated_at"`
 }
 
+// DocumentPatch holds optional fields for a partial document update.
+// Only non-nil fields are applied.
+type DocumentPatch struct {
+	Name      *string
+	ExtraJSON *string
+}
+
 type DocumentReader interface {
 	GetDocument(ctx context.Context, id string) (Document, error)
 	ListDocumentsByCollection(ctx context.Context, collectionID string, limit, offset int) ([]Document, error)
@@ -39,8 +46,8 @@ type DocumentReader interface {
 type DocumentWriter interface {
 	CreateDocument(ctx context.Context, collectionID, jobID, fileUri, mimeType string, extraJSON *string) (Document, error)
 	ResetDocument(ctx context.Context, docID, newJobID string) (Document, error)
+	UpdateDocument(ctx context.Context, id string, patch DocumentPatch) error
 	UpdateDocumentStatus(ctx context.Context, id string, status DocumentStatus, chunkCount int, docError *string) error
-	UpdateDocumentName(ctx context.Context, id, name string) error
 	DeleteDocument(ctx context.Context, id string) error
 	DeleteDocumentsByCollection(ctx context.Context, collectionID string) error
 }

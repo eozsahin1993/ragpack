@@ -122,6 +122,24 @@ func (l *VectorDb) ListChunksByDocument(ctx context.Context, tableName, document
 	return chunks, nil
 }
 
+func (l *VectorDb) UpdateChunksExtraJSON(ctx context.Context, tableName, documentID string, extraJSON *string) error {
+	tbl, err := l.conn.OpenTable(ctx, tableName)
+	if err != nil {
+		return fmt.Errorf("lancedb: open table %s: %w", tableName, err)
+	}
+	defer tbl.Close()
+
+	var value interface{}
+	if extraJSON != nil {
+		value = *extraJSON
+	}
+
+	if err := tbl.Update(ctx, fmt.Sprintf("document_id = '%s'", documentID), map[string]interface{}{"extra_json": value}); err != nil {
+		return fmt.Errorf("lancedb: update extra_json for document %s: %w", documentID, err)
+	}
+	return nil
+}
+
 func (l *VectorDb) QuerySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int) ([]db.ChunkQueryResult, error) {
 	tbl, err := l.conn.OpenTable(ctx, tableName)
 	if err != nil {

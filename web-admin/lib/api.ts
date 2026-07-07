@@ -172,7 +172,7 @@ export const api = {
       req<Document>(`/admin/collections/${slug}/documents/${id}`),
     chunks: (slug: string, id: string) =>
       req<{ chunks: Chunk[]; total: number }>(`/admin/collections/${slug}/documents/${id}/chunks`),
-    update: (slug: string, id: string, body: { name: string }) =>
+    update: (slug: string, id: string, body: { name?: string; extra_json?: string }) =>
       req<Document>(`/admin/collections/${slug}/documents/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
     delete: (slug: string, id: string) =>
       req<void>(`/admin/collections/${slug}/documents/${id}`, { method: "DELETE" }),

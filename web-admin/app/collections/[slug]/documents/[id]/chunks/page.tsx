@@ -126,7 +126,7 @@ export default function ChunksPage() {
         )}
       </div>
 
-      {doc && <DocumentDetails doc={doc} />}
+      {doc && <DocumentDetails doc={doc} slug={slug} onUpdate={setDoc} />}
 
       {/* Chunks */}
       {loading ? (

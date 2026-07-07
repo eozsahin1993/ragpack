@@ -214,7 +214,7 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 		name = util.NameFromURI(job.FileUri)
 	}
 	if name != "" {
-		if err := wp.metaStore.UpdateDocumentName(ctx, documentID, name); err != nil {
+		if err := wp.metaStore.UpdateDocument(ctx, documentID, meta.DocumentPatch{Name: &name}); err != nil {
 			log.Printf("ingester: job %s: failed to save document name: %v", job.ID, err)
 		}
 	}
