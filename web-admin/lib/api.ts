@@ -60,6 +60,15 @@ export interface Chunk {
   created_at: string;
 }
 
+export interface MetadataField {
+  id: string;
+  collection_id: string;
+  name: string;
+  type: "str" | "num" | "bool" | "date" | "arr";
+  slot: number;
+  created_at: string;
+}
+
 export interface QueryResultItem {
   source: string;
   file_uri: string;
@@ -68,6 +77,7 @@ export interface QueryResultItem {
   chunk_header: string | null;
   chunk_text: string | null;
   extra_json: string | null;
+  metadata?: Record<string, unknown>;
   distance: number;
   similarity: number;
 }
@@ -180,8 +190,19 @@ export const api = {
   llms: {
     list: () => req<LlmInfo>("/admin/llms"),
   },
+  metadataFields: {
+    list: (slug: string) =>
+      req<{ fields: MetadataField[] }>(`/admin/collections/${slug}/metadata-fields`),
+    register: (slug: string, fields: { name: string; type: string }[]) =>
+      req<{ fields: MetadataField[] }>(`/admin/collections/${slug}/metadata-fields`, {
+        method: "POST",
+        body: JSON.stringify({ fields }),
+      }),
+    delete: (slug: string, fieldName: string) =>
+      req<void>(`/admin/collections/${slug}/metadata-fields/${fieldName}`, { method: "DELETE" }),
+  },
   query: {
-    run: (slug: string, body: { query: string; top_k: number }) =>
+    run: (slug: string, body: { query: string; top_k: number; filters?: unknown }) =>
       req<{ results: QueryResultItem[] }>(`/admin/collections/${slug}/query`, {
         method: "POST",
         body: JSON.stringify(body),

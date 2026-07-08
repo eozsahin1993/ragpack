@@ -140,17 +140,86 @@ func (l *VectorDb) UpdateChunksExtraJSON(ctx context.Context, tableName, documen
 	return nil
 }
 
-func (l *VectorDb) QuerySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int) ([]db.ChunkQueryResult, error) {
+func (l *VectorDb) QuerySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int, filter string) ([]db.ChunkQueryResult, error) {
 	tbl, err := l.conn.OpenTable(ctx, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("lancedb: open query table failed %s: %w", tableName, err)
 	}
 	defer tbl.Close()
 
-	rawResults, err := tbl.VectorSearch(ctx, "vector", vector, topK)
+	var rawResults []map[string]interface{}
+	if filter != "" {
+		rawResults, err = tbl.VectorSearchWithFilter(ctx, "vector", vector, topK, filter)
+	} else {
+		rawResults, err = tbl.VectorSearch(ctx, "vector", vector, topK)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("lancedb: query execution failed on %s: %w", tableName, err)
 	}
 
 	return mapResultsToChunks(rawResults)
+}
+
+func (l *VectorDb) OptimizeIndex(ctx context.Context, tableName string) error {
+	tbl, err := l.conn.OpenTable(ctx, tableName)
+	if err != nil {
+		return fmt.Errorf("lancedb: open table %s: %w", tableName, err)
+	}
+	defer tbl.Close()
+
+	if _, err := tbl.OptimizeWithAction(ctx, contracts.OptimizeAction{Kind: contracts.OptimizeIndex}); err != nil {
+		return fmt.Errorf("lancedb: optimize index on %s: %w", tableName, err)
+	}
+	return nil
+}
+
+func (l *VectorDb) CreateMetadataIndex(ctx context.Context, tableName, colName, fieldType string) error {
+	tbl, err := l.conn.OpenTable(ctx, tableName)
+	if err != nil {
+		return fmt.Errorf("lancedb: open table %s: %w", tableName, err)
+	}
+	defer tbl.Close()
+
+	var indexType contracts.IndexType
+	switch fieldType {
+	case "str", "bool":
+		indexType = contracts.IndexTypeBitmap
+	case "num", "date":
+		indexType = contracts.IndexTypeBTree
+	case "arr":
+		indexType = contracts.IndexTypeLabelList
+	default:
+		return fmt.Errorf("lancedb: unknown metadata field type %q", fieldType)
+	}
+
+	if err := tbl.CreateIndexWithName(ctx, []string{colName}, indexType, colName); err != nil {
+		return fmt.Errorf("lancedb: create metadata index on %s.%s: %w", tableName, colName, err)
+	}
+	return nil
+}
+
+func (l *VectorDb) DropMetadataIndex(ctx context.Context, tableName, indexName string) error {
+	tbl, err := l.conn.OpenTable(ctx, tableName)
+	if err != nil {
+		return fmt.Errorf("lancedb: open table %s: %w", tableName, err)
+	}
+	defer tbl.Close()
+
+	if err := tbl.DropIndex(ctx, indexName); err != nil {
+		return fmt.Errorf("lancedb: drop index %s on %s: %w", indexName, tableName, err)
+	}
+	return nil
+}
+
+func (l *VectorDb) NullMetadataSlot(ctx context.Context, tableName, colName string) error {
+	tbl, err := l.conn.OpenTable(ctx, tableName)
+	if err != nil {
+		return fmt.Errorf("lancedb: open table %s: %w", tableName, err)
+	}
+	defer tbl.Close()
+
+	if err := tbl.Update(ctx, "", map[string]interface{}{colName: nil}); err != nil {
+		return fmt.Errorf("lancedb: null slot %s on %s: %w", colName, tableName, err)
+	}
+	return nil
 }

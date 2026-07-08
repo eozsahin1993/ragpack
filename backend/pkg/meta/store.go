@@ -6,5 +6,6 @@ type MetaStore interface {
 	DocumentStore
 	APIKeyStore
 	PromptStore
+	MetadataFieldStore
 	Close() error
 }

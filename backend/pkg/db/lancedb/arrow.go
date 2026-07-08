@@ -12,7 +12,6 @@ import (
 )
 
 // Column names for the ChunkDbRecord Arrow schema.
-// Keep in sync with json tags on db.ChunkDbRecord.
 const (
 	colID         = "id"
 	colDocumentID = "document_id"
@@ -24,14 +23,22 @@ const (
 	colMimeType   = "mime_type"
 	colFileUri    = "file_uri"
 	colSourceName = "source_name"
-	colChunkText   = "chunk_text"
+	colChunkText  = "chunk_text"
 	colChunkHeader = "chunk_header"
 	colExternalId  = "external_id"
 	colExtraJSON   = "extra_json"
 )
 
+const (
+	metaStrSlots  = 20
+	metaNumSlots  = 10
+	metaBoolSlots = 10
+	metaDateSlots = 10
+	metaArrSlots  = 10
+)
+
 func chunkArrowSchema(vectorDim int) *arrow.Schema {
-	return arrow.NewSchema([]arrow.Field{
+	fields := []arrow.Field{
 		{Name: colID, Type: arrow.BinaryTypes.String, Nullable: false},
 		{Name: colDocumentID, Type: arrow.BinaryTypes.String, Nullable: false},
 		{Name: colChunkHash, Type: arrow.BinaryTypes.String, Nullable: false},
@@ -46,7 +53,23 @@ func chunkArrowSchema(vectorDim int) *arrow.Schema {
 		{Name: colChunkHeader, Type: arrow.BinaryTypes.String, Nullable: true},
 		{Name: colExternalId, Type: arrow.BinaryTypes.String, Nullable: true},
 		{Name: colExtraJSON, Type: arrow.BinaryTypes.String, Nullable: true},
-	}, nil)
+	}
+	for i := 1; i <= metaStrSlots; i++ {
+		fields = append(fields, arrow.Field{Name: db.MetadataSlotColumn("str", i), Type: arrow.BinaryTypes.String, Nullable: true})
+	}
+	for i := 1; i <= metaNumSlots; i++ {
+		fields = append(fields, arrow.Field{Name: db.MetadataSlotColumn("num", i), Type: arrow.PrimitiveTypes.Float64, Nullable: true})
+	}
+	for i := 1; i <= metaBoolSlots; i++ {
+		fields = append(fields, arrow.Field{Name: db.MetadataSlotColumn("bool", i), Type: arrow.FixedWidthTypes.Boolean, Nullable: true})
+	}
+	for i := 1; i <= metaDateSlots; i++ {
+		fields = append(fields, arrow.Field{Name: db.MetadataSlotColumn("date", i), Type: arrow.PrimitiveTypes.Int64, Nullable: true})
+	}
+	for i := 1; i <= metaArrSlots; i++ {
+		fields = append(fields, arrow.Field{Name: db.MetadataSlotColumn("arr", i), Type: arrow.ListOf(arrow.BinaryTypes.String), Nullable: true})
+	}
+	return arrow.NewSchema(fields, nil)
 }
 
 type chunkBuilders struct {
@@ -54,11 +77,16 @@ type chunkBuilders struct {
 	idx                                                                            *array.Int32Builder
 	vec                                                                            *array.FixedSizeListBuilder
 	created, updated                                                               *array.Int64Builder
+	metaStr                                                                        [metaStrSlots]*array.StringBuilder
+	metaNum                                                                        [metaNumSlots]*array.Float64Builder
+	metaBool                                                                       [metaBoolSlots]*array.BooleanBuilder
+	metaDate                                                                       [metaDateSlots]*array.Int64Builder
+	metaArr                                                                        [metaArrSlots]*array.ListBuilder
 }
 
 func newChunkBuilders(pool memory.Allocator, vectorDim int) chunkBuilders {
 	vecB := array.NewFixedSizeListBuilder(pool, int32(vectorDim), arrow.PrimitiveTypes.Float32)
-	return chunkBuilders{
+	b := chunkBuilders{
 		id: array.NewStringBuilder(pool), docID: array.NewStringBuilder(pool),
 		hash: array.NewStringBuilder(pool), mime: array.NewStringBuilder(pool),
 		fileUri: array.NewStringBuilder(pool), srcName: array.NewStringBuilder(pool),
@@ -67,6 +95,22 @@ func newChunkBuilders(pool memory.Allocator, vectorDim int) chunkBuilders {
 		idx: array.NewInt32Builder(pool),
 		vec: vecB, created: array.NewInt64Builder(pool), updated: array.NewInt64Builder(pool),
 	}
+	for i := 0; i < metaStrSlots; i++ {
+		b.metaStr[i] = array.NewStringBuilder(pool)
+	}
+	for i := 0; i < metaNumSlots; i++ {
+		b.metaNum[i] = array.NewFloat64Builder(pool)
+	}
+	for i := 0; i < metaBoolSlots; i++ {
+		b.metaBool[i] = array.NewBooleanBuilder(pool)
+	}
+	for i := 0; i < metaDateSlots; i++ {
+		b.metaDate[i] = array.NewInt64Builder(pool)
+	}
+	for i := 0; i < metaArrSlots; i++ {
+		b.metaArr[i] = array.NewListBuilder(pool, arrow.BinaryTypes.String)
+	}
+	return b
 }
 
 func (b chunkBuilders) append(r db.ChunkDbRecord) {
@@ -85,6 +129,42 @@ func (b chunkBuilders) append(r db.ChunkDbRecord) {
 	appendOptionalString(b.chunkHeader, r.ChunkHeader)
 	appendOptionalString(b.extID, r.ExternalId)
 	appendOptionalString(b.extra, r.ExtraJSON)
+
+	for i := 0; i < metaStrSlots; i++ {
+		appendOptionalString(b.metaStr[i], r.MetadataStr[i])
+	}
+	for i := 0; i < metaNumSlots; i++ {
+		if r.MetadataNum[i] == nil {
+			b.metaNum[i].AppendNull()
+		} else {
+			b.metaNum[i].Append(*r.MetadataNum[i])
+		}
+	}
+	for i := 0; i < metaBoolSlots; i++ {
+		if r.MetadataBool[i] == nil {
+			b.metaBool[i].AppendNull()
+		} else {
+			b.metaBool[i].Append(*r.MetadataBool[i])
+		}
+	}
+	for i := 0; i < metaDateSlots; i++ {
+		if r.MetadataDate[i] == nil {
+			b.metaDate[i].AppendNull()
+		} else {
+			b.metaDate[i].Append(*r.MetadataDate[i])
+		}
+	}
+	for i := 0; i < metaArrSlots; i++ {
+		if r.MetadataArr[i] == nil {
+			b.metaArr[i].AppendNull()
+		} else {
+			b.metaArr[i].Append(true)
+			sb := b.metaArr[i].ValueBuilder().(*array.StringBuilder)
+			for _, s := range r.MetadataArr[i] {
+				sb.Append(s)
+			}
+		}
+	}
 }
 
 func (b chunkBuilders) finish(schema *arrow.Schema, n int64) arrow.Record {
@@ -93,6 +173,21 @@ func (b chunkBuilders) finish(schema *arrow.Schema, n int64) arrow.Record {
 		b.vec.NewArray(), b.created.NewArray(), b.updated.NewArray(),
 		b.mime.NewArray(), b.fileUri.NewArray(), b.srcName.NewArray(),
 		b.chunkText.NewArray(), b.chunkHeader.NewArray(), b.extID.NewArray(), b.extra.NewArray(),
+	}
+	for i := 0; i < metaStrSlots; i++ {
+		cols = append(cols, b.metaStr[i].NewArray())
+	}
+	for i := 0; i < metaNumSlots; i++ {
+		cols = append(cols, b.metaNum[i].NewArray())
+	}
+	for i := 0; i < metaBoolSlots; i++ {
+		cols = append(cols, b.metaBool[i].NewArray())
+	}
+	for i := 0; i < metaDateSlots; i++ {
+		cols = append(cols, b.metaDate[i].NewArray())
+	}
+	for i := 0; i < metaArrSlots; i++ {
+		cols = append(cols, b.metaArr[i].NewArray())
 	}
 	for _, c := range cols {
 		defer c.Release()
@@ -205,6 +300,22 @@ func rowToChunk(row map[string]interface{}) (db.ChunkDbRecord, error) {
 	rec.ExternalId = extractOptionalString(row, colExternalId)
 	rec.ExtraJSON = extractOptionalString(row, colExtraJSON)
 
+	for i := 0; i < metaStrSlots; i++ {
+		rec.MetadataStr[i] = extractOptionalString(row, db.MetadataSlotColumn("str", i+1))
+	}
+	for i := 0; i < metaNumSlots; i++ {
+		rec.MetadataNum[i] = extractOptionalFloat64(row, db.MetadataSlotColumn("num", i+1))
+	}
+	for i := 0; i < metaBoolSlots; i++ {
+		rec.MetadataBool[i] = extractOptionalBool(row, db.MetadataSlotColumn("bool", i+1))
+	}
+	for i := 0; i < metaDateSlots; i++ {
+		rec.MetadataDate[i] = extractOptionalInt64(row, db.MetadataSlotColumn("date", i+1))
+	}
+	for i := 0; i < metaArrSlots; i++ {
+		rec.MetadataArr[i] = extractOptionalStringSlice(row, db.MetadataSlotColumn("arr", i+1))
+	}
+
 	return rec, nil
 }
 
@@ -232,6 +343,67 @@ func extractOptionalString(row map[string]interface{}, key string) *string {
 	return &s
 }
 
+func extractOptionalFloat64(row map[string]interface{}, key string) *float64 {
+	v, ok := row[key]
+	if !ok || v == nil {
+		return nil
+	}
+	f, ok := v.(float64)
+	if !ok {
+		return nil
+	}
+	return &f
+}
+
+func extractOptionalBool(row map[string]interface{}, key string) *bool {
+	v, ok := row[key]
+	if !ok || v == nil {
+		return nil
+	}
+	b, ok := v.(bool)
+	if !ok {
+		return nil
+	}
+	return &b
+}
+
+func extractOptionalInt64(row map[string]interface{}, key string) *int64 {
+	v, ok := row[key]
+	if !ok || v == nil {
+		return nil
+	}
+	switch n := v.(type) {
+	case int64:
+		return &n
+	case float64:
+		i := int64(n)
+		return &i
+	default:
+		return nil
+	}
+}
+
+func extractOptionalStringSlice(row map[string]interface{}, key string) []string {
+	v, ok := row[key]
+	if !ok || v == nil {
+		return nil
+	}
+	switch items := v.(type) {
+	case []string:
+		return items
+	case []interface{}:
+		out := make([]string, 0, len(items))
+		for _, item := range items {
+			if s, ok := item.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
 func extractInt32(row map[string]interface{}, key string) (int32, error) {
 	v, ok := row[key]
 	if !ok {
@@ -257,7 +429,7 @@ func extractInt64(row map[string]interface{}, key string) (int64, error) {
 		return n, nil
 	case float64:
 		return int64(n), nil
-default:
+	default:
 		return 0, fmt.Errorf("field %q: expected int64, got %T", key, v)
 	}
 }

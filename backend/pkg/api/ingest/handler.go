@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"encoding/json"
 	"io"
 
 	"github.com/gofiber/fiber/v2"
@@ -58,10 +59,18 @@ func (handler *Handler) ingestMultipart(c *fiber.Ctx, collection meta.Collection
 
 	var extraJSON *string
 	if raw := c.FormValue("extra_json"); raw != "" {
-		if !validateExtraJSONString(&raw) {
+		if !isValidJSON(&raw) {
 			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "extra_json must be valid JSON"})
 		}
 		extraJSON = &raw
+	}
+
+	var metadata *string
+	if raw := c.FormValue("metadata"); raw != "" {
+		if !isValidJSON(&raw) {
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "metadata must be valid JSON"})
+		}
+		metadata = &raw
 	}
 
 	reader, err := file.Open()
@@ -70,7 +79,7 @@ func (handler *Handler) ingestMultipart(c *fiber.Ctx, collection meta.Collection
 	}
 
 	fileUri := "upload://" + file.Filename
-	return handler.submitJob(c, collection, intent, force, fileUri, mimeType, extraJSON, reader)
+	return handler.submitJob(c, collection, intent, force, fileUri, mimeType, extraJSON, metadata, reader)
 }
 
 func (handler *Handler) ingestURI(c *fiber.Ctx, collection meta.Collection, intent meta.JobIntent, force bool) error {
@@ -88,16 +97,30 @@ func (handler *Handler) ingestURI(c *fiber.Ctx, collection meta.Collection, inte
 		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	return handler.submitJob(c, collection, intent, force, req.FileURI, req.MimeType, req.ExtraJSON, nil)
+	metadata := serializeMetadata(req.Metadata)
+	return handler.submitJob(c, collection, intent, force, req.FileURI, req.MimeType, req.ExtraJSON, metadata, nil)
+}
+
+// serializeMetadata marshals a metadata map to a JSON string pointer; returns nil if the map is empty.
+func serializeMetadata(data map[string]any) *string {
+	if len(data) == 0 {
+		return nil
+	}
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		return nil
+	}
+	jsonStr := string(jsonBytes)
+	return &jsonStr
 }
 
 // submitJob checks for a completed duplicate, creates the job record, and queues it for processing.
-func (handler *Handler) submitJob(c *fiber.Ctx, collection meta.Collection, intent meta.JobIntent, force bool, fileUri, mimeType string, extraJSON *string, reader io.ReadCloser) error {
+func (handler *Handler) submitJob(c *fiber.Ctx, collection meta.Collection, intent meta.JobIntent, force bool, fileUri, mimeType string, extraJSON *string, metadata *string, reader io.ReadCloser) error {
 	if doc, skip := handler.skipIfComplete(c, collection.ID, fileUri, intent, force); skip {
 		return c.Status(fiber.StatusOK).JSON(doc)
 	}
 
-	job, err := handler.store.CreateJob(c.Context(), collection.ID, fileUri, mimeType, intent, force, extraJSON)
+	job, err := handler.store.CreateJob(c.Context(), collection.ID, fileUri, mimeType, intent, force, extraJSON, metadata)
 	if err != nil {
 		if reader != nil {
 			reader.Close()

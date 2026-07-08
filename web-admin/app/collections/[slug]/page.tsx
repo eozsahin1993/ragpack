@@ -5,8 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, Collection, Document } from "@/lib/api";
 import { DocumentsTable, PAGE_SIZE } from "./_components/documents-table";
+import { MetadataFieldsPanel } from "./_components/metadata-fields-panel";
 
 export default function CollectionPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -75,15 +77,26 @@ export default function CollectionPage() {
         </Button>
       </div>
 
-      <DocumentsTable
-        slug={slug}
-        docs={docs}
-        total={total}
-        page={page}
-        onPageChange={setPage}
-        onReload={() => loadDocs(page)}
-        onIngest={() => router.push(`/collections/${slug}/ingest`)}
-      />
+      <Tabs defaultValue="documents">
+        <TabsList variant="line">
+          <TabsTrigger value="documents">Documents</TabsTrigger>
+          <TabsTrigger value="metadata">Metadata fields</TabsTrigger>
+        </TabsList>
+        <TabsContent value="documents" className="mt-4">
+          <DocumentsTable
+            slug={slug}
+            docs={docs}
+            total={total}
+            page={page}
+            onPageChange={setPage}
+            onReload={() => loadDocs(page)}
+            onIngest={() => router.push(`/collections/${slug}/ingest`)}
+          />
+        </TabsContent>
+        <TabsContent value="metadata" className="mt-4">
+          <MetadataFieldsPanel slug={slug} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

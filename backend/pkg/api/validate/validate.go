@@ -8,7 +8,19 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+var reservedMetadataNames = map[string]bool{
+	"created_at": true, "updated_at": true, "mime_type": true,
+	"source_name": true, "external_id": true, "document_id": true,
+	"chunk_text": true, "chunk_header": true, "file_uri": true, "extra_json": true,
+}
+
 var v = validator.New()
+
+func init() {
+	v.RegisterValidation("notreservedmeta", func(fl validator.FieldLevel) bool { //nolint:errcheck
+		return !reservedMetadataNames[fl.Field().String()]
+	})
+}
 
 const (
 	DefaultLimit = 50
@@ -64,6 +76,8 @@ func errorMessage(fe validator.FieldError) string {
 		return fmt.Sprintf("must be at most %s", fe.Param())
 	case "oneof":
 		return fmt.Sprintf("must be one of: %s", fe.Param())
+	case "notreservedmeta":
+		return "name conflicts with a built-in field and cannot be used as a metadata field"
 	default:
 		return fmt.Sprintf("failed %s validation", fe.Tag())
 	}

@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"ragpack/pkg/api/collections"
+	"ragpack/pkg/api/collections/metadata_fields"
 	"ragpack/pkg/api/documents"
 	"ragpack/pkg/api/embedders"
 	"ragpack/pkg/api/ingest"
@@ -56,4 +57,6 @@ func mountRoutes(r fiber.Router, ms meta.MetaStore, vec db.VectorDb, registry *e
 	ingest.Register(nameGroup, ingest.NewHandler(ms, ing, maxUploadSize))
 	query.Register(nameGroup, query.NewHandler(ms, vec, registry, llmRegistry, defaultPromptSlug))
 	documents.Register(nameGroup, documents.NewHandler(ms, vec))
+
+	metadata_fields.Register(nameGroup.Group("/metadata-fields"), metadata_fields.NewHandler(ms, vec))
 }

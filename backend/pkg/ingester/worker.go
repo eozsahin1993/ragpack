@@ -3,6 +3,7 @@ package ingester
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -96,11 +97,11 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 		if strings.HasPrefix(job.FileUri, "upload://") {
 			return 0, fmt.Errorf("uploaded file is no longer available; please re-submit the file")
 		}
-		f, err := fetcher.New(ctx, job.FileUri)
+		src, err := fetcher.New(ctx, job.FileUri)
 		if err != nil {
 			return 0, fmt.Errorf("build fetcher: %w", err)
 		}
-		reader, err = f.Fetch(ctx, job.FileUri)
+		reader, err = src.Fetch(ctx, job.FileUri)
 		if err != nil {
 			return 0, fmt.Errorf("fetch: %w", err)
 		}
@@ -112,7 +113,7 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 		return 0, fmt.Errorf("delete stale chunks: %w", err)
 	}
 
-	p, err := parserpkg.New(job.MimeType, job.FileUri)
+	parser, err := parserpkg.New(job.MimeType, job.FileUri)
 	if err != nil {
 		return 0, fmt.Errorf("build parser: %w", err)
 	}
@@ -129,7 +130,7 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 		chunkCfg.Overlap = *collection.ChunkOverlap
 	}
 
-	c, err := chunkerpkg.New(job.MimeType, chunkCfg)
+	chunker, err := chunkerpkg.New(job.MimeType, chunkCfg)
 	if err != nil {
 		return 0, fmt.Errorf("build chunker: %w", err)
 	}
@@ -137,6 +138,29 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 	emb, err := wp.registry.Get(collection.EmbedModel)
 	if err != nil {
 		return 0, fmt.Errorf("embedder: %w", err)
+	}
+
+	// Look up metadata field mapping once — avoids redundant SQLite reads per batch.
+	var metaStr [20]*string
+	var metaNum [10]*float64
+	var metaBool [10]*bool
+	var metaDate [10]*int64
+	var metaArr [10][]string
+	if job.Metadata != nil {
+		metaFields, err := wp.metaStore.ListMetadataFields(ctx, collection.ID)
+		if err != nil {
+			return 0, fmt.Errorf("list metadata fields: %w", err)
+		}
+		if len(metaFields) > 0 {
+			fieldMap := make(map[string]meta.MetadataField, len(metaFields))
+			for _, f := range metaFields {
+				fieldMap[f.Name] = f
+			}
+			var rawMeta map[string]interface{}
+			if jsonErr := json.Unmarshal([]byte(*job.Metadata), &rawMeta); jsonErr == nil {
+				metaStr, metaNum, metaBool, metaDate, metaArr = routeMetadataSlots(rawMeta, fieldMap, job.ID)
+			}
+		}
 	}
 
 	now := time.Now().UTC()
@@ -181,6 +205,11 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 				ChunkText:   &ch.Text,
 				ChunkHeader: ch.Header,
 				ExtraJSON:   job.ExtraJSON,
+				MetadataStr:  metaStr,
+				MetadataNum:  metaNum,
+				MetadataBool: metaBool,
+				MetadataDate: metaDate,
+				MetadataArr:  metaArr,
 			}
 		}
 		if err := wp.vectorDb.InsertBatch(ctx, collection.TableName, records); err != nil {
@@ -191,7 +220,7 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 		return nil
 	}
 
-	for chunk, err := range c.Chunk(p.Parse(ctx, reader)) {
+	for chunk, err := range chunker.Chunk(parser.Parse(ctx, reader)) {
 		if err != nil {
 			return 0, fmt.Errorf("chunk: %w", err)
 		}
@@ -206,9 +235,14 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 		return 0, err
 	}
 
+	// Fold any new chunks into existing metadata indexes so queries stay fast.
+	if err := wp.vectorDb.OptimizeIndex(ctx, collection.TableName); err != nil {
+		log.Printf("ingester: job %s: optimize index: %v", job.ID, err)
+	}
+
 	name := ""
-	if t := p.Title(); t != nil {
-		name = *t
+	if title := parser.Title(); title != nil {
+		name = *title
 	}
 	if name == "" {
 		name = util.NameFromURI(job.FileUri)

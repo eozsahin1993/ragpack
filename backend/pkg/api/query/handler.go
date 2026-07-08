@@ -42,17 +42,17 @@ func (h *Handler) Query(c *fiber.Ctx) error {
 		req.TopK = 10
 	}
 
-	emb, err := h.registry.Get(collection.EmbedModel)
+	metaFields, sqlFilter, err := h.resolveFilter(c, collection.ID, req.Filters)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "no embedder available for this collection's model"})
+		return err
 	}
 
-	vectors, err := emb.Embed(c.Context(), []string{req.Query})
+	vector, err := h.embedQuery(c, collection.EmbedModel, req.Query)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to embed query"})
+		return err
 	}
 
-	results, err := h.vectorDb.QuerySimilarVectors(c.Context(), collection.TableName, embedder.Normalize(vectors[0]), req.TopK)
+	results, err := h.vectorDb.QuerySimilarVectors(c.Context(), collection.TableName, vector, req.TopK, sqlFilter)
 	if err != nil {
 		log.Printf("query error: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
@@ -70,10 +70,11 @@ func (h *Handler) Query(c *fiber.Ctx) error {
 			ExtraJSON:   r.ExtraJSON,
 			Distance:    r.Distance,
 			Similarity:  r.Similarity,
+			Metadata:    reconstructMetadata(r.ChunkDbRecord, metaFields),
 		}
 	}
 
-	return c.JSON(fiber.Map{"results": items})
+	return c.JSON(QueryResponse{Results: items})
 }
 
 func (h *Handler) Rag(c *fiber.Ctx) error {
@@ -98,17 +99,17 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "prompt not found"})
 	}
 
-	emb, err := h.registry.Get(collection.EmbedModel)
+	_, sqlFilter, err := h.resolveFilter(c, collection.ID, req.Filters)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "no embedder available for this collection's model"})
+		return err
 	}
 
-	vectors, err := emb.Embed(c.Context(), []string{req.Query})
+	vector, err := h.embedQuery(c, collection.EmbedModel, req.Query)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to embed query"})
+		return err
 	}
 
-	results, err := h.vectorDb.QuerySimilarVectors(c.Context(), collection.TableName, embedder.Normalize(vectors[0]), req.TopK)
+	results, err := h.vectorDb.QuerySimilarVectors(c.Context(), collection.TableName, vector, req.TopK, sqlFilter)
 	if err != nil {
 		log.Printf("rag query error: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
@@ -166,6 +167,19 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 		Chunks:          chunks,
 		PromptSlug:      prompt.Slug,
 	})
+}
+
+
+func (h *Handler) embedQuery(c *fiber.Ctx, embedModel, query string) ([]float32, error) {
+	emb, err := h.registry.Get(embedModel)
+	if err != nil {
+		return nil, c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "no embedder available for this collection's model"})
+	}
+	vectors, err := emb.Embed(c.Context(), []string{query})
+	if err != nil {
+		return nil, c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to embed query"})
+	}
+	return embedder.Normalize(vectors[0]), nil
 }
 
 func buildContext(chunks []db.ChunkQueryResult) string {

@@ -1,0 +1,147 @@
+package ingester
+
+import (
+	"log"
+	"strconv"
+	"strings"
+
+	"github.com/araddon/dateparse"
+
+	"ragpack/pkg/meta"
+)
+
+// routeMetadataSlots maps user-supplied metadata values to their pre-declared Arrow slot arrays.
+// Undeclared keys are logged as warnings. Type coercion failures are also logged and skipped.
+func routeMetadataSlots(raw map[string]interface{}, fieldMap map[string]meta.MetadataField, jobID string) (
+	metaStr [20]*string, metaNum [10]*float64, metaBool [10]*bool, metaDate [10]*int64, metaArr [10][]string,
+) {
+	for key, val := range raw {
+		mfield, ok := fieldMap[key]
+		if !ok {
+			log.Printf("ingester: job %s: metadata field %q is not registered on this collection — skipped", jobID, key)
+			continue
+		}
+		idx := mfield.Slot - 1
+		switch mfield.Type {
+		case "str":
+			str, ok := coerceToString(val)
+			if !ok {
+				log.Printf("ingester: job %s: metadata field %q: cannot coerce %T to string — skipped", jobID, key, val)
+				continue
+			}
+			metaStr[idx] = &str
+		case "num":
+			num, ok := coerceToFloat64(val)
+			if !ok {
+				log.Printf("ingester: job %s: metadata field %q: cannot coerce %T to number — skipped", jobID, key, val)
+				continue
+			}
+			metaNum[idx] = &num
+		case "bool":
+			b, ok := coerceToBool(val)
+			if !ok {
+				log.Printf("ingester: job %s: metadata field %q: cannot coerce %T to bool — skipped", jobID, key, val)
+				continue
+			}
+			metaBool[idx] = &b
+		case "date":
+			ts, ok := coerceToUnixTimestamp(val)
+			if !ok {
+				log.Printf("ingester: job %s: metadata field %q: cannot parse %T as date — skipped", jobID, key, val)
+				continue
+			}
+			metaDate[idx] = &ts
+		case "arr":
+			arr, ok := coerceToStringSlice(val)
+			if !ok {
+				log.Printf("ingester: job %s: metadata field %q: expected array of strings, got %T — skipped", jobID, key, val)
+				continue
+			}
+			metaArr[idx] = arr
+		}
+	}
+	return
+}
+
+func coerceToString(val interface{}) (string, bool) {
+	switch v := val.(type) {
+	case string:
+		return v, true
+	case bool:
+		if v {
+			return "true", true
+		}
+		return "false", true
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64), true
+	default:
+		return "", false
+	}
+}
+
+func coerceToFloat64(val interface{}) (float64, bool) {
+	switch v := val.(type) {
+	case float64:
+		return v, true
+	case string:
+		num, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return 0, false
+		}
+		return num, true
+	case bool:
+		if v {
+			return 1, true
+		}
+		return 0, true
+	default:
+		return 0, false
+	}
+}
+
+func coerceToStringSlice(val interface{}) ([]string, bool) {
+	arr, ok := val.([]interface{})
+	if !ok {
+		return nil, false
+	}
+	out := make([]string, 0, len(arr))
+	for _, item := range arr {
+		str, ok := item.(string)
+		if !ok {
+			return nil, false
+		}
+		out = append(out, str)
+	}
+	return out, true
+}
+
+func coerceToBool(val interface{}) (bool, bool) {
+	switch v := val.(type) {
+	case bool:
+		return v, true
+	case string:
+		switch strings.ToLower(v) {
+		case "true", "1", "yes":
+			return true, true
+		case "false", "0", "no":
+			return false, true
+		}
+	case float64:
+		return v != 0, true
+	}
+	return false, false
+}
+
+func coerceToUnixTimestamp(val interface{}) (int64, bool) {
+	switch v := val.(type) {
+	case float64:
+		return int64(v), true
+	case string:
+		t, err := dateparse.ParseAny(v)
+		if err != nil {
+			return 0, false
+		}
+		return t.UTC().Unix(), true
+	}
+	return 0, false
+}

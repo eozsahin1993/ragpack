@@ -28,6 +28,7 @@ type Job struct {
 	MimeType     string     `db:"mime_type"     json:"mime_type"`
 	DisplayName  *string    `db:"display_name"  json:"display_name,omitempty"`
 	ExtraJSON    *string    `db:"extra_json"    json:"extra_json,omitempty"`
+	Metadata     *string    `db:"metadata"      json:"metadata,omitempty"` // JSON blob: user-supplied filterable metadata
 	Intent       JobIntent  `db:"intent"        json:"intent"`
 	Force        bool       `db:"force"         json:"force"`
 	Status       JobStatus  `db:"status"        json:"status"`
@@ -51,7 +52,7 @@ type JobReader interface {
 }
 
 type JobWriter interface {
-	CreateJob(ctx context.Context, collectionID, fileUri, mimeType string, intent JobIntent, force bool, extraJSON *string) (Job, error)
+	CreateJob(ctx context.Context, collectionID, fileUri, mimeType string, intent JobIntent, force bool, extraJSON *string, metadata *string) (Job, error)
 	UpdateJobStatus(ctx context.Context, id string, status JobStatus, jobError *string) error
 	DeleteJob(ctx context.Context, id string) error
 }
