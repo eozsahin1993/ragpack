@@ -1,7 +1,10 @@
 package query
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -11,19 +14,33 @@ import (
 	"ragpack/pkg/meta"
 )
 
-// resolveFilter loads metadata fields for a collection, compiles the raw filter DSL,
-// and returns both so callers can use fields for reconstruction and sqlFilter for the vector query.
-// On error it writes the HTTP response and returns a non-nil error.
-func (h *Handler) resolveFilter(c *fiber.Ctx, collectionID string, rawFilters json.RawMessage) (fields []meta.MetadataField, sqlFilter string, err error) {
-	fields, err = h.meta.ListMetadataFields(c.Context(), collectionID)
+type filterErr struct {
+	status int
+	msg    string
+}
+
+func (e *filterErr) Error() string { return e.msg }
+
+// resolveFilter loads metadata fields and compiles the raw filter DSL.
+// Returns a *filterErr on failure — callers should use errors.As to get the HTTP status.
+func (h *Handler) resolveFilter(ctx context.Context, collectionID string, rawFilters json.RawMessage) (fields []meta.MetadataField, sqlFilter string, err error) {
+	fields, err = h.meta.ListMetadataFields(ctx, collectionID)
 	if err != nil {
-		return nil, "", c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load metadata fields"})
+		return nil, "", &filterErr{fiber.StatusInternalServerError, "failed to load metadata fields"}
 	}
 	sqlFilter, err = filter.Compile(rawFilters, buildFieldMap(fields))
 	if err != nil {
-		return nil, "", c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		return nil, "", &filterErr{fiber.StatusBadRequest, err.Error()}
 	}
 	return fields, sqlFilter, nil
+}
+
+func writeFilterErr(c *fiber.Ctx, err error) error {
+	var fe *filterErr
+	if errors.As(err, &fe) {
+		return c.Status(fe.status).JSON(fiber.Map{"error": fe.msg})
+	}
+	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("filter: %v", err)})
 }
 
 func buildFieldMap(fields []meta.MetadataField) filter.FieldMap {

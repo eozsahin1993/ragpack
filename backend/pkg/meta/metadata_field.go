@@ -9,7 +9,7 @@ type MetadataField struct {
 	ID           string    `db:"id"            json:"id"`
 	CollectionID string    `db:"collection_id" json:"collection_id"`
 	Name         string    `db:"name"          json:"name"`
-	Type         string    `db:"type"          json:"type"` // "str" | "num" | "arr"
+	Type         string    `db:"type"          json:"type"` // "str" | "num" | "bool" | "date" | "arr"
 	Slot         int       `db:"slot"          json:"slot"`
 	CreatedAt    time.Time `db:"created_at"    json:"created_at"`
 }

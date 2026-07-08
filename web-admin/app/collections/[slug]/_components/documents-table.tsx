@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, RefreshCw, Loader2, Plus } from "lucide-react";
+import { Trash2, RefreshCw, Loader2, Plus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { DataTable } from "@/components/data-table";
 import { Pagination } from "@/components/pagination";
-import { api, Document } from "@/lib/api";
+import { api, Document, MetadataField } from "@/lib/api";
 import { timeAgo, friendlyUri, friendlyMimeType } from "@/lib/utils";
+import { DocumentEditDialog } from "./document-edit-dialog";
 
 const PAGE_SIZE = 20;
 
@@ -30,6 +31,7 @@ interface DocumentsTableProps {
   docs: Document[];
   total: number;
   page: number;
+  metadataFields: MetadataField[];
   onPageChange: (page: number) => void;
   onReload: () => void;
   onIngest: () => void;
@@ -37,10 +39,11 @@ interface DocumentsTableProps {
 
 export { PAGE_SIZE };
 
-export function DocumentsTable({ slug, docs, total, page, onPageChange, onReload, onIngest }: DocumentsTableProps) {
+export function DocumentsTable({ slug, docs, total, page, metadataFields, onPageChange, onReload, onIngest }: DocumentsTableProps) {
   const router = useRouter();
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
   const [refreshingDocId, setRefreshingDocId] = useState<string | null>(null);
+  const [editingDoc, setEditingDoc] = useState<Document | null>(null);
 
   async function handleRefresh(doc: Document) {
     setRefreshingDocId(doc.id);
@@ -126,6 +129,14 @@ export function DocumentsTable({ slug, docs, total, page, onPageChange, onReload
             </TableCell>
             <TableCell>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={e => { e.stopPropagation(); setEditingDoc(d); }}
+                  disabled={deletingDocId === d.id || refreshingDocId === d.id}
+                  className="text-zinc-300 hover:text-primary transition-colors disabled:opacity-40"
+                  title="Edit document"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
                 {!d.file_uri.startsWith("upload://") && (
                   <button
                     onClick={e => { e.stopPropagation(); handleRefresh(d); }}
@@ -156,6 +167,17 @@ export function DocumentsTable({ slug, docs, total, page, onPageChange, onReload
         total={total}
         pageSize={PAGE_SIZE}
         onPageChange={onPageChange}
+      />
+
+      <DocumentEditDialog
+        slug={slug}
+        doc={editingDoc}
+        metadataFields={metadataFields}
+        onClose={() => setEditingDoc(null)}
+        onSaved={updated => {
+          setEditingDoc(null);
+          onReload();
+        }}
       />
     </div>
   );

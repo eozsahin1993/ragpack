@@ -45,24 +45,29 @@ interface Props {
 export function MetadataFieldsPanel({ slug }: Props) {
   const [fields, setFields] = useState<MetadataField[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [type, setType] = useState<MetadataField["type"]>("str");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  async function load() {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
     try {
       const data = await api.metadataFields.list(slug);
       setFields(data.fields ?? []);
-    } catch {
-      // non-fatal
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to load metadata fields";
+      setLoadError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
-  }
+  }, [slug]);
 
-  useEffect(() => { load(); }, [slug]);
+  useEffect(() => { load(); }, [load]);
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
@@ -99,21 +104,33 @@ export function MetadataFieldsPanel({ slug }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-zinc-500">
-          {loading ? "Loading…" : `${fields.length} field${fields.length !== 1 ? "s" : ""} registered`}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-zinc-500">
+            {loading ? "Loading…" : loadError ? "Failed to load" : `${fields.length} propert${fields.length !== 1 ? "ies" : "y"} defined`}
+          </p>
+          {!loading && (
+            <button
+              type="button"
+              onClick={load}
+              className="text-zinc-400 hover:text-zinc-600 transition-colors"
+              title="Reload"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90">
             <Plus className="w-3.5 h-3.5" />
-            Add field
+            Add property
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Register metadata field</DialogTitle>
+              <DialogTitle>Add document property</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleRegister} className="space-y-4 pt-2">
               <div className="space-y-1.5">
-                <Label className="text-xs text-zinc-500">Field name</Label>
+                <Label className="text-xs text-zinc-500">Property name</Label>
                 <Input
                   required
                   placeholder="e.g. author, publish_date, score"
@@ -137,7 +154,7 @@ export function MetadataFieldsPanel({ slug }: Props) {
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={saving}>{saving ? "Saving…" : "Register"}</Button>
+                <Button type="submit" disabled={saving}>{saving ? "Saving…" : "Add"}</Button>
               </div>
             </form>
           </DialogContent>
@@ -146,7 +163,7 @@ export function MetadataFieldsPanel({ slug }: Props) {
 
       {!loading && fields.length === 0 ? (
         <div className="rounded-lg border bg-white px-6 py-10 text-center text-zinc-400 text-sm">
-          No metadata fields yet. Add one to enable filtering and enriched results.
+          No properties defined yet. Add one to enable filtering and enriched results.
         </div>
       ) : (
         <div className="rounded-lg border bg-white divide-y">

@@ -5,7 +5,7 @@ CREATE TABLE collection_metadata_fields (
     name          TEXT NOT NULL,
     type          TEXT NOT NULL,
     slot          INTEGER NOT NULL,
-    created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    created_at    DATETIME NOT NULL,
     UNIQUE(collection_id, name),
     UNIQUE(collection_id, type, slot)
 );

@@ -42,9 +42,9 @@ func (h *Handler) Query(c *fiber.Ctx) error {
 		req.TopK = 10
 	}
 
-	metaFields, sqlFilter, err := h.resolveFilter(c, collection.ID, req.Filters)
+	metaFields, sqlFilter, err := h.resolveFilter(c.Context(), collection.ID, req.Filters)
 	if err != nil {
-		return err
+		return writeFilterErr(c, err)
 	}
 
 	vector, err := h.embedQuery(c, collection.EmbedModel, req.Query)
@@ -99,9 +99,9 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "prompt not found"})
 	}
 
-	_, sqlFilter, err := h.resolveFilter(c, collection.ID, req.Filters)
+	_, sqlFilter, err := h.resolveFilter(c.Context(), collection.ID, req.Filters)
 	if err != nil {
-		return err
+		return writeFilterErr(c, err)
 	}
 
 	vector, err := h.embedQuery(c, collection.EmbedModel, req.Query)

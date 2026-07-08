@@ -5,6 +5,7 @@ import (
 
 	"ragpack/pkg/api/validate"
 	"ragpack/pkg/db"
+	"ragpack/pkg/ingester"
 	"ragpack/pkg/meta"
 )
 
@@ -88,7 +89,7 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	if req.ExtraJSON != nil {
+	if req.ExtraJSON != nil || req.Metadata != nil {
 		doc, err := h.meta.GetDocument(c.Context(), docID)
 		if err != nil {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "document not found"})
@@ -97,7 +98,18 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "collection not found"})
 		}
-		if err := h.vec.UpdateChunksExtraJSON(c.Context(), col.TableName, docID, req.ExtraJSON); err != nil {
+
+		patch := db.ChunkPatch{ExtraJSON: req.ExtraJSON}
+
+		if req.Metadata != nil {
+			fields, err := h.meta.ListMetadataFields(c.Context(), col.ID)
+			if err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load metadata fields"})
+			}
+			patch = ingester.MergeMetadataSlots(patch, req.Metadata, fields)
+		}
+
+		if err := h.vec.UpdateChunks(c.Context(), col.TableName, docID, patch); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 	}
@@ -120,8 +132,10 @@ func (h *Handler) Delete(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "collection not found"})
 	}
 
-	if err := h.vec.DeleteChunksByDocument(c.Context(), col.TableName, doc.ID); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	if doc.ChunkCount > 0 {
+		if err := h.vec.DeleteChunksByDocument(c.Context(), col.TableName, doc.ID); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
 	}
 
 	if err := h.meta.DeleteDocument(c.Context(), doc.ID); err != nil {

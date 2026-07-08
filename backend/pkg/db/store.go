@@ -54,7 +54,7 @@ type VectorDb interface {
 	QuerySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int, filter string) ([]ChunkQueryResult, error)
 	DeleteChunksByDocument(ctx context.Context, tableName, documentID string) error
 	ListChunksByDocument(ctx context.Context, tableName, documentID string) ([]ChunkDbRecord, error)
-	UpdateChunksExtraJSON(ctx context.Context, tableName, documentID string, extraJSON *string) error
+	UpdateChunks(ctx context.Context, tableName, documentID string, patch ChunkPatch) error
 	OptimizeIndex(ctx context.Context, tableName string) error
 	// CreateMetadataIndex creates a scalar index on a metadata slot column.
 	// fieldType must be "str", "num", or "arr".

@@ -182,8 +182,10 @@ export const api = {
       req<Document>(`/admin/collections/${slug}/documents/${id}`),
     chunks: (slug: string, id: string) =>
       req<{ chunks: Chunk[]; total: number }>(`/admin/collections/${slug}/documents/${id}/chunks`),
-    update: (slug: string, id: string, body: { name?: string; extra_json?: string }) =>
+    update: (slug: string, id: string, body: { name?: string; extra_json?: string; metadata?: Record<string, unknown> }) =>
       req<Document>(`/admin/collections/${slug}/documents/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    metadata: (slug: string, id: string) =>
+      req<{ metadata: Record<string, unknown> }>(`/admin/collections/${slug}/documents/${id}/metadata`),
     delete: (slug: string, id: string) =>
       req<void>(`/admin/collections/${slug}/documents/${id}`, { method: "DELETE" }),
   },

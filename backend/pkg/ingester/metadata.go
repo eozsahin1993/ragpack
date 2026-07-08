@@ -7,8 +7,70 @@ import (
 
 	"github.com/araddon/dateparse"
 
+	"ragpack/pkg/db"
 	"ragpack/pkg/meta"
 )
+
+// MergeMetadataSlots populates the typed slot maps in patch from user-supplied metadata.
+// Unregistered fields and type mismatches are silently skipped.
+func MergeMetadataSlots(patch db.ChunkPatch, raw map[string]any, fields []meta.MetadataField) db.ChunkPatch {
+	fieldMap := make(map[string]meta.MetadataField, len(fields))
+	for _, f := range fields {
+		fieldMap[f.Name] = f
+	}
+
+	patch.MetaStr = make(map[int]*string)
+	patch.MetaNum = make(map[int]*float64)
+	patch.MetaBool = make(map[int]*bool)
+	patch.MetaDate = make(map[int]*int64)
+	patch.MetaArr = make(map[int][]string)
+
+	for key, val := range raw {
+		field, ok := fieldMap[key]
+		if !ok {
+			continue
+		}
+		switch field.Type {
+		case "str":
+			if s, ok := val.(string); ok {
+				v := s
+				patch.MetaStr[field.Slot] = &v
+			}
+		case "num":
+			if n, ok := val.(float64); ok {
+				v := n
+				patch.MetaNum[field.Slot] = &v
+			}
+		case "bool":
+			if b, ok := val.(bool); ok {
+				v := b
+				patch.MetaBool[field.Slot] = &v
+			}
+		case "date":
+			switch v := val.(type) {
+			case float64:
+				t := int64(v)
+				patch.MetaDate[field.Slot] = &t
+			case string:
+				if t, err := dateparse.ParseAny(v); err == nil {
+					u := t.UTC().Unix()
+					patch.MetaDate[field.Slot] = &u
+				}
+			}
+		case "arr":
+			if arr, ok := val.([]any); ok {
+				strs := make([]string, 0, len(arr))
+				for _, item := range arr {
+					if s, ok := item.(string); ok {
+						strs = append(strs, s)
+					}
+				}
+				patch.MetaArr[field.Slot] = strs
+			}
+		}
+	}
+	return patch
+}
 
 // routeMetadataSlots maps user-supplied metadata values to their pre-declared Arrow slot arrays.
 // Undeclared keys are logged as warnings. Type coercion failures are also logged and skipped.

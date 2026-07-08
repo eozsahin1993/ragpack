@@ -6,7 +6,7 @@ import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { api, Collection, Document } from "@/lib/api";
+import { api, Collection, Document, MetadataField } from "@/lib/api";
 import { DocumentsTable, PAGE_SIZE } from "./_components/documents-table";
 import { MetadataFieldsPanel } from "./_components/metadata-fields-panel";
 
@@ -18,6 +18,7 @@ export default function CollectionPage() {
   const [docs, setDocs] = useState<Document[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
+  const [metadataFields, setMetadataFields] = useState<MetadataField[]>([]);
   const [deleting, setDeleting] = useState(false);
 
   const loadDocs = useCallback(async (p = page) => {
@@ -30,6 +31,7 @@ export default function CollectionPage() {
 
   useEffect(() => {
     api.collections.get(slug).then(setCollection).catch(() => toast.error("Collection not found"));
+    api.metadataFields.list(slug).then(d => setMetadataFields(d.fields ?? [])).catch(() => {});
     loadDocs(0);
   }, [slug]);
 
@@ -80,7 +82,7 @@ export default function CollectionPage() {
       <Tabs defaultValue="documents">
         <TabsList variant="line">
           <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="metadata">Metadata fields</TabsTrigger>
+          <TabsTrigger value="metadata">Document properties</TabsTrigger>
         </TabsList>
         <TabsContent value="documents" className="mt-4">
           <DocumentsTable
@@ -88,6 +90,7 @@ export default function CollectionPage() {
             docs={docs}
             total={total}
             page={page}
+            metadataFields={metadataFields}
             onPageChange={setPage}
             onReload={() => loadDocs(page)}
             onIngest={() => router.push(`/collections/${slug}/ingest`)}

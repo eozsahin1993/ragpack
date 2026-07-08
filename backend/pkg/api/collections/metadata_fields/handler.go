@@ -130,6 +130,14 @@ func (h *Handler) verifyNoExistingFields(c *fiber.Ctx, collectionID string, requ
 func (h *Handler) createIndexesInVectorDb(c *fiber.Ctx, collectionID, tableName string, fields []meta.MetadataField) error {
 	for i, f := range fields {
 		colName := db.MetadataSlotColumn(f.Type, f.Slot)
+		// Null the slot before use — clears stale data if the slot was previously
+		// occupied by a deleted property whose NullMetadataSlot call failed.
+		if nullErr := h.vec.NullMetadataSlot(c.Context(), tableName, colName); nullErr != nil {
+			h.rollbackIndexes(c, collectionID, tableName, fields[:i])
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": fmt.Sprintf("failed to clear slot for field %q: %v", f.Name, nullErr),
+			})
+		}
 		if indexErr := h.vec.CreateMetadataIndex(c.Context(), tableName, colName, f.Type); indexErr != nil {
 			h.rollbackIndexes(c, collectionID, tableName, fields[:i])
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

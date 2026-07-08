@@ -122,20 +122,18 @@ func (l *VectorDb) ListChunksByDocument(ctx context.Context, tableName, document
 	return chunks, nil
 }
 
-func (l *VectorDb) UpdateChunksExtraJSON(ctx context.Context, tableName, documentID string, extraJSON *string) error {
+func (l *VectorDb) UpdateChunks(ctx context.Context, tableName, documentID string, patch db.ChunkPatch) error {
+	if patch.IsEmpty() {
+		return nil
+	}
 	tbl, err := l.conn.OpenTable(ctx, tableName)
 	if err != nil {
 		return fmt.Errorf("lancedb: open table %s: %w", tableName, err)
 	}
 	defer tbl.Close()
 
-	var value interface{}
-	if extraJSON != nil {
-		value = *extraJSON
-	}
-
-	if err := tbl.Update(ctx, fmt.Sprintf("document_id = '%s'", documentID), map[string]interface{}{"extra_json": value}); err != nil {
-		return fmt.Errorf("lancedb: update extra_json for document %s: %w", documentID, err)
+	if err := tbl.Update(ctx, fmt.Sprintf("document_id = '%s'", documentID), patch.ToMap()); err != nil {
+		return fmt.Errorf("lancedb: update chunks for document %s: %w", documentID, err)
 	}
 	return nil
 }
@@ -218,7 +216,7 @@ func (l *VectorDb) NullMetadataSlot(ctx context.Context, tableName, colName stri
 	}
 	defer tbl.Close()
 
-	if err := tbl.Update(ctx, "", map[string]interface{}{colName: nil}); err != nil {
+	if err := tbl.Update(ctx, "true", map[string]interface{}{colName: nil}); err != nil {
 		return fmt.Errorf("lancedb: null slot %s on %s: %w", colName, tableName, err)
 	}
 	return nil

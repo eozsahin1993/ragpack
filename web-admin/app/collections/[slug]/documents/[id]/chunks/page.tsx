@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { api, Chunk, Document } from "@/lib/api"; // Document used by useState type inference
+import { api, Chunk, Document, MetadataField } from "@/lib/api";
 import { Pagination } from "@/components/pagination";
 import { ChunkCard } from "@/components/chunk-card";
 import { DocumentDetails } from "./_components/document-details";
@@ -24,6 +24,8 @@ export default function ChunksPage() {
 
   const [doc, setDoc] = useState<Document | null>(null);
   const [chunks, setChunks] = useState<Chunk[]>([]);
+  const [metadataFields, setMetadataFields] = useState<MetadataField[]>([]);
+  const [currentMetadata, setCurrentMetadata] = useState<Record<string, unknown>>({});
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -69,10 +71,14 @@ export default function ChunksPage() {
     Promise.all([
       api.documents.get(slug, id),
       api.documents.chunks(slug, id),
+      api.metadataFields.list(slug),
+      api.documents.metadata(slug, id),
     ])
-      .then(([d, c]) => {
+      .then(([d, c, mf, md]) => {
         setDoc(d);
         setChunks(c.chunks ?? []);
+        setMetadataFields(mf.fields ?? []);
+        setCurrentMetadata(md.metadata ?? {});
         const label = docLabel(d);
         setBreadcrumbLabel(id, label.length > 30 ? label.slice(0, 30) + "…" : label);
       })
@@ -126,7 +132,7 @@ export default function ChunksPage() {
         )}
       </div>
 
-      {doc && <DocumentDetails doc={doc} slug={slug} onUpdate={setDoc} />}
+      {doc && <DocumentDetails doc={doc} slug={slug} metadataFields={metadataFields} currentMetadata={currentMetadata} onUpdate={setDoc} />}
 
       {/* Chunks */}
       {loading ? (
