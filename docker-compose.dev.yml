@@ -9,7 +9,6 @@ services:
       - go_pkg_cache:/go/pkg/mod
 
   web-admin:
-    build: null
     image: node:22-alpine
     working_dir: /app
     command: sh -c "npm install --prefer-offline && npm run dev"

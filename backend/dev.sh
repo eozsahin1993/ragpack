@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-LANCEDB_VERSION="v0.1.4"
+LANCEDB_VERSION="v1.0.4"
 LANCEDB_MODULE="$(go env GOPATH)/pkg/mod/github.com/eozsahin1993/lancedb-go@${LANCEDB_VERSION}"
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
