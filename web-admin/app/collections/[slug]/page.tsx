@@ -5,13 +5,19 @@ import { useParams, useRouter } from "next/navigation";
 import { Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, Collection, Document, MetadataField } from "@/lib/api";
 import { DocumentsTable, docLabel } from "@/components/documents/documents-table";
 import { DocumentEditDialog } from "@/components/documents/document-edit-dialog";
 import { MetadataFieldsPanel } from "./_components/metadata-fields-panel";
+import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
+
+const TABS = [
+  { key: "documents", label: "Documents" },
+  { key: "metadata", label: "Document properties" },
+] as const;
+type TabKey = (typeof TABS)[number]["key"];
 
 export default function CollectionPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -26,6 +32,7 @@ export default function CollectionPage() {
   const [editingDoc, setEditingDoc] = useState<Document | null>(null);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>("documents");
 
   const loadDocs = useCallback(async (p = page) => {
     try {
@@ -93,7 +100,7 @@ export default function CollectionPage() {
         <div>
           <h1 className="text-xl font-semibold">{collection?.name ?? slug}</h1>
           {collection && (
-            <p className="text-sm text-zinc-500 mt-0.5">
+            <p className="text-sm text-muted-foreground mt-0.5">
               {collection.embed_model} · {collection.vector_dim}d
             </p>
           )}
@@ -101,7 +108,7 @@ export default function CollectionPage() {
         <Button
           variant="ghost"
           size="sm"
-          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+          className="text-destructive hover:text-destructive hover:bg-destructive/10"
           onClick={handleDelete}
           disabled={deleting}
         >
@@ -110,17 +117,27 @@ export default function CollectionPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="documents">
-        <TabsList variant="line">
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="metadata">Document properties</TabsTrigger>
-        </TabsList>
-        <TabsContent value="documents" className="mt-4 space-y-3">
+      <div className="flex gap-1 border-b border-border">
+        {TABS.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setActiveTab(t.key)}
+            className={cn(
+              "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+              activeTab === t.key
+                ? "border-foreground text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "documents" && (
+        <div className="space-y-3 mt-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-medium">Documents</h2>
-              {total > 0 && <p className="text-xs text-zinc-400 mt-0.5">{total} total</p>}
-            </div>
+            {total > 0 ? <p className="text-xs text-muted-foreground">{total} total</p> : <span />}
             <Button size="sm" onClick={() => router.push(`/collections/${slug}/ingest`)}>
               <Plus className="w-4 h-4 mr-1" />
               Ingest
@@ -155,11 +172,14 @@ export default function CollectionPage() {
               loadDocs(page);
             }}
           />
-        </TabsContent>
-        <TabsContent value="metadata" className="mt-4">
+        </div>
+      )}
+
+      {activeTab === "metadata" && (
+        <div className="mt-4">
           <MetadataFieldsPanel slug={slug} />
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
   );
 }

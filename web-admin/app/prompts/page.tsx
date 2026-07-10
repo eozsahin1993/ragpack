@@ -100,7 +100,7 @@ export default function PromptsPage() {
   function renderPlaceholders(content: string) {
     return content.split(/(\{\{[^}]+\}\})/g).map((part, i) =>
       /^\{\{[^}]+\}\}$/.test(part)
-        ? <mark key={i} className="bg-amber-100 text-amber-800 rounded px-0.5 not-italic font-medium">{part}</mark>
+        ? <mark key={i} className="bg-accent text-primary rounded px-0.5 not-italic font-medium">{part}</mark>
         : <span key={i}>{part}</span>
     );
   }
@@ -110,30 +110,30 @@ export default function PromptsPage() {
       const isExpanded = expandedSlug === (p.slug || String(i));
       const key = p.id || p.slug || String(i);
       return [
-        <TableRow key={key} className="group cursor-pointer hover:bg-zinc-50" onClick={() => setExpandedSlug(isExpanded ? null : (p.slug || String(i)))}>
+        <TableRow key={key} className="group cursor-pointer" onClick={() => setExpandedSlug(isExpanded ? null : (p.slug || String(i)))}>
           <TableCell>
             <div className="flex items-center gap-2">
               {isExpanded
-                ? <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                : <ChevronRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+                ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
               <span className="font-medium">{p.name}</span>
             </div>
           </TableCell>
           <TableCell>
             <Badge variant="secondary" className="font-mono text-xs">{p.slug}</Badge>
           </TableCell>
-          <TableCell className="text-zinc-500 text-sm max-w-sm truncate">
+          <TableCell className="text-muted-foreground text-sm max-w-sm truncate">
             {p.content}
           </TableCell>
           <TableCell onClick={e => e.stopPropagation()}>
             {isSystem ? (
-              <Lock className="w-3.5 h-3.5 text-zinc-300" />
+              <Lock className="w-3.5 h-3.5 text-muted-foreground/50" />
             ) : (
               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => openEdit(p)} className="text-zinc-400 hover:text-zinc-700">
+                <button onClick={() => openEdit(p)} className="text-muted-foreground/50 hover:text-primary">
                   <Pencil className="w-4 h-4" />
                 </button>
-                <button onClick={() => handleDelete(p.slug, p.name)} className="text-zinc-400 hover:text-red-500">
+                <button onClick={() => handleDelete(p.slug, p.name)} className="text-muted-foreground/50 hover:text-destructive">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -142,8 +142,8 @@ export default function PromptsPage() {
         </TableRow>,
         isExpanded && (
           <TableRow key={`${key}-expanded`}>
-            <TableCell colSpan={4} className="bg-zinc-50 px-6 pb-5 pt-3">
-              <pre className="text-xs text-zinc-700 font-mono whitespace-pre-wrap leading-relaxed">
+            <TableCell colSpan={4} className="bg-muted/40 px-6 pb-5 pt-3">
+              <pre className="text-xs text-foreground font-mono whitespace-pre-wrap leading-relaxed">
                 {renderPlaceholders(p.content)}
               </pre>
             </TableCell>
@@ -157,7 +157,7 @@ export default function PromptsPage() {
     <div className="space-y-8">
       <PageHeader
         title="Prompts"
-        description={<>RAG prompt templates using <code className="text-xs bg-zinc-100 px-1 py-0.5 rounded">{"{{context}}"}</code> and <code className="text-xs bg-zinc-100 px-1 py-0.5 rounded">{"{{question}}"}</code></>}
+        description={<>RAG prompt templates using <code className="text-xs bg-muted px-1 py-0.5 rounded">{"{{context}}"}</code> and <code className="text-xs bg-muted px-1 py-0.5 rounded">{"{{question}}"}</code></>}
         action={<Button className="gap-2" onClick={() => setCreateOpen(true)}><Plus className="w-4 h-4" /> New prompt</Button>}
       />
 
@@ -230,8 +230,8 @@ export default function PromptsPage() {
       {/* System prompts */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-medium text-zinc-700">Built-in</h2>
-          <Lock className="w-3 h-3 text-zinc-400" />
+          <h2 className="text-sm font-medium text-foreground">Built-in</h2>
+          <Lock className="w-3 h-3 text-muted-foreground" />
         </div>
         <DataTable columns={[
           { label: "Name" },
@@ -241,11 +241,11 @@ export default function PromptsPage() {
         ]}>
           {loading ? (
             <TableRow key="loading">
-              <TableCell colSpan={4} className="text-center text-zinc-400 py-8">Loading…</TableCell>
+              <TableCell colSpan={4} className="text-center text-muted-foreground py-8">Loading…</TableCell>
             </TableRow>
           ) : systemPrompts.length === 0 ? (
             <TableRow key="empty">
-              <TableCell colSpan={4} className="text-center text-zinc-400 py-8">No built-in prompts.</TableCell>
+              <TableCell colSpan={4} className="text-center text-muted-foreground py-8">No built-in prompts.</TableCell>
             </TableRow>
           ) : renderPromptRows(systemPrompts, true)}
         </DataTable>
@@ -253,7 +253,7 @@ export default function PromptsPage() {
 
       {/* User prompts */}
       <div className="space-y-2">
-        <h2 className="text-sm font-medium text-zinc-700">Custom</h2>
+        <h2 className="text-sm font-medium text-foreground">Custom</h2>
         <DataTable columns={[
           { label: "Name" },
           { label: "Slug" },
@@ -262,11 +262,11 @@ export default function PromptsPage() {
         ]}>
           {loading ? (
             <TableRow key="loading">
-              <TableCell colSpan={4} className="text-center text-zinc-400 py-8">Loading…</TableCell>
+              <TableCell colSpan={4} className="text-center text-muted-foreground py-8">Loading…</TableCell>
             </TableRow>
           ) : userPrompts.length === 0 ? (
             <TableRow key="empty">
-              <TableCell colSpan={4} className="text-center text-zinc-400 py-8">
+              <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                 No custom prompts yet. Create one to get started.
               </TableCell>
             </TableRow>

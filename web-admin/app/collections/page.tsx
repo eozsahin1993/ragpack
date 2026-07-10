@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Trash2, ChevronRight } from "lucide-react";
+import { Plus, Trash2, ChevronRight, Database } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,7 +106,7 @@ export default function CollectionsPage() {
                 <div className="space-y-1.5">
                   <Label>
                     Embedding model{" "}
-                    <span className="text-zinc-400 font-normal">(optional)</span>
+                    <span className="text-muted-foreground font-normal">(optional)</span>
                   </Label>
                   <Select
                     value={form.embed_model || "__default__"}
@@ -149,18 +149,21 @@ export default function CollectionsPage() {
       ]}>
         {loading ? (
           <TableRow>
-            <TableCell colSpan={5} className="text-center text-zinc-400 py-10">Loading…</TableCell>
+            <TableCell colSpan={5} className="text-center text-muted-foreground py-10">Loading…</TableCell>
           </TableRow>
         ) : collections.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={5} className="text-center text-zinc-400 py-10">
+            <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
               No collections yet. Create one to get started.
             </TableCell>
           </TableRow>
         ) : collections.map(c => (
           <TableRow key={c.id} className="group">
             <TableCell>
-              <Link href={`/collections/${c.slug}`} className="font-medium hover:text-zinc-600 flex items-center gap-1">
+              <Link href={`/collections/${c.slug}`} className="font-medium hover:text-primary flex items-center gap-2">
+                <div className="w-7 h-7 rounded-md bg-accent text-primary flex items-center justify-center shrink-0">
+                  <Database className="w-3.5 h-3.5" />
+                </div>
                 {c.name}
                 <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-opacity" />
               </Link>
@@ -168,12 +171,12 @@ export default function CollectionsPage() {
             <TableCell>
               <Badge variant="secondary" className="font-mono text-xs">{c.slug}</Badge>
             </TableCell>
-            <TableCell className="text-zinc-500 text-sm">{c.embed_model}</TableCell>
-            <TableCell className="text-zinc-500 text-sm">{c.vector_dim}</TableCell>
+            <TableCell className="text-muted-foreground text-sm">{c.embed_model}</TableCell>
+            <TableCell className="text-muted-foreground text-sm">{c.vector_dim}</TableCell>
             <TableCell>
               <button
                 onClick={() => handleDelete(c.slug, c.name)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-400 hover:text-red-500"
+                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-destructive"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
