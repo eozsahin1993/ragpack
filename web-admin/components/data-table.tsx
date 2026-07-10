@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -6,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 interface Column {
   label: string;
@@ -19,19 +21,24 @@ interface DataTableProps {
 
 export function DataTable({ columns, children }: DataTableProps) {
   return (
-    <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/60 hover:bg-muted/60">
-            {columns.map((col, i) => (
-              <TableHead key={i} className={col.className}>
-                {col.label}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>{children}</TableBody>
-      </Table>
-    </div>
+    <Card className="py-0 [&_th]:h-11 [&_th]:px-4 [&_td]:px-4 [&_td]:py-3">
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/40 hover:bg-muted/40">
+              {columns.map((col, i) => (
+                <TableHead
+                  key={i}
+                  className={cn("text-xs font-medium uppercase tracking-wide text-muted-foreground", col.className)}
+                >
+                  {col.label}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>{children}</TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }

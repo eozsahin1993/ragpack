@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FileText, ChevronRight } from "lucide-react";
+import { Database, FileText, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Collection } from "@/lib/api";
 
@@ -15,15 +15,22 @@ export function CollectionCard({ collection, docCount }: CollectionCardProps) {
 
   return (
     <Card
-      className="cursor-pointer hover:ring-zinc-300 transition-all group"
+      className="cursor-pointer hover:shadow-md hover:ring-2 hover:ring-primary/20 transition-all group"
       onClick={() => router.push(`/collections/${collection.slug}`)}
     >
       <CardHeader>
-        <div className="flex items-start justify-between">
-          <CardTitle className="truncate">{collection.name}</CardTitle>
-          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5 group-hover:translate-x-0.5 transition-transform" />
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 bg-accent text-primary">
+              <Database className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <CardTitle className="truncate">{collection.name}</CardTitle>
+              <CardDescription className="font-mono text-xs mt-0.5">{collection.embed_model}</CardDescription>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1 group-hover:translate-x-0.5 group-hover:text-primary transition-all" />
         </div>
-        <CardDescription className="font-mono text-xs">{collection.embed_model}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex items-center gap-4 text-sm">

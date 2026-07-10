@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2, RefreshCw, Loader2, Pencil } from "lucide-react";
+import { Trash2, RefreshCw, Loader2, Pencil, FileText, FileJson, FileSpreadsheet, FileCode, File as FileIcon } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { DataTable } from "@/components/data-table";
 import { Pagination } from "@/components/pagination";
@@ -12,6 +12,22 @@ const STATUS_COLORS: Record<string, string> = {
   ingesting: "badge-warning",
   failed:    "badge-error",
 };
+
+const FILE_ICONS: Record<string, typeof FileIcon> = {
+  "application/pdf": FileText,
+  "text/plain": FileText,
+  "text/markdown": FileText,
+  "text/csv": FileSpreadsheet,
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": FileSpreadsheet,
+  "application/json": FileJson,
+  "text/html": FileCode,
+  "text/xml": FileCode,
+  "application/xml": FileCode,
+};
+
+function fileIconFor(mimeType: string) {
+  return FILE_ICONS[mimeType] ?? FileIcon;
+}
 
 export function docLabel(doc: Document) {
   return doc.name ?? friendlyUri(doc.file_uri);
@@ -90,53 +106,61 @@ export function DocumentsTable({
       <DataTable columns={columns}>
         {loading ? (
           <TableRow>
-            <TableCell colSpan={colSpan} className="text-center text-zinc-400 py-10">Loading…</TableCell>
+            <TableCell colSpan={colSpan} className="text-center text-muted-foreground py-10">Loading…</TableCell>
           </TableRow>
         ) : docs.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={colSpan} className="text-center text-zinc-400 py-10">{emptyMessage}</TableCell>
+            <TableCell colSpan={colSpan} className="text-center text-muted-foreground py-10">{emptyMessage}</TableCell>
           </TableRow>
         ) : docs.map(d => {
+          const FileTypeIcon = fileIconFor(d.mime_type);
           return (
             <TableRow
               key={d.id}
-              className={onRowClick ? "cursor-pointer hover:bg-zinc-50" : undefined}
+              className={onRowClick ? "cursor-pointer" : undefined}
               onClick={() => onRowClick?.(d)}
             >
               <TableCell className="max-w-xs">
-                <p className="text-xs text-zinc-700 truncate">{docLabel(d)}</p>
-                {d.name && <p className="text-[10px] text-zinc-400 truncate mt-0.5 font-mono">{friendlyUri(d.file_uri)}</p>}
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-md bg-accent text-primary flex items-center justify-center shrink-0">
+                    <FileTypeIcon className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-foreground font-medium truncate">{docLabel(d)}</p>
+                    {d.name && <p className="text-[10px] text-muted-foreground truncate mt-0.5 font-mono">{friendlyUri(d.file_uri)}</p>}
+                  </div>
+                </div>
               </TableCell>
 
               {showCollection && (
-                <TableCell className="text-xs text-zinc-500">
+                <TableCell className="text-xs text-muted-foreground">
                   {getCollectionLabel?.(d) ?? d.collection_id.slice(0, 8) + "…"}
                 </TableCell>
               )}
 
               {showType && (
-                <TableCell className="text-xs text-zinc-500">{friendlyMimeType(d.mime_type)}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{friendlyMimeType(d.mime_type)}</TableCell>
               )}
 
               {showChunks && (
-                <TableCell className="text-xs text-zinc-500">{d.chunk_count}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{d.chunk_count}</TableCell>
               )}
 
               <TableCell>
                 <div className="flex items-center gap-1.5">
                   {d.status === "ingesting" && (
-                    <Loader2 className="w-3 h-3 animate-spin text-amber-500 shrink-0" />
+                    <Loader2 className="w-3 h-3 animate-spin text-status-warning-text shrink-0" />
                   )}
                   <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${STATUS_COLORS[d.status] ?? ""}`}>
                     {d.status}
                   </span>
                 </div>
                 {d.error && (
-                  <p className="text-xs text-red-400 mt-0.5 max-w-xs truncate" title={d.error}>{d.error}</p>
+                  <p className="text-xs text-status-error-text mt-0.5 max-w-xs truncate" title={d.error}>{d.error}</p>
                 )}
               </TableCell>
 
-              <TableCell className="text-xs text-zinc-400" title={new Date(d[dateField]).toLocaleString()}>
+              <TableCell className="text-xs text-muted-foreground" title={new Date(d[dateField]).toLocaleString()}>
                 {timeAgo(d[dateField])}
               </TableCell>
 
@@ -147,7 +171,7 @@ export function DocumentsTable({
                       <button
                         onClick={e => { e.stopPropagation(); onEdit(d); }}
                         disabled={busy(d.id)}
-                        className="text-zinc-300 hover:text-primary transition-colors disabled:opacity-40"
+                        className="text-muted-foreground/50 hover:text-primary transition-colors disabled:opacity-40"
                         title="Edit document"
                       >
                         <Pencil className="w-4 h-4" />
@@ -157,7 +181,7 @@ export function DocumentsTable({
                       <button
                         onClick={e => { e.stopPropagation(); onRefresh(d); }}
                         disabled={busy(d.id)}
-                        className="text-zinc-300 hover:text-primary transition-colors disabled:opacity-40"
+                        className="text-muted-foreground/50 hover:text-primary transition-colors disabled:opacity-40"
                         title="Re-ingest document"
                       >
                         <RefreshCw className={`w-4 h-4 ${refreshingId === d.id ? "animate-spin" : ""}`} />
@@ -167,7 +191,7 @@ export function DocumentsTable({
                       <button
                         onClick={e => { e.stopPropagation(); onDelete(d); }}
                         disabled={busy(d.id)}
-                        className="text-zinc-300 hover:text-red-500 transition-colors disabled:opacity-40"
+                        className="text-muted-foreground/50 hover:text-destructive transition-colors disabled:opacity-40"
                         title="Delete document"
                       >
                         <Trash2 className="w-4 h-4" />
