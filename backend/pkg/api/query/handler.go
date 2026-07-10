@@ -16,6 +16,11 @@ import (
 	"ragpack/pkg/meta"
 )
 
+const (
+	defaultQueryTopK = 5
+	defaultRagTopK   = 2 // leaner than Query's: RAG chunks feed an LLM prompt, so cost scales with count
+)
+
 type Handler struct {
 	meta              meta.MetaStore
 	vectorDb          db.VectorDb
@@ -26,6 +31,27 @@ type Handler struct {
 
 func NewHandler(ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, defaultPromptSlug string) *Handler {
 	return &Handler{meta: ms, vectorDb: vec, registry: registry, llmRegistry: llmRegistry, defaultPromptSlug: defaultPromptSlug}
+}
+
+// resolveHybridSettings fills in db.DefaultHybridSettings for any unset field.
+func resolveHybridSettings(s *HybridSettings) db.HybridSettings {
+	resolved := db.DefaultHybridSettings()
+	if s == nil {
+		return resolved
+	}
+	if s.FullTextWeight != nil {
+		resolved.FullTextWeight = *s.FullTextWeight
+	}
+	if s.SemanticWeight != nil {
+		resolved.SemanticWeight = *s.SemanticWeight
+	}
+	if s.RRFK != nil {
+		resolved.RRFK = *s.RRFK
+	}
+	if s.FullTextLimit != nil {
+		resolved.FullTextLimit = *s.FullTextLimit
+	}
+	return resolved
 }
 
 func (h *Handler) Query(c *fiber.Ctx) error {
@@ -39,7 +65,7 @@ func (h *Handler) Query(c *fiber.Ctx) error {
 		return err
 	}
 	if req.TopK == 0 {
-		req.TopK = 10
+		req.TopK = defaultQueryTopK
 	}
 
 	metaFields, sqlFilter, err := h.resolveFilter(c.Context(), collection.ID, req.Filters)
@@ -52,7 +78,11 @@ func (h *Handler) Query(c *fiber.Ctx) error {
 		return err
 	}
 
-	results, err := h.vectorDb.QuerySimilarVectors(c.Context(), collection.TableName, vector, req.TopK, sqlFilter)
+	keywordQuery := ""
+	if !req.VectorSearchOnly {
+		keywordQuery = req.Query
+	}
+	results, err := h.vectorDb.QuerySimilarVectors(c.Context(), collection.TableName, vector, req.TopK, sqlFilter, keywordQuery, resolveHybridSettings(req.HybridSettings))
 	if err != nil {
 		log.Printf("query error: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
@@ -61,16 +91,19 @@ func (h *Handler) Query(c *fiber.Ctx) error {
 	items := make([]QueryResultItem, len(results))
 	for i, r := range results {
 		items[i] = QueryResultItem{
-			Source:      r.SourceName,
-			FileUri:     r.FileUri,
-			MimeType:    r.MimeType,
-			ChunkIndex:  r.ChunkIndex,
-			ChunkHeader: r.ChunkHeader,
-			ChunkText:   r.ChunkText,
-			ExtraJSON:   r.ExtraJSON,
-			Distance:    r.Distance,
-			Similarity:  r.Similarity,
-			Metadata:    reconstructMetadata(r.ChunkDbRecord, metaFields),
+			Source:             r.SourceName,
+			FileUri:            r.FileUri,
+			MimeType:           r.MimeType,
+			ChunkIndex:         r.ChunkIndex,
+			ChunkHeader:        r.ChunkHeader,
+			ChunkText:          r.ChunkText,
+			ExtraJSON:          r.ExtraJSON,
+			VectorDistance:     r.VectorDistance,
+			VectorSimilarity:   r.VectorSimilarity,
+			KeywordBM25Score:   r.KeywordBM25Score,
+			RRFScoreNormalized: r.RRFScoreNormalized,
+			RRFScore:           r.RRFScore,
+			Metadata:           reconstructMetadata(r.ChunkDbRecord, metaFields),
 		}
 	}
 
@@ -88,7 +121,7 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 		return err
 	}
 	if req.TopK == 0 {
-		req.TopK = 10
+		req.TopK = defaultRagTopK
 	}
 	if req.PromptSlug == "" {
 		req.PromptSlug = h.defaultPromptSlug
@@ -109,7 +142,11 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 		return err
 	}
 
-	results, err := h.vectorDb.QuerySimilarVectors(c.Context(), collection.TableName, vector, req.TopK, sqlFilter)
+	keywordQuery := ""
+	if !req.VectorSearchOnly {
+		keywordQuery = req.Query
+	}
+	results, err := h.vectorDb.QuerySimilarVectors(c.Context(), collection.TableName, vector, req.TopK, sqlFilter, keywordQuery, resolveHybridSettings(req.HybridSettings))
 	if err != nil {
 		log.Printf("rag query error: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
@@ -118,7 +155,7 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 	if req.MinSimilarity != nil && *req.MinSimilarity > 0 {
 		filtered := results[:0]
 		for _, r := range results {
-			if r.Similarity >= *req.MinSimilarity {
+			if r.VectorSimilarity >= *req.MinSimilarity {
 				filtered = append(filtered, r)
 			}
 		}
@@ -131,12 +168,15 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 	chunks := make([]RagChunk, len(results))
 	for i, r := range results {
 		chunks[i] = RagChunk{
-			Source:      r.SourceName,
-			FileUri:     r.FileUri,
-			ChunkIndex:  r.ChunkIndex,
-			ChunkHeader: r.ChunkHeader,
-			ChunkText:   r.ChunkText,
-			Similarity:  r.Similarity,
+			Source:             r.SourceName,
+			FileUri:            r.FileUri,
+			ChunkIndex:         r.ChunkIndex,
+			ChunkHeader:        r.ChunkHeader,
+			ChunkText:          r.ChunkText,
+			VectorSimilarity:   r.VectorSimilarity,
+			KeywordBM25Score:   r.KeywordBM25Score,
+			RRFScoreNormalized: r.RRFScoreNormalized,
+			RRFScore:           r.RRFScore,
 		}
 	}
 
@@ -168,7 +208,6 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 		PromptSlug:      prompt.Slug,
 	})
 }
-
 
 func (h *Handler) embedQuery(c *fiber.Ctx, embedModel, query string) ([]float32, error) {
 	emb, err := h.registry.Get(embedModel)

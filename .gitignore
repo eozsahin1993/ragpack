@@ -15,6 +15,11 @@ backend/bin/
 node_modules/
 dist/
 
+# Playwright
+web-admin/test-results/
+web-admin/playwright-report/
+web-admin/blob-report/
+
 # macOS
 .DS_Store
 backend/tmp/

@@ -11,8 +11,14 @@ interface ChunkCardProps {
   source?: string;
   /** File URI shown below the text */
   fileUri?: string;
-  /** Similarity score 0–100, shown in search/RAG context */
+  /** Vector cosine similarity 0–100, shown in search/RAG context */
   similarity?: number;
+  /** Raw BM25 score from the keyword/FTS pass (hybrid results only, unnormalized) */
+  keywordScore?: number;
+  /** Fused weighted-RRF score, normalized 0–100 (hybrid results only) */
+  rrfScoreNormalized?: number;
+  /** Raw fused weighted-RRF score, unclamped (hybrid results only) */
+  rrfScore?: number;
   /** Truncated hash shown in the chunks detail view */
   chunkHash?: string;
 }
@@ -26,6 +32,9 @@ export function ChunkCard({
   source,
   fileUri,
   similarity,
+  keywordScore,
+  rrfScoreNormalized,
+  rrfScore,
   chunkHash,
 }: ChunkCardProps) {
   return (
@@ -46,7 +55,7 @@ export function ChunkCard({
             {similarity != null ? (
               <>
                 <span className="text-lg font-semibold text-status-success-text">{similarity.toFixed(1)}%</span>
-                <p className="text-xs text-muted-foreground">similarity</p>
+                <p className="text-xs text-muted-foreground">vector similarity</p>
               </>
             ) : chunkHash ? (
               <span className="font-mono text-xs text-muted-foreground/60" title={chunkHash}>
@@ -55,6 +64,24 @@ export function ChunkCard({
             ) : null}
           </div>
         </div>
+
+        {(keywordScore != null || rrfScoreNormalized != null) && (
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            {rrfScoreNormalized != null && (
+              <span>
+                RRF <span className="font-medium text-foreground">{rrfScoreNormalized.toFixed(1)}%</span>
+                {rrfScore != null && (
+                  <span className="text-muted-foreground/70"> ({rrfScore.toFixed(4)} raw)</span>
+                )}
+              </span>
+            )}
+            {keywordScore != null && (
+              <span>
+                BM25 <span className="font-medium text-foreground">{keywordScore.toFixed(2)}</span>
+              </span>
+            )}
+          </div>
+        )}
 
         {chunkHeader && (
           <>

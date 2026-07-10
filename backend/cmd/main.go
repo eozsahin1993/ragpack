@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"os"
 	"os/signal"
@@ -12,6 +13,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 
 	"ragpack/pkg/api"
+	"ragpack/pkg/api/validate"
 	"ragpack/pkg/chunker"
 	"ragpack/pkg/config"
 	"ragpack/pkg/db"
@@ -80,7 +82,11 @@ func startIngester(ctx context.Context, cfg config.Config, ms meta.MetaStore, ve
 }
 
 func createApp(maxUploadSize int) *fiber.App {
-	app := fiber.New(fiber.Config{AppName: "RagPack Engine v1.0", BodyLimit: maxUploadSize * 1024 * 1024})
+	app := fiber.New(fiber.Config{
+		AppName:      "RagPack Engine v1.0",
+		BodyLimit:    maxUploadSize * 1024 * 1024,
+		ErrorHandler: handleFiberError,
+	})
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
@@ -88,6 +94,16 @@ func createApp(maxUploadSize int) *fiber.App {
 		AllowMethods: "GET, POST, PATCH, DELETE, OPTIONS",
 	}))
 	return app
+}
+
+// handleFiberError skips validate.ErrResponseWritten (validate.Body/Query
+// already wrote the real error response) so it isn't overwritten by Fiber's
+// default handler; anything else falls through to that default.
+func handleFiberError(c *fiber.Ctx, err error) error {
+	if errors.Is(err, validate.ErrResponseWritten) {
+		return nil
+	}
+	return fiber.DefaultErrorHandler(c, err)
 }
 
 func handleShutdown(cancel context.CancelFunc, ing ingester.Ingester, apps ...*fiber.App) {

@@ -13,22 +13,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api, Collection, Prompt, RagResponse } from "@/lib/api";
+import { api, Collection, MetadataField, Prompt, RagResponse } from "@/lib/api";
 import { ChunkCard } from "@/components/chunk-card";
+import { DEFAULT_HYBRID_CONFIG, HybridConfig, HybridSettingsPanel, buildHybridRequestFields } from "@/components/hybrid-settings-panel";
+import { FilterPanel, parseFilterText } from "@/components/filter-panel";
 
 export default function RagPage() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [llmModels, setLlmModels] = useState<string[]>([]);
   const [slug, setSlug] = useState("");
+  const [metadataFields, setMetadataFields] = useState<MetadataField[]>([]);
   const [query, setQuery] = useState("");
-  const [topK, setTopK] = useState("5");
+  const [topK, setTopK] = useState("2");
   const [promptSlug, setPromptSlug] = useState("");
   const [model, setModel] = useState("");
   const [minSimilarity, setMinSimilarity] = useState("");
+  const [filterText, setFilterText] = useState("");
+  const [filterError, setFilterError] = useState<string | null>(null);
   const [ragResult, setRagResult] = useState<RagResponse | null>(null);
   const [querying, setQuerying] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [hybridConfig, setHybridConfig] = useState<HybridConfig>(DEFAULT_HYBRID_CONFIG);
 
   useEffect(() => {
     api.collections.list().then(d => {
@@ -49,9 +55,25 @@ export default function RagPage() {
     });
   }, []);
 
+  useEffect(() => {
+    if (!slug) return;
+    setMetadataFields([]);
+    api.metadataFields.list(slug)
+      .then(d => setMetadataFields(d.fields ?? []))
+      .catch(() => {});
+  }, [slug]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!slug || !promptSlug) return;
+
+    const filters = parseFilterText(filterText);
+    if (filters === undefined) {
+      setFilterError("Invalid JSON");
+      return;
+    }
+    setFilterError(null);
+
     setQuerying(true);
     setRagResult(null);
     try {
@@ -62,6 +84,8 @@ export default function RagPage() {
         prompt_slug: promptSlug,
         ...(model ? { model } : {}),
         ...(minSim != null ? { min_similarity: minSim } : {}),
+        ...(filters !== null ? { filters } : {}),
+        ...buildHybridRequestFields(hybridConfig),
       });
       setRagResult(data);
     } catch (e: unknown) {
@@ -132,8 +156,9 @@ export default function RagPage() {
             )}
           </div>
           <div className="flex-1 space-y-1.5">
-            <Label className="text-xs text-zinc-500">Top K</Label>
+            <Label htmlFor="rag-top-k" className="text-xs text-zinc-500">Top K</Label>
             <Input
+              id="rag-top-k"
               type="number"
               min={1}
               max={100}
@@ -172,6 +197,8 @@ export default function RagPage() {
           </div>
         </div>
 
+        <HybridSettingsPanel value={hybridConfig} onChange={setHybridConfig} />
+        <FilterPanel value={filterText} onChange={setFilterText} error={filterError} metadataFields={metadataFields} />
       </form>
 
       {ragResult !== null && (
@@ -204,7 +231,10 @@ export default function RagPage() {
                 chunkIndex={c.chunk_index}
                 source={c.source}
                 fileUri={c.file_uri}
-                similarity={c.similarity}
+                similarity={c.vector_similarity}
+                keywordScore={c.keyword_bm25_score}
+                rrfScoreNormalized={c.rrf_score_normalized}
+                rrfScore={c.rrf_score}
                 chunkHeader={c.chunk_header}
                 chunkText={c.chunk_text}
               />

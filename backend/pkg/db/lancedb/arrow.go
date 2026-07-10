@@ -13,17 +13,17 @@ import (
 
 // Column names for the ChunkDbRecord Arrow schema.
 const (
-	colID         = "id"
-	colDocumentID = "document_id"
-	colChunkHash  = "chunk_hash"
-	colChunkIndex = "chunk_index"
-	colVector     = "vector"
-	colCreatedAt  = "created_at"
-	colUpdatedAt  = "updated_at"
-	colMimeType   = "mime_type"
-	colFileUri    = "file_uri"
-	colSourceName = "source_name"
-	colChunkText  = "chunk_text"
+	colID          = "id"
+	colDocumentID  = "document_id"
+	colChunkHash   = "chunk_hash"
+	colChunkIndex  = "chunk_index"
+	colVector      = "vector"
+	colCreatedAt   = "created_at"
+	colUpdatedAt   = "updated_at"
+	colMimeType    = "mime_type"
+	colFileUri     = "file_uri"
+	colSourceName  = "source_name"
+	colChunkText   = "chunk_text"
 	colChunkHeader = "chunk_header"
 	colExternalId  = "external_id"
 	colExtraJSON   = "extra_json"
@@ -74,14 +74,14 @@ func chunkArrowSchema(vectorDim int) *arrow.Schema {
 
 type chunkBuilders struct {
 	id, docID, hash, mime, fileUri, srcName, chunkText, chunkHeader, extID, extra *array.StringBuilder
-	idx                                                                            *array.Int32Builder
-	vec                                                                            *array.FixedSizeListBuilder
-	created, updated                                                               *array.Int64Builder
-	metaStr                                                                        [metaStrSlots]*array.StringBuilder
-	metaNum                                                                        [metaNumSlots]*array.Float64Builder
-	metaBool                                                                       [metaBoolSlots]*array.BooleanBuilder
-	metaDate                                                                       [metaDateSlots]*array.Int64Builder
-	metaArr                                                                        [metaArrSlots]*array.ListBuilder
+	idx                                                                           *array.Int32Builder
+	vec                                                                           *array.FixedSizeListBuilder
+	created, updated                                                              *array.Int64Builder
+	metaStr                                                                       [metaStrSlots]*array.StringBuilder
+	metaNum                                                                       [metaNumSlots]*array.Float64Builder
+	metaBool                                                                      [metaBoolSlots]*array.BooleanBuilder
+	metaDate                                                                      [metaDateSlots]*array.Int64Builder
+	metaArr                                                                       [metaArrSlots]*array.ListBuilder
 }
 
 func newChunkBuilders(pool memory.Allocator, vectorDim int) chunkBuilders {
@@ -241,10 +241,20 @@ func mapResultsToChunks(rows []map[string]interface{}) ([]db.ChunkQueryResult, e
 			cosineSim = 0
 		}
 		similarity := cosineSim * 100
+
+		// Raw BM25 score from the FTS pass; see ChunkQueryResult.KeywordBM25Score.
+		var keywordScore float32
+		if s, ok := row["_score"]; ok {
+			if f, ok := s.(float64); ok {
+				keywordScore = float32(f)
+			}
+		}
+
 		results = append(results, db.ChunkQueryResult{
-			ChunkDbRecord: rec,
-			Distance:      distance,
-			Similarity:    similarity,
+			ChunkDbRecord:    rec,
+			VectorDistance:   distance,
+			VectorSimilarity: similarity,
+			KeywordBM25Score: keywordScore,
 		})
 	}
 	return results, nil

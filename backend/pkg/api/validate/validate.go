@@ -1,6 +1,7 @@
 package validate
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/go-playground/validator/v10"
@@ -8,6 +9,14 @@ import (
 
 	"ragpack/pkg/meta"
 )
+
+// ErrResponseWritten is returned by Body/Query when they've already written
+// an error response to c. c.JSON's own return value can't signal this (it's
+// nil on a successful write, which a validation-error response always is),
+// so callers must check for this sentinel via errors.Is instead of the
+// c.JSON result — the app's Fiber ErrorHandler treats it as already-handled
+// and skips writing a second response over it (see cmd/main.go).
+var ErrResponseWritten = errors.New("validate: response already written")
 
 var reservedMetadataNames = map[string]bool{
 	"created_at": true, "updated_at": true, "mime_type": true,
@@ -24,25 +33,31 @@ func init() {
 	RegisterSortValidator("documentsortfield", meta.DocumentSortSpec)
 }
 
-// Body parses and validates a request body. Returns a structured 400 on failure.
+// Body parses and validates a request body. Returns ErrResponseWritten on
+// failure, after writing a structured 400.
 func Body(c *fiber.Ctx, req any) error {
 	if err := c.BodyParser(req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
+		_ = c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
+		return ErrResponseWritten
 	}
 	if err := v.Struct(req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"errors": fieldErrors(err)})
+		_ = c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"errors": fieldErrors(err)})
+		return ErrResponseWritten
 	}
 	return nil
 }
 
 // Query parses and validates request query parameters into req (fields tagged
-// with `query:"..."`). Returns a structured 400 on failure.
+// with `query:"..."`). Returns ErrResponseWritten on failure, after writing a
+// structured 400.
 func Query(c *fiber.Ctx, req any) error {
 	if err := c.QueryParser(req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid query parameters"})
+		_ = c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid query parameters"})
+		return ErrResponseWritten
 	}
 	if err := v.Struct(req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"errors": fieldErrors(err)})
+		_ = c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"errors": fieldErrors(err)})
+		return ErrResponseWritten
 	}
 	return nil
 }

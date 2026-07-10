@@ -78,8 +78,18 @@ export interface QueryResultItem {
   chunk_text: string | null;
   extra_json: string | null;
   metadata?: Record<string, unknown>;
-  distance: number;
-  similarity: number;
+  vector_distance: number;
+  vector_similarity: number;
+  keyword_bm25_score?: number;
+  rrf_score?: number;
+  rrf_score_normalized?: number;
+}
+
+export interface HybridSettings {
+  full_text_weight?: number;
+  semantic_weight?: number;
+  rrf_k?: number;
+  full_text_limit?: number;
 }
 
 export interface RagChunk {
@@ -88,7 +98,10 @@ export interface RagChunk {
   chunk_index: number;
   chunk_header: string | null;
   chunk_text: string | null;
-  similarity: number;
+  vector_similarity: number;
+  keyword_bm25_score?: number;
+  rrf_score?: number;
+  rrf_score_normalized?: number;
 }
 
 export interface RagResponse {
@@ -222,12 +235,27 @@ export const api = {
       req<void>(`/admin/collections/${slug}/metadata-fields/${fieldName}`, { method: "DELETE" }),
   },
   query: {
-    run: (slug: string, body: { query: string; top_k: number; filters?: unknown }) =>
+    run: (slug: string, body: {
+      query: string;
+      top_k: number;
+      filters?: unknown;
+      vector_search_only?: boolean;
+      hybrid_settings?: HybridSettings;
+    }) =>
       req<{ results: QueryResultItem[] }>(`/admin/collections/${slug}/query`, {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    rag: (slug: string, body: { query: string; top_k: number; prompt_slug: string; model?: string; min_similarity?: number }) =>
+    rag: (slug: string, body: {
+      query: string;
+      top_k: number;
+      prompt_slug: string;
+      model?: string;
+      min_similarity?: number;
+      filters?: unknown;
+      vector_search_only?: boolean;
+      hybrid_settings?: HybridSettings;
+    }) =>
       req<RagResponse>(`/admin/collections/${slug}/rag`, {
         method: "POST",
         body: JSON.stringify(body),

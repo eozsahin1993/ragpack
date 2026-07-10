@@ -46,9 +46,14 @@ func (l *VectorDb) CreateTable(ctx context.Context, name string, collectionID st
 		return fmt.Errorf("lancedb: schema build failed: %w", err)
 	}
 
-	_, err = l.conn.CreateTable(ctx, name, schema)
+	tbl, err := l.conn.CreateTable(ctx, name, schema)
 	if err != nil {
 		return fmt.Errorf("lancedb: table provisioning failed for %s: %w", name, err)
+	}
+	defer tbl.Close()
+
+	if err := tbl.CreateIndexWithName(ctx, []string{colChunkText}, contracts.IndexTypeFts, colChunkText); err != nil {
+		return fmt.Errorf("lancedb: create FTS index on %s.%s: %w", name, colChunkText, err)
 	}
 
 	if err := migrations.MarkUpToDate(ctx, l.conn, collectionID); err != nil {
@@ -78,7 +83,6 @@ func (l *VectorDb) InsertBatch(ctx context.Context, tableName string, records []
 	}
 	return nil
 }
-
 
 func (l *VectorDb) DeleteChunksByDocument(ctx context.Context, tableName, documentID string) error {
 	tbl, err := l.conn.OpenTable(ctx, tableName)
@@ -138,24 +142,50 @@ func (l *VectorDb) UpdateChunks(ctx context.Context, tableName, documentID strin
 	return nil
 }
 
-func (l *VectorDb) QuerySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int, filter string) ([]db.ChunkQueryResult, error) {
+// QuerySimilarVectors runs vector search, optionally filtered, and fuses in
+// an FTS pass on chunk_text when keywordQuery is non-empty (hybrid search).
+func (l *VectorDb) QuerySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int, filter string, keywordQuery string, hybrid db.HybridSettings) ([]db.ChunkQueryResult, error) {
 	tbl, err := l.conn.OpenTable(ctx, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("lancedb: open query table failed %s: %w", tableName, err)
 	}
 	defer tbl.Close()
 
-	var rawResults []map[string]interface{}
-	if filter != "" {
-		rawResults, err = tbl.VectorSearchWithFilter(ctx, "vector", vector, topK, filter)
-	} else {
-		rawResults, err = tbl.VectorSearch(ctx, "vector", vector, topK)
-	}
+	vectorRows, err := tbl.Select(ctx, contracts.QueryConfig{
+		VectorSearch: &contracts.VectorSearch{Column: colVector, Vector: vector, K: topK},
+		Where:        filter,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("lancedb: query execution failed on %s: %w", tableName, err)
 	}
+	vectorResults, err := mapResultsToChunks(vectorRows)
+	if err != nil {
+		return nil, fmt.Errorf("lancedb: mapping vector results on %s: %w", tableName, err)
+	}
 
-	return mapResultsToChunks(rawResults)
+	if keywordQuery == "" {
+		return vectorResults, nil
+	}
+
+	var ftsRows []map[string]any
+	if filter != "" {
+		ftsRows, err = tbl.FullTextSearchWithFilter(ctx, colChunkText, keywordQuery, filter)
+	} else {
+		ftsRows, err = tbl.FullTextSearch(ctx, colChunkText, keywordQuery)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("lancedb: FTS query failed on %s: %w", tableName, err)
+	}
+	// FullTextSearch(WithFilter) has no limit param; truncate manually.
+	if len(ftsRows) > hybrid.FullTextLimit {
+		ftsRows = ftsRows[:hybrid.FullTextLimit]
+	}
+	ftsResults, err := mapResultsToChunks(ftsRows)
+	if err != nil {
+		return nil, fmt.Errorf("lancedb: mapping FTS results on %s: %w", tableName, err)
+	}
+
+	return db.MergeWeightedRRF(vectorResults, ftsResults, topK, hybrid), nil
 }
 
 func (l *VectorDb) OptimizeIndex(ctx context.Context, tableName string) error {
@@ -216,7 +246,7 @@ func (l *VectorDb) NullMetadataSlot(ctx context.Context, tableName, colName stri
 	}
 	defer tbl.Close()
 
-	if err := tbl.Update(ctx, "true", map[string]interface{}{colName: nil}); err != nil {
+	if err := tbl.Update(ctx, "true", map[string]any{colName: nil}); err != nil {
 		return fmt.Errorf("lancedb: null slot %s on %s: %w", colName, tableName, err)
 	}
 	return nil

@@ -5,6 +5,30 @@
 Add metadata pre-filtering and keyword/RRF hybrid search to ragpack's query pipeline.
 Phase 1 covers metadata filters (hard requirements before search). Phase 2 covers keyword+vector hybrid search with RRF (can be done later).
 
+## Status (as of 2026-07-10)
+
+**Both phases are shipped.** Naming note: the commit that shipped Phase 1
+was tagged `feat(hybrid-search)`, but what it built is **filtered vector
+search** (embedding similarity + a structured pre-filter) — not hybrid
+search in the conventional sense. "Hybrid search" properly refers to
+Phase 2 — combining *two separate retrieval methods* (dense vector +
+sparse keyword/BM25) via weighted RRF — which now also exists
+(`vector_search_only` flag + `hybrid_settings`), see the Phase 2 section below
+for implementation details.
+
+Phase 1 also went further than this doc originally specified:
+- **5 typed slot kinds shipped, not 3.** The plan below has `bool`/`date`
+  string-encoded into `metadata_str_*` slots. The actual implementation
+  gave `bool` and `date` their own dedicated slot arrays instead
+  (`metadata_bool_1..10`, `metadata_date_1..10`), alongside `str` (bumped
+  to 20 slots), `num`, and `arr` (10 slots each). Simpler filter/ingest
+  code, no string coercion needed for booleans/dates.
+- **Known gap**: field deletion (`DELETE /collections/:slug/metadata-fields/:name`)
+  does not require `"confirm_data_deletion": true` as this doc specifies —
+  it deletes immediately on request. Everything else in the deletion
+  ordering (SQLite row → null slot → drop index → optimize) matches the
+  plan.
+
 ---
 
 ## Phase 1: Metadata Filters
@@ -161,16 +185,69 @@ Phase 1 covers metadata filters (hard requirements before search). Phase 2 cover
 
 ---
 
-## Phase 2: Keyword + RRF Hybrid Search (later)
+## Phase 2: Keyword + Weighted RRF Hybrid Search
 
-The SDK already supports this natively:
-- `tbl.VectorQuery(col, vec).WithFullText(query, col).Rerank(RRFConfig)` — one-pass hybrid
-- Requires: FTS index on `chunk_text` (`CreateIndexWithParams` with `IndexTypeFTS`)
+**Status: shipped (2026-07-10), redesigned same day.** This is the actual
+"hybrid search" feature — combining dense vector retrieval with sparse
+keyword/BM25 retrieval via RRF — as distinct from Phase 1's filtered
+vector search above.
 
-Steps when ready:
-1. Create FTS index on `chunk_text` during `CreateTable` (or as a migration)
-2. Add `"keyword_boost": true` flag to `QueryRequest`
-3. Route to the hybrid query builder instead of plain vector search
+The first implementation used lancedb's built-in `Reranker` to do the
+fusion in a single call. That was replaced after discovering (via
+`RerankerConfig`'s actual field list, not assumption) that lancedb's RRF
+reranker is hard-coded 50/50 across channels with no weight knob and no
+way to recover per-channel scores, so the fusion was rebuilt in-house to
+be weighted and fully configurable:
+
+- **Two independent passes, fused in Go, not lancedb.**
+  `QuerySimilarVectors` (`pkg/db/lancedb/lancedb.go`) runs a plain vector
+  `Select` and, when `keywordQuery` is non-empty, a separate
+  `FullTextSearch`/`FullTextSearchWithFilter` pass, then merges both
+  result lists via `db.MergeWeightedRRF` (`pkg/db/hybrid.go`) — backend-
+  agnostic, lives in `pkg/db`, not the lancedb package.
+- **Weighted RRF formula**: per channel, `weight / (rrf_k + rank)`, summed
+  across whichever channel(s) a result appears in.
+- **Fully configurable, per request**: `HybridSettings` (`full_text_weight`,
+  `semantic_weight`, `rrf_k`, `full_text_limit`) on `QueryRequest`/
+  `RagRequest`, all pointer fields so any subset can be overridden; unset
+  fields fall back to `db.DefaultHybridSettings()`
+  (`full_text_weight: 0.3, semantic_weight: 0.7, rrf_k: 60, full_text_limit: 200`) —
+  semantic favored 7:3 by default. Only the ratio between the two weights
+  matters (uniform scaling doesn't change ranking or `rrf_score_normalized`,
+  only `rrf_score`'s raw magnitude).
+  `full_text_limit` caps the FTS candidate pool — `FullTextSearch` has no
+  native limit parameter and would otherwise return every match.
+- **All scores returned, not just the fused one.** Each result carries the
+  real vector cosine `similarity` (populated whenever the result was a
+  vector-channel candidate), the raw BM25 `keyword_bm25_score` (populated
+  whenever it was a keyword-channel candidate, unnormalized — no
+  universal BM25 ceiling exists), `rrf_score` (the unclamped weighted
+  fused sum, comparable only within one query's own weights/k), and
+  `rrf_score_normalized` — the same value normalized against this batch's
+  own top score, so the best result in any given result set is always
+  100%. An earlier version normalized against a fixed ceiling derived from
+  weights/k alone, which real dual-channel matches (a result found via
+  both vector and keyword search) routinely exceeded — since hybrid runs
+  by default and vector+FTS candidate sets overlap heavily in practice,
+  that made most results clamp at 100% with no differentiation. Batch-
+  relative normalization always spreads meaningfully across one query's
+  own results; use `rrf_score` if you need a value comparable across
+  different queries/settings.
+- **`min_similarity` (RagRequest) works unconditionally now** — no special
+  hybrid-mode carve-out needed, since `similarity` is always correctly
+  populated for any result that came through the vector channel, hybrid
+  or not. A hybrid result found only via keyword match has no vector-
+  channel similarity and correctly filters out at `similarity: 0`.
+- **Hybrid search runs by default.** `vector_search_only` (plain bool,
+  zero-value `false`) is the opt-out — set it `true` to skip the
+  keyword/FTS pass and run plain vector search. `top_k` falls back to a
+  manual `if req.TopK == 0` check in the handler (same pattern as before
+  this feature) — 10 for `Query()`, 2 for `Rag()` (RAG chunks get stuffed
+  into an LLM prompt, so a leaner default keeps token cost down; matches
+  LlamaIndex's default `similarity_top_k` of 2). Its validate tag is
+  `omitempty,min=1,max=100` so an
+  omitted `top_k` doesn't get rejected by validation before that default
+  line runs.
 
 ---
 
@@ -196,4 +273,4 @@ Still to verify: whether `IndexTypeLabelList` enables indexed `array_has` or gra
 - No backfill: documents ingested before a field was declared have NULL in that slot
 - Type changes require delete + re-register + re-ingest (no in-place migration)
 - `array_has` on `metadata_arr_*` columns may not benefit from an index — scans at ragpack's scale are acceptable
-- Phase 2 hybrid search may require upgrading lancedb-go from v0.1.4 to v1.0.4 — verify before starting
+- ~~Phase 2 hybrid search may require upgrading lancedb-go from v0.1.4 to v1.0.4 — verify before starting~~ — already on v1.0.4 (see `backend/go.mod`), this blocker is resolved

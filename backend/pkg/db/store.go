@@ -41,9 +41,32 @@ type ChunkDbRecord struct {
 
 type ChunkQueryResult struct {
 	ChunkDbRecord
-	Distance   float32                `json:"distance"`
-	Similarity float32                `json:"similarity"` // 0-100, cosine-based
-	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+	// Populated when this result came from the vector channel.
+	VectorDistance   float32 `json:"vector_distance"`
+	VectorSimilarity float32 `json:"vector_similarity"` // 0-100, cosine-based
+	// Raw BM25 score; populated when from the keyword channel. Unnormalized.
+	KeywordBM25Score float32 `json:"keyword_bm25_score,omitempty"`
+	// RRFScoreNormalized is RRFScore mapped to 0-100; RRFScore itself is only comparable within one query's own weights/k.
+	RRFScoreNormalized float32        `json:"rrf_score_normalized,omitempty"`
+	RRFScore           float32        `json:"rrf_score,omitempty"`
+	Metadata           map[string]any `json:"metadata,omitempty"`
+}
+
+// HybridSettings configures the weighted RRF merge.
+type HybridSettings struct {
+	FullTextWeight float32
+	SemanticWeight float32
+	RRFK           float32
+	FullTextLimit  int // caps FTS candidates; FTS search has no native limit
+}
+
+func DefaultHybridSettings() HybridSettings {
+	return HybridSettings{
+		FullTextWeight: 0.3,
+		SemanticWeight: 0.7,
+		RRFK:           60,
+		FullTextLimit:  200,
+	}
 }
 
 type VectorDb interface {
@@ -51,16 +74,15 @@ type VectorDb interface {
 	CreateTable(ctx context.Context, name string, collectionID string, vectorDim int) error
 	DropTable(ctx context.Context, name string) error
 	InsertBatch(ctx context.Context, tableName string, records []ChunkDbRecord) error
-	QuerySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int, filter string) ([]ChunkQueryResult, error)
+	// keywordQuery empty = vector-only; non-empty fuses in an FTS pass (hybrid search).
+	QuerySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int, filter string, keywordQuery string, hybrid HybridSettings) ([]ChunkQueryResult, error)
 	DeleteChunksByDocument(ctx context.Context, tableName, documentID string) error
 	ListChunksByDocument(ctx context.Context, tableName, documentID string) ([]ChunkDbRecord, error)
 	UpdateChunks(ctx context.Context, tableName, documentID string, patch ChunkPatch) error
 	OptimizeIndex(ctx context.Context, tableName string) error
-	// CreateMetadataIndex creates a scalar index on a metadata slot column.
 	// fieldType must be "str", "num", or "arr".
 	CreateMetadataIndex(ctx context.Context, tableName, colName, fieldType string) error
-	// DropMetadataIndex removes the named index from a table.
 	DropMetadataIndex(ctx context.Context, tableName, indexName string) error
-	// NullMetadataSlot sets every row's value in colName to NULL (used when deleting a metadata field).
+	// NullMetadataSlot sets every row's value in colName to NULL (field deletion).
 	NullMetadataSlot(ctx context.Context, tableName, colName string) error
 }

@@ -10,7 +10,7 @@ Monorepo layout: `backend/` (Go API + engine), `web-admin/` (Next.js admin UI), 
 
 ## Conventions
 
-Don't add comments that restate what the code does — only comment a genuine gotcha (a non-obvious constraint, a workaround, a "why" that isn't visible from the code itself). Prefer deriving a value/whitelist from a single source (a struct's own tags, an existing enum) over hand-copying the same names into a second list — see `pkg/meta/sort.go`'s `Sortable[T]` for the pattern.
+Don't add comments that restate what the code does — only comment a genuine gotcha (a non-obvious constraint, a workaround, a "why" that isn't visible from the code itself). When a comment is warranted, keep it to one short line; never multi-line/paragraph comment blocks, and never comments that reference the current task, PR, or conversation. Prefer deriving a value/whitelist from a single source (a struct's own tags, an existing enum) over hand-copying the same names into a second list — see `pkg/meta/sort.go`'s `Sortable[T]` for the pattern.
 
 ## Commands
 
