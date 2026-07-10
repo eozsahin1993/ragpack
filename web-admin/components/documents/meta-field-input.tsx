@@ -1,4 +1,6 @@
 import { MetadataField } from "@/lib/api";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Props {
   field: MetadataField;
@@ -6,59 +8,59 @@ interface Props {
   onChange: (value: string) => void;
 }
 
-export function MetaFieldInput({ field, value, onChange }: Props) {
-  const base = "w-full rounded border border-zinc-200 px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-zinc-300";
+const BOOL_UNSET = "__unset__";
 
+export function MetaFieldInput({ field, value, onChange }: Props) {
   switch (field.type) {
-    case "bool":
+    case "bool": {
+      const selectValue = value === "true" || value === "false" ? value : BOOL_UNSET;
       return (
-        <div className="flex items-center h-[26px]">
-          <input
-            type="checkbox"
-            checked={value === "true"}
-            onChange={e => onChange(e.target.checked ? "true" : "false")}
-            className="w-4 h-4 accent-primary"
-          />
-        </div>
+        <Select value={selectValue} onValueChange={v => onChange(!v || v === BOOL_UNSET ? "" : v)}>
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={BOOL_UNSET}>Not set</SelectItem>
+            <SelectItem value="true">True</SelectItem>
+            <SelectItem value="false">False</SelectItem>
+          </SelectContent>
+        </Select>
       );
+    }
     case "date":
       return (
-        <input
+        <Input
           type="date"
           value={value}
           onChange={e => onChange(e.target.value)}
-          className={base}
         />
       );
     case "num":
       return (
-        <input
+        <Input
           type="number"
           step="any"
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder="e.g. 4.5"
-          className={base}
         />
       );
     case "arr":
       return (
-        <input
+        <Input
           type="text"
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder="comma-separated: go, rust"
-          className={base}
         />
       );
     default:
       return (
-        <input
+        <Input
           type="text"
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder="value"
-          className={base}
         />
       );
   }

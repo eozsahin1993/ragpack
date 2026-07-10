@@ -82,7 +82,7 @@ export function DocumentEditDialog({ slug, doc, metadataFields, onClose, onSaved
         </DialogHeader>
         <form onSubmit={handleSave} className="space-y-4 pt-2">
           <div className="space-y-1.5">
-            <Label className="text-xs text-zinc-500">Display name</Label>
+            <Label className="text-xs text-muted-foreground">Display name</Label>
             <Input
               value={name}
               onChange={e => setName(e.target.value)}
@@ -92,12 +92,12 @@ export function DocumentEditDialog({ slug, doc, metadataFields, onClose, onSaved
 
           {metadataFields.length > 0 && (
             <div className="space-y-3">
-              <p className="text-xs font-medium text-zinc-500">Properties</p>
+              <p className="text-xs font-medium text-muted-foreground">Properties</p>
               {metadataFields.map(field => (
                 <div key={field.id} className="space-y-1.5">
-                  <Label className="text-xs text-zinc-500 flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
                     {field.name}
-                    <span className="text-zinc-300">{field.type}</span>
+                    <span className="text-muted-foreground/60">{field.type}</span>
                   </Label>
                   <MetaFieldInput
                     field={field}

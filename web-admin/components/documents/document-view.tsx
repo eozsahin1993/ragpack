@@ -129,25 +129,25 @@ export function DocumentView({ slug: slugProp, id, onDeleted }: DocumentViewProp
                 autoFocus
               />
               <button onClick={handleSaveName} className="text-xs text-primary hover:underline">Save</button>
-              <button onClick={() => setEditingName(false)} className="text-xs text-zinc-400 hover:underline">Cancel</button>
+              <button onClick={() => setEditingName(false)} className="text-xs text-muted-foreground hover:underline">Cancel</button>
             </div>
           ) : (
             <div className="flex items-center gap-2 min-w-0">
               <h1 className="text-xl font-semibold truncate">{doc ? docLabel(doc) : "Document"}</h1>
               {doc && (
-                <button onClick={startEdit} className="text-zinc-300 hover:text-zinc-500 shrink-0">
+                <button onClick={startEdit} className="text-muted-foreground/50 hover:text-primary shrink-0">
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
           )}
-          {doc && <p className="text-xs text-zinc-400 font-mono mt-0.5 truncate">{friendlyUri(doc.file_uri)}</p>}
+          {doc && <p className="text-xs text-muted-foreground font-mono mt-0.5 truncate">{friendlyUri(doc.file_uri)}</p>}
         </div>
         {doc && (
           <Button
             variant="ghost"
             size="sm"
-            className="text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
             onClick={handleDelete}
             disabled={deleting}
           >
@@ -170,13 +170,13 @@ export function DocumentView({ slug: slugProp, id, onDeleted }: DocumentViewProp
 
       {/* Chunks */}
       {loading ? (
-        <p className="text-sm text-zinc-400">Loading…</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : chunks.length === 0 ? (
-        <p className="text-sm text-zinc-400">No chunks found for this document.</p>
+        <p className="text-sm text-muted-foreground">No chunks found for this document.</p>
       ) : (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-zinc-500">{chunks.length} chunks</p>
+            <p className="text-sm text-muted-foreground">{chunks.length} chunks</p>
             <Pagination page={page} totalPages={totalPages} total={chunks.length} pageSize={PAGE_SIZE} onPageChange={setPage} />
           </div>
 
