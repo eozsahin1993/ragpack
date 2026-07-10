@@ -6,6 +6,7 @@
 *.db
 lancedb_data/
 uploads/
+backend/.data/
 
 # Go
 backend/bin/
