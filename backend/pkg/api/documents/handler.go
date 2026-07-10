@@ -19,19 +19,37 @@ func NewHandler(ms meta.MetaStore, vec db.VectorDb) *Handler {
 }
 
 func (h *Handler) List(c *fiber.Ctx) error {
-	col, err := h.meta.GetCollectionBySlug(c.Context(), c.Params("slug"))
-	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "collection not found"})
+	var q ListQuery
+	if err := validate.Query(c, &q); err != nil {
+		return err
+	}
+
+	filter := meta.DocumentFilter{}
+	if slug := c.Params("slug"); slug != "" {
+		col, err := h.meta.GetCollectionBySlug(c.Context(), slug)
+		if err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "collection not found"})
+		}
+		filter.CollectionID = &col.ID
+	}
+	if q.Status != "" {
+		status := meta.DocumentStatus(q.Status)
+		filter.Status = &status
+	}
+
+	sort := meta.DocumentSort{
+		Field: q.SortBy,
+		Dir:   meta.SortDir(q.SortDir),
 	}
 
 	limit, offset := validate.Pagination(c)
 
-	docs, err := h.meta.ListDocumentsByCollection(c.Context(), col.ID, limit, offset)
+	docs, err := h.meta.ListDocuments(c.Context(), filter, sort, limit, offset)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	total, err := h.meta.CountDocumentsByCollection(c.Context(), col.ID)
+	total, err := h.meta.CountDocuments(c.Context(), filter)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

@@ -136,6 +136,7 @@ export const api = {
     create: (body: { name: string; embed_model?: string }) =>
       req<Collection>("/admin/collections", { method: "POST", body: JSON.stringify(body) }),
     get: (slug: string) => req<Collection>(`/admin/collections/${slug}`),
+    getById: (id: string) => req<Collection>(`/admin/collections/id/${id}`),
     delete: (slug: string) =>
       req<void>(`/admin/collections/${slug}`, { method: "DELETE" }),
   },
@@ -178,16 +179,33 @@ export const api = {
       req<{ documents: Document[]; total: number; limit: number; offset: number }>(
         `/admin/collections/${slug}/documents?limit=${limit}&offset=${offset}`
       ),
-    get: (slug: string, id: string) =>
-      req<Document>(`/admin/collections/${slug}/documents/${id}`),
-    chunks: (slug: string, id: string) =>
-      req<{ chunks: Chunk[]; total: number }>(`/admin/collections/${slug}/documents/${id}/chunks`),
-    update: (slug: string, id: string, body: { name?: string; extra_json?: string; metadata?: Record<string, unknown> }) =>
-      req<Document>(`/admin/collections/${slug}/documents/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
-    metadata: (slug: string, id: string) =>
-      req<{ metadata: Record<string, unknown> }>(`/admin/collections/${slug}/documents/${id}/metadata`),
-    delete: (slug: string, id: string) =>
-      req<void>(`/admin/collections/${slug}/documents/${id}`, { method: "DELETE" }),
+    all: (limit = 50, offset = 0, status?: Document["status"]) =>
+      req<{ documents: Document[]; total: number; limit: number; offset: number }>(
+        `/admin/documents?limit=${limit}&offset=${offset}${status ? `&status=${status}` : ""}`
+      ),
+    // slug is only needed to scope the URL under a collection; pass null to
+    // hit the slug-less /admin/documents/:id route instead (same document,
+    // looked up by id alone — see backend/pkg/api/documents/handler.go).
+    get: (slug: string | null, id: string) =>
+      req<Document>(slug ? `/admin/collections/${slug}/documents/${id}` : `/admin/documents/${id}`),
+    chunks: (slug: string | null, id: string) =>
+      req<{ chunks: Chunk[]; total: number }>(
+        slug ? `/admin/collections/${slug}/documents/${id}/chunks` : `/admin/documents/${id}/chunks`
+      ),
+    update: (slug: string | null, id: string, body: { name?: string; extra_json?: string; metadata?: Record<string, unknown> }) =>
+      req<Document>(
+        slug ? `/admin/collections/${slug}/documents/${id}` : `/admin/documents/${id}`,
+        { method: "PATCH", body: JSON.stringify(body) }
+      ),
+    metadata: (slug: string | null, id: string) =>
+      req<{ metadata: Record<string, unknown> }>(
+        slug ? `/admin/collections/${slug}/documents/${id}/metadata` : `/admin/documents/${id}/metadata`
+      ),
+    delete: (slug: string | null, id: string) =>
+      req<void>(
+        slug ? `/admin/collections/${slug}/documents/${id}` : `/admin/documents/${id}`,
+        { method: "DELETE" }
+      ),
   },
   llms: {
     list: () => req<LlmInfo>("/admin/llms"),

@@ -2,13 +2,16 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, Collection, Document, MetadataField } from "@/lib/api";
-import { DocumentsTable, PAGE_SIZE } from "./_components/documents-table";
+import { DocumentsTable, docLabel } from "@/components/documents/documents-table";
+import { DocumentEditDialog } from "@/components/documents/document-edit-dialog";
 import { MetadataFieldsPanel } from "./_components/metadata-fields-panel";
+
+const PAGE_SIZE = 20;
 
 export default function CollectionPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -20,6 +23,9 @@ export default function CollectionPage() {
   const [page, setPage] = useState(0);
   const [metadataFields, setMetadataFields] = useState<MetadataField[]>([]);
   const [deleting, setDeleting] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<Document | null>(null);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadDocs = useCallback(async (p = page) => {
     try {
@@ -56,6 +62,31 @@ export default function CollectionPage() {
     }
   }
 
+  async function handleRefreshDoc(doc: Document) {
+    setRefreshingId(doc.id);
+    try {
+      await api.ingest.refresh(slug, { file_uri: doc.file_uri, mime_type: doc.mime_type });
+      loadDocs(page);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Refresh failed");
+    } finally {
+      setRefreshingId(null);
+    }
+  }
+
+  async function handleDeleteDoc(doc: Document) {
+    if (!confirm(`Delete "${docLabel(doc)}"? This removes all indexed chunks for this document.`)) return;
+    setDeletingId(doc.id);
+    try {
+      await api.documents.delete(slug, doc.id);
+      loadDocs(page);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between">
@@ -84,16 +115,45 @@ export default function CollectionPage() {
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="metadata">Document properties</TabsTrigger>
         </TabsList>
-        <TabsContent value="documents" className="mt-4">
+        <TabsContent value="documents" className="mt-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-medium">Documents</h2>
+              {total > 0 && <p className="text-xs text-zinc-400 mt-0.5">{total} total</p>}
+            </div>
+            <Button size="sm" onClick={() => router.push(`/collections/${slug}/ingest`)}>
+              <Plus className="w-4 h-4 mr-1" />
+              Ingest
+            </Button>
+          </div>
+
           <DocumentsTable
-            slug={slug}
             docs={docs}
-            total={total}
+            onRowClick={doc => router.push(`/collections/${slug}/documents/${doc.id}/chunks`)}
+            showType
+            showChunks
+            dateField="created_at"
+            onEdit={setEditingDoc}
+            onRefresh={handleRefreshDoc}
+            onDelete={handleDeleteDoc}
+            refreshingId={refreshingId}
+            deletingId={deletingId}
             page={page}
-            metadataFields={metadataFields}
+            totalPages={Math.ceil(total / PAGE_SIZE)}
+            total={total}
+            pageSize={PAGE_SIZE}
             onPageChange={setPage}
-            onReload={() => loadDocs(page)}
-            onIngest={() => router.push(`/collections/${slug}/ingest`)}
+          />
+
+          <DocumentEditDialog
+            slug={slug}
+            doc={editingDoc}
+            metadataFields={metadataFields}
+            onClose={() => setEditingDoc(null)}
+            onSaved={() => {
+              setEditingDoc(null);
+              loadDocs(page);
+            }}
           />
         </TabsContent>
         <TabsContent value="metadata" className="mt-4">

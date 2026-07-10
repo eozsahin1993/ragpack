@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/logo";
-import { LayoutDashboard, Database, BriefcaseBusiness, FlaskConical, ScrollText } from "lucide-react";
+import { LayoutDashboard, Database, FileText, FlaskConical, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
   { href: "/", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/collections", label: "Collections", icon: Database },
-  { href: "/jobs", label: "Jobs", icon: BriefcaseBusiness },
+  { href: "/documents", label: "Documents", icon: FileText },
   { href: "/prompts", label: "Prompts", icon: ScrollText },
   { href: "/playground", label: "Playground", icon: FlaskConical },
 ];

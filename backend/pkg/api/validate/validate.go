@@ -2,10 +2,11 @@ package validate
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+
+	"ragpack/pkg/meta"
 )
 
 var reservedMetadataNames = map[string]bool{
@@ -20,37 +21,25 @@ func init() {
 	v.RegisterValidation("notreservedmeta", func(fl validator.FieldLevel) bool { //nolint:errcheck
 		return !reservedMetadataNames[fl.Field().String()]
 	})
-}
-
-const (
-	DefaultLimit = 50
-	MaxLimit     = 500
-)
-
-// Pagination parses ?limit= and ?offset= from the request query string.
-// limit is clamped to [1, MaxLimit]; offset defaults to 0.
-func Pagination(c *fiber.Ctx) (limit, offset int) {
-	limit = DefaultLimit
-	if l := c.Query("limit"); l != "" {
-		if v, err := strconv.Atoi(l); err == nil && v > 0 {
-			if v > MaxLimit {
-				v = MaxLimit
-			}
-			limit = v
-		}
-	}
-	if o := c.Query("offset"); o != "" {
-		if v, err := strconv.Atoi(o); err == nil && v >= 0 {
-			offset = v
-		}
-	}
-	return
+	RegisterSortValidator("documentsortfield", meta.DocumentSortSpec)
 }
 
 // Body parses and validates a request body. Returns a structured 400 on failure.
 func Body(c *fiber.Ctx, req any) error {
 	if err := c.BodyParser(req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
+	}
+	if err := v.Struct(req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"errors": fieldErrors(err)})
+	}
+	return nil
+}
+
+// Query parses and validates request query parameters into req (fields tagged
+// with `query:"..."`). Returns a structured 400 on failure.
+func Query(c *fiber.Ctx, req any) error {
+	if err := c.QueryParser(req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid query parameters"})
 	}
 	if err := v.Struct(req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"errors": fieldErrors(err)})
@@ -79,6 +68,9 @@ func errorMessage(fe validator.FieldError) string {
 	case "notreservedmeta":
 		return "name conflicts with a built-in field and cannot be used as a metadata field"
 	default:
+		if msg, ok := sortValidatorMessage(fe); ok {
+			return msg
+		}
 		return fmt.Sprintf("failed %s validation", fe.Tag())
 	}
 }

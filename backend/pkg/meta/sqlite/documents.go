@@ -97,35 +97,62 @@ func (s *MetaStore) GetDocument(ctx context.Context, id string) (meta.Document, 
 	return d, nil
 }
 
-func (s *MetaStore) ListDocumentsByCollection(ctx context.Context, collectionID string, limit, offset int) ([]meta.Document, error) {
-	var docs []meta.Document
-	err := s.db.SelectContext(ctx, &docs, `
+func documentOrderBy(sort meta.DocumentSort) string {
+	col := meta.DocumentSortSpec.Default
+	if meta.DocumentSortSpec.IsValid(sort.Field) {
+		col = sort.Field
+	}
+	dir := "DESC"
+	if sort.Dir == meta.SortAsc {
+		dir = "ASC"
+	}
+	return fmt.Sprintf(" ORDER BY %s %s", col, dir)
+}
+
+func (s *MetaStore) ListDocuments(ctx context.Context, filter meta.DocumentFilter, sort meta.DocumentSort, limit, offset int) ([]meta.Document, error) {
+	where, args := documentWhere(filter)
+	query := `
 		SELECT id, collection_id, job_id, file_uri, mime_type, name, external_id, extra_json, chunk_count, status, error, created_at, updated_at
 		FROM documents
-		WHERE collection_id = ?
-		ORDER BY created_at DESC
-		LIMIT ? OFFSET ?
-	`, collectionID, limit, offset)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: list documents for collection %q: %w", collectionID, err)
+	` + where + documentOrderBy(sort) + " LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
+
+	var docs []meta.Document
+	if err := s.db.SelectContext(ctx, &docs, query, args...); err != nil {
+		return nil, fmt.Errorf("sqlite: list documents: %w", err)
 	}
 	return docs, nil
 }
 
-func (s *MetaStore) CountDocumentsByCollection(ctx context.Context, collectionID string) (int, error) {
+func (s *MetaStore) CountDocuments(ctx context.Context, filter meta.DocumentFilter) (int, error) {
+	where, args := documentWhere(filter)
 	var count int
-	err := s.db.GetContext(ctx, &count, `
-		SELECT COUNT(*) FROM documents WHERE collection_id = ?
-	`, collectionID)
-	if err != nil {
-		return 0, fmt.Errorf("sqlite: count documents for collection %q: %w", collectionID, err)
+	if err := s.db.GetContext(ctx, &count, "SELECT COUNT(*) FROM documents"+where, args...); err != nil {
+		return 0, fmt.Errorf("sqlite: count documents: %w", err)
 	}
 	return count, nil
 }
 
+func documentWhere(f meta.DocumentFilter) (string, []any) {
+	var clauses []string
+	var args []any
+	if f.CollectionID != nil {
+		clauses = append(clauses, "collection_id = ?")
+		args = append(args, *f.CollectionID)
+	}
+	if f.Status != nil {
+		clauses = append(clauses, "status = ?")
+		args = append(args, *f.Status)
+	}
+	if len(clauses) == 0 {
+		return "", args
+	}
+	return " WHERE " + strings.Join(clauses, " AND "), args
+}
+
 func (s *MetaStore) UpdateDocument(ctx context.Context, id string, patch meta.DocumentPatch) error {
 	var clauses []string
-	var args []interface{}
+	var args []any
 
 	if patch.Name != nil {
 		clauses = append(clauses, "name = ?")

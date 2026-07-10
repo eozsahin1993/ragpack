@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Database, FileText, BriefcaseBusiness } from "lucide-react";
+import { Database, FileText, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { HealthCard, HealthStatus } from "@/components/dashboard/health-card";
 import { CollectionCard } from "@/components/dashboard/collection-card";
-import { JobsTable } from "@/components/jobs-table";
-import { api, Collection, Job, HealthInfo } from "@/lib/api";
+import { DocumentsTable } from "@/components/documents/documents-table";
+import { api, Collection, Document, HealthInfo } from "@/lib/api";
 
 interface CollectionWithDocs extends Collection {
   docCount: number | null;
@@ -18,8 +18,9 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const [collections, setCollections] = useState<CollectionWithDocs[]>([]);
-  const [recentJobs, setRecentJobs] = useState<Job[]>([]);
-  const [recentFailedJobs, setRecentFailedJobs] = useState<Job[]>([]);
+  const [collectionMap, setCollectionMap] = useState<Record<string, { slug: string; name: string }>>({});
+  const [recentDocs, setRecentDocs] = useState<Document[]>([]);
+  const [recentFailedDocs, setRecentFailedDocs] = useState<Document[]>([]);
   const [backendHealth, setBackendHealth] = useState<HealthInfo | null>(null);
   const [backendStatus, setBackendStatus] = useState<HealthStatus>("loading");
   const [embedderStatus, setEmbedderStatus] = useState<HealthStatus>("loading");
@@ -27,21 +28,26 @@ export default function DashboardPage() {
   const [llmStatus, setLlmStatus] = useState<HealthStatus>("loading");
   const [llmModel, setLlmModel] = useState<string | undefined>();
   const [totalDocs, setTotalDocs] = useState<number | null>(null);
-  const [activeJobCount, setActiveJobCount] = useState(0);
+  const [ingestingCount, setIngestingCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      // Collections + jobs in parallel
-      const [collectionsRes, jobsRes] = await Promise.allSettled([
+      // Collections + recent documents in parallel
+      const [collectionsRes, docsRes, ingestingRes] = await Promise.allSettled([
         api.collections.list(),
-        api.jobs.all(),
+        api.documents.all(5, 0),
+        api.documents.all(1, 0, "ingesting"),
       ]);
 
       const cols: CollectionWithDocs[] =
         collectionsRes.status === "fulfilled"
           ? (collectionsRes.value.collections ?? []).map(c => ({ ...c, docCount: null }))
           : [];
+
+      const colMap: Record<string, { slug: string; name: string }> = {};
+      for (const c of cols) colMap[c.id] = { slug: c.slug, name: c.name };
+      setCollectionMap(colMap);
 
       // Doc counts for each collection (N+1 but unavoidable without a dedicated endpoint)
       const docCountResults = await Promise.allSettled(
@@ -59,12 +65,15 @@ export default function DashboardPage() {
       setCollections(colsWithDocs);
       setTotalDocs(total);
 
-      if (jobsRes.status === "fulfilled") {
-        const jobs = jobsRes.value.jobs ?? [];
-        setRecentJobs(jobs.slice(0, 5));
-        setRecentFailedJobs(jobs.filter(j => j.status === "failed").slice(0, 5));
-        setActiveJobCount(jobs.filter(j => j.status === "processing" || j.status === "pending").length);
+      if (docsRes.status === "fulfilled") {
+        setRecentDocs(docsRes.value.documents ?? []);
       }
+      if (ingestingRes.status === "fulfilled") {
+        setIngestingCount(ingestingRes.value.total ?? 0);
+      }
+
+      const failedRes = await api.documents.all(5, 0, "failed").catch(() => null);
+      if (failedRes) setRecentFailedDocs(failedRes.documents ?? []);
 
       setLoading(false);
 
@@ -147,11 +156,11 @@ export default function DashboardPage() {
           loading={loading}
         />
         <StatCard
-          label="Active jobs"
-          value={activeJobCount}
-          icon={BriefcaseBusiness}
+          label="Ingesting"
+          value={ingestingCount}
+          icon={Loader2}
           loading={loading}
-          accent={activeJobCount > 0 ? "amber" : "default"}
+          accent={ingestingCount > 0 ? "amber" : "default"}
         />
       </div>
 
@@ -204,29 +213,41 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Recent jobs */}
-      {recentJobs.length > 0 && (
+      {/* Recent documents */}
+      {recentDocs.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recent jobs</h2>
-            <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => router.push("/jobs")}>
+            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recent documents</h2>
+            <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => router.push("/documents")}>
               View all →
             </button>
           </div>
-          <JobsTable jobs={recentJobs} />
+          <DocumentsTable
+            docs={recentDocs}
+            onRowClick={doc => router.push(`/documents/${doc.id}`)}
+            showCollection
+            getCollectionLabel={doc => collectionMap[doc.collection_id]?.name ?? doc.collection_id.slice(0, 8) + "…"}
+            dateField="updated_at"
+          />
         </div>
       )}
 
-      {/* Recent failed jobs */}
-      {recentFailedJobs.length > 0 && (
+      {/* Recent failed documents */}
+      {recentFailedDocs.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recent failed jobs</h2>
-            <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => router.push("/jobs")}>
+            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recent failed documents</h2>
+            <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => router.push("/documents")}>
               View all →
             </button>
           </div>
-          <JobsTable jobs={recentFailedJobs} />
+          <DocumentsTable
+            docs={recentFailedDocs}
+            onRowClick={doc => router.push(`/documents/${doc.id}`)}
+            showCollection
+            getCollectionLabel={doc => collectionMap[doc.collection_id]?.name ?? doc.collection_id.slice(0, 8) + "…"}
+            dateField="updated_at"
+          />
         </div>
       )}
     </div>

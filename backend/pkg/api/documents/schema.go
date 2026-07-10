@@ -5,6 +5,12 @@ import (
 	"fmt"
 )
 
+type ListQuery struct {
+	Status  string `query:"status"   validate:"omitempty,oneof=ingesting complete failed"`
+	SortBy  string `query:"sort_by"  validate:"omitempty,documentsortfield"`
+	SortDir string `query:"sort_dir" validate:"omitempty,oneof=asc desc"`
+}
+
 type UpdateRequest struct {
 	Name      *string        `json:"name"`
 	ExtraJSON *string        `json:"extra_json"`

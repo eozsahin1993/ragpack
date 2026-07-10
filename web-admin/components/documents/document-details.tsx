@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { api, Document, MetadataField } from "@/lib/api";
-import { MetaFieldInput } from "@/components/meta-field-input";
+import { MetaFieldInput } from "@/components/documents/meta-field-input";
 import { timeAgo } from "@/lib/utils";
 
 const statusColors: Record<string, string> = {
@@ -19,7 +19,7 @@ const statusColors: Record<string, string> = {
 
 interface DocumentDetailsProps {
   doc: Document;
-  slug: string;
+  slug: string | null;
   metadataFields: MetadataField[];
   currentMetadata: Record<string, unknown>;
   onUpdate: (updated: Document) => void;

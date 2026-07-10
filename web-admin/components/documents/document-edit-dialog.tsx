@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { api, Document, MetadataField } from "@/lib/api";
-import { MetaFieldInput } from "@/components/meta-field-input";
+import { MetaFieldInput } from "@/components/documents/meta-field-input";
 
 interface Props {
   slug: string;

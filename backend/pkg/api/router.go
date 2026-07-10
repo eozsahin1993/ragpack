@@ -42,6 +42,8 @@ func RegisterAdmin(app *fiber.App, ms meta.MetaStore, vec db.VectorDb, registry 
 func mountRoutes(r fiber.Router, ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, ing ingester.Ingester, defaultPromptSlug string, maxUploadSize int) {
 	jobs.Register(r.Group("/jobs"), jobs.NewHandler(ms))
 
+	documents.Register(r, documents.NewHandler(ms, vec))
+
 	embedders.Register(r.Group("/embeddings"), embedders.NewHandler(registry))
 	llms.Register(r.Group("/llms"), llms.NewHandler(llmRegistry))
 

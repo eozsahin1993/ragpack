@@ -19,14 +19,14 @@ type Document struct {
 	JobID        string         `db:"job_id"        json:"job_id"`
 	FileUri      string         `db:"file_uri"      json:"file_uri"`
 	MimeType     string         `db:"mime_type"     json:"mime_type"`
-	Name         *string        `db:"name"          json:"name,omitempty"`
+	Name         *string        `db:"name"          json:"name,omitempty"   sort:"true"`
 	ExternalId   *string        `db:"external_id"   json:"external_id,omitempty"`
 	ExtraJSON    *string        `db:"extra_json"    json:"extra_json,omitempty"`
 	ChunkCount   int            `db:"chunk_count"   json:"chunk_count"`
-	Status       DocumentStatus `db:"status"        json:"status"`
+	Status       DocumentStatus `db:"status"        json:"status"           sort:"true"`
 	Error        *string        `db:"error"         json:"error,omitempty"`
-	CreatedAt    time.Time      `db:"created_at"    json:"created_at"`
-	UpdatedAt    time.Time      `db:"updated_at"    json:"updated_at"`
+	CreatedAt    time.Time      `db:"created_at"    json:"created_at"       sort:"true"`
+	UpdatedAt    time.Time      `db:"updated_at"    json:"updated_at"       sort:"default"`
 }
 
 // DocumentPatch holds optional fields for a partial document update.
@@ -36,10 +36,25 @@ type DocumentPatch struct {
 	ExtraJSON *string
 }
 
+// DocumentFilter holds optional predicates for listing/counting documents.
+// Nil fields are ignored (no filtering on that column).
+type DocumentFilter struct {
+	CollectionID *string
+	Status       *DocumentStatus
+}
+
+// DocumentSortSpec is derived from the `sort` tags on the Document struct.
+var DocumentSortSpec = Sortable[Document]()
+
+type DocumentSort struct {
+	Field string
+	Dir   SortDir
+}
+
 type DocumentReader interface {
 	GetDocument(ctx context.Context, id string) (Document, error)
-	ListDocumentsByCollection(ctx context.Context, collectionID string, limit, offset int) ([]Document, error)
-	CountDocumentsByCollection(ctx context.Context, collectionID string) (int, error)
+	ListDocuments(ctx context.Context, filter DocumentFilter, sort DocumentSort, limit, offset int) ([]Document, error)
+	CountDocuments(ctx context.Context, filter DocumentFilter) (int, error)
 	FindDocumentByFileUri(ctx context.Context, collectionID, fileUri string) (*Document, error)
 }
 
