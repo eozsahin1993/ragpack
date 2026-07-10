@@ -23,9 +23,10 @@ interface DocumentDetailsProps {
   metadataFields: MetadataField[];
   currentMetadata: Record<string, unknown>;
   onUpdate: (updated: Document) => void;
+  onMetadataUpdate: (metadata: Record<string, unknown>) => void;
 }
 
-export function DocumentDetails({ doc, slug, metadataFields, currentMetadata, onUpdate }: DocumentDetailsProps) {
+export function DocumentDetails({ doc, slug, metadataFields, currentMetadata, onUpdate, onMetadataUpdate }: DocumentDetailsProps) {
   const [editing, setEditing] = useState(false);
   const [input, setInput] = useState("");
   const [jsonError, setJsonError] = useState(false);
@@ -85,6 +86,8 @@ export function DocumentDetails({ doc, slug, metadataFields, currentMetadata, on
       if (Object.keys(metadata).length === 0) { setEditingMeta(false); return; }
       const updated = await api.documents.update(slug, doc.id, { metadata });
       onUpdate(updated);
+      const fresh = await api.documents.metadata(slug, doc.id);
+      onMetadataUpdate(fresh.metadata);
       setEditingMeta(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to update properties");

@@ -132,7 +132,16 @@ export default function ChunksPage() {
         )}
       </div>
 
-      {doc && <DocumentDetails doc={doc} slug={slug} metadataFields={metadataFields} currentMetadata={currentMetadata} onUpdate={setDoc} />}
+      {doc && (
+        <DocumentDetails
+          doc={doc}
+          slug={slug}
+          metadataFields={metadataFields}
+          currentMetadata={currentMetadata}
+          onUpdate={setDoc}
+          onMetadataUpdate={setCurrentMetadata}
+        />
+      )}
 
       {/* Chunks */}
       {loading ? (
