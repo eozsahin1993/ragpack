@@ -24,6 +24,7 @@ export type {
 export type { FindSimilarOptions, IngestUriOptions, RagOptions } from "./collection-client.js";
 export type { LLMInfo } from "./resources/llms.js";
 export type { EmbedderInfo } from "./resources/embedders.js";
+export type { UpdateDocumentOptions } from "./resources/documents.js";
 
 /**
  * RagPack client for interacting with a self-hosted RagPack RAG engine.
