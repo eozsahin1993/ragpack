@@ -18,9 +18,41 @@ env:
   IMAGE_NAME: ${{ github.repository_owner }}/ragpack-backend
 
 jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Run tests
+        run: go test ./...
+        working-directory: backend
+
+  integration-tests:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Install bzip2 (LanceDB native lib dependency)
+        run: sudo apt-get update && sudo apt-get install -y libbz2-dev
+      - name: Run integration tests
+        working-directory: backend
+        shell: bash
+        run: |
+          source <(./dev.sh --print-env)
+          go test -tags=integration ./test/integration/...
+
   build:
     name: Build ${{ matrix.platform }}
     runs-on: ${{ matrix.runner }}
+    needs: [test, integration-tests]
     permissions:
       contents: read
       packages: write
