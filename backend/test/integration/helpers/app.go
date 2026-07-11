@@ -31,7 +31,7 @@ import (
 // public (auth-required) surface.
 func NewFullTestApp(t *testing.T) (*app.App, meta.MetaStore) {
 	t.Helper()
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 
 	ms, err := sqlitemeta.New(filepath.Join(t.TempDir(), "meta.db"))
 	if err != nil {
@@ -68,7 +68,13 @@ func NewFullTestApp(t *testing.T) (*app.App, meta.MetaStore) {
 			MaxUploadSizeMB:   25,
 		},
 	})
+	// t.Cleanup runs LIFO: registering cancel after Stop means cancel fires
+	// first, unblocking the worker goroutines' ctx.Done() select before
+	// Stop's wg.Wait() blocks on them — Stop() itself never cancels
+	// anything (see pkg/ingester.WorkerPool.Stop), it only waits, so
+	// without this a background-context caller hangs forever.
 	t.Cleanup(a.Ingester.Stop)
+	t.Cleanup(cancel)
 
 	return a, ms
 }

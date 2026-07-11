@@ -28,9 +28,24 @@ jobs:
           cache-dependency-path: backend/go.sum
       - name: Install bzip2 (LanceDB native lib dependency)
         run: sudo apt-get update && sudo apt-get install -y libbz2-dev
-      - name: Run integration tests
+      - name: Set up CGO env for LanceDB
         working-directory: backend
         shell: bash
         run: |
-          source <(./dev.sh --print-env)
-          go test -tags=integration ./test/integration/...
+          # download-artifacts.sh pre-checks release existence against
+          # api.github.com, which rate-limits unauthenticated requests
+          # (60/hr) shared across every job on the runner IP pool — retry
+          # on transient failures rather than fail the whole run.
+          for i in 1 2 3 4 5; do
+            if source <(./dev.sh --print-env); then
+              break
+            fi
+            echo "dev.sh --print-env failed (attempt $i/5), retrying in 15s..."
+            sleep 15
+          done
+          echo "CGO_CFLAGS=$CGO_CFLAGS" >> "$GITHUB_ENV"
+          echo "CGO_LDFLAGS=$CGO_LDFLAGS" >> "$GITHUB_ENV"
+
+      - name: Run integration tests
+        working-directory: backend
+        run: go test -tags=integration ./test/integration/...
