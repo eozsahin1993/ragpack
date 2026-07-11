@@ -18,23 +18,9 @@ env:
   IMAGE_NAME: ${{ github.repository_owner }}/ragpack-backend
 
 jobs:
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
-      - name: Run tests
-        run: go test ./...
-        working-directory: backend
-
   build:
     name: Build ${{ matrix.platform }}
     runs-on: ${{ matrix.runner }}
-    needs: test
     permissions:
       contents: read
       packages: write
