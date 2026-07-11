@@ -1,27 +1,30 @@
 import type { Requester } from "./requester.js";
-import type { Job, QueryResult, RagResult } from "./types.js";
+import type { FilterExpression, HybridSettings, Job, QueryResult, RagResult } from "./types.js";
 import { JobsResource } from "./resources/jobs.js";
 import { DocumentsResource } from "./resources/documents.js";
 import { QueryResource } from "./resources/query.js";
+import type { FindSimilarOptions } from "./resources/query.js";
+import { buildHybridBody } from "./hybrid.js";
+
+export type { FindSimilarOptions } from "./resources/query.js";
 
 export interface RagOptions {
   /** Slug of the prompt template to use. Defaults to `"basic_rag"` if omitted. */
   promptSlug?: string;
   /** The user's question. Substituted into `{{question}}`. */
   query: string;
-  /** Number of chunks to retrieve. Defaults to 5. */
+  /** Number of chunks to retrieve. Defaults to 2, since RAG chunks feed an LLM prompt. */
   topK?: number;
   /** LLM model name to use (e.g. `"gpt-4o"`, `"claude-opus-4-8"`). Falls back to server default. */
   model?: string;
   /** Minimum similarity score (0–100) a chunk must meet to be included in context. Omit to include all top_k results. */
   minSimilarity?: number;
-}
-
-export interface FindSimilarOptions {
-  /** The search query text. */
-  query: string;
-  /** Number of results to return. Defaults to 5. */
-  topK?: number;
+  /** Restrict retrieval to chunks whose document matches this filter expression. */
+  filters?: FilterExpression;
+  /** Skip the keyword/BM25 pass and use pure vector search. Hybrid search runs by default. */
+  vectorSearchOnly?: boolean;
+  /** Per-request override of the weighted RRF merge between vector and keyword search. */
+  hybridSettings?: HybridSettings;
 }
 
 export interface IngestUriOptions {
@@ -127,6 +130,7 @@ export class CollectionClient {
         ...(options.promptSlug ? { prompt_slug: options.promptSlug } : {}),
         ...(options.model ? { model: options.model } : {}),
         ...(options.minSimilarity != null ? { min_similarity: options.minSimilarity } : {}),
+        ...buildHybridBody(options),
       }),
     });
   }

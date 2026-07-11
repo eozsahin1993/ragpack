@@ -87,7 +87,14 @@ export interface RagChunk {
   chunk_index: number;
   chunk_header: string | null;
   chunk_text: string | null;
-  similarity: number;
+  /** Cosine similarity score between 0 and 100. Higher is more relevant. */
+  vector_similarity: number;
+  /** Raw BM25 score from the keyword channel; present only for hybrid results. */
+  keyword_bm25_score?: number;
+  /** Weighted RRF fusion score, normalized so this batch's top result is 100. */
+  rrf_score_normalized?: number;
+  /** Raw RRF fusion score; only comparable within this query's own weights/k. */
+  rrf_score?: number;
 }
 
 export interface RagResult {
@@ -102,11 +109,72 @@ export interface QueryResult {
   file_uri: string;
   mime_type: string;
   chunk_index: number;
+  chunk_header: string | null;
   /** The matched text chunk. */
   chunk_text: string | null;
   /** Optional metadata attached at ingest time. */
   extra_json: string | null;
-  distance: number;
-  /** Cosine similarity score between 0 and 1. Higher is more relevant. */
-  similarity: number;
+  /** Typed metadata field values registered for this collection. */
+  metadata?: Record<string, unknown>;
+  vector_distance: number;
+  /** Cosine similarity score between 0 and 100. Higher is more relevant. */
+  vector_similarity: number;
+  /** Raw BM25 score from the keyword channel; present only for hybrid results. */
+  keyword_bm25_score?: number;
+  /** Weighted RRF fusion score, normalized so this batch's top result is 100. */
+  rrf_score_normalized?: number;
+  /** Raw RRF fusion score; only comparable within this query's own weights/k. */
+  rrf_score?: number;
+}
+
+export type FilterValue = string | number | boolean;
+
+/** Operators usable against a single field in a {@link FilterExpression}. */
+export interface FilterOps {
+  $eq?: FilterValue;
+  $ne?: FilterValue;
+  $gt?: FilterValue;
+  $gte?: FilterValue;
+  $lt?: FilterValue;
+  $lte?: FilterValue;
+  $in?: FilterValue[];
+  $nin?: FilterValue[];
+  $exists?: boolean;
+  /** str/timestamp fields only. */
+  $like?: string;
+  /** str fields only. */
+  $ilike?: string;
+  /** arr fields only. */
+  $contains?: string;
+  /** arr fields only. */
+  $containsAny?: string[];
+  /** arr fields only. */
+  $containsAll?: string[];
+}
+
+/**
+ * MongoDB-style filter expression, compiled server-side into a predicate over
+ * a document's built-in and registered metadata fields.
+ *
+ * @example
+ * ```ts
+ * { mime_type: "application/pdf", score: { $gte: 4 } }
+ * { $or: [{ tags: { $contains: "urgent" } }, { created_at: { $gte: "7 days ago" } }] }
+ * ```
+ */
+export type FilterExpression =
+  | { $and: FilterExpression[] }
+  | { $or: FilterExpression[] }
+  | { [field: string]: FilterValue | FilterOps };
+
+/**
+ * Per-request override of the weighted RRF merge between vector and keyword
+ * search. Unset fields fall back to server defaults (semantic-favored 7:3).
+ */
+export interface HybridSettings {
+  fullTextWeight?: number;
+  semanticWeight?: number;
+  rrfK?: number;
+  /** Caps FTS candidates considered before fusion; FTS search has no native limit. */
+  fullTextLimit?: number;
 }

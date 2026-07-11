@@ -7,7 +7,20 @@ import { CollectionClient } from "./collection-client.js";
 import type { RagPackConfig } from "./types.js";
 
 export { RagPackError };
-export type { RagPackConfig, Collection, Job, Document, QueryResult, Prompt, RagChunk, RagResult } from "./types.js";
+export type {
+  RagPackConfig,
+  Collection,
+  Job,
+  Document,
+  QueryResult,
+  Prompt,
+  RagChunk,
+  RagResult,
+  FilterExpression,
+  FilterOps,
+  FilterValue,
+  HybridSettings,
+} from "./types.js";
 export type { FindSimilarOptions, IngestUriOptions, RagOptions } from "./collection-client.js";
 export type { LLMInfo } from "./resources/llms.js";
 export type { EmbedderInfo } from "./resources/embedders.js";

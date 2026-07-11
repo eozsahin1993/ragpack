@@ -41,7 +41,7 @@ console.log(answer);
 // Semantic search (without LLM)
 const results = await collection.findSimilar({ query: "how does auth work?", topK: 5 });
 for (const r of results) {
-  console.log(r.similarity, r.chunk_text);
+  console.log(r.vector_similarity, r.chunk_text);
 }
 ```
 
@@ -72,7 +72,7 @@ Returns a `CollectionClient` scoped to that collection.
 | `ingest(file, filename?)`           | Upload a file directly                   |
 | `ingest({ uri, mimeType? })`        | Ingest from a URL or S3 URI, MIME type auto-detected if omitted |
 | `rag(options)`                      | Full RAG pipeline — retrieves chunks and returns an LLM answer |
-| `findSimilar({ query, topK? })`     | Semantic search without LLM, returns ranked chunks |
+| `findSimilar(options)`              | Hybrid (vector + keyword) search without LLM, returns ranked chunks |
 | `jobs.list()`                       | List ingestion jobs for this collection  |
 | `jobs.get(id)`                      | Get a single job by ID                   |
 | `jobs.waitUntilComplete(id)`        | Poll until job is `complete` or `failed` |
@@ -89,17 +89,53 @@ const { answer, chunks } = await collection.rag({
   query: "How do I reset my password?",
   // All options below are optional
   promptSlug: "basic_rag",   // defaults to "basic_rag" if omitted
-  topK: 5,                   // number of chunks to retrieve (default: 5)
+  topK: 2,                   // number of chunks to retrieve (default: 2)
   model: "gpt-4o",           // LLM model; falls back to server default
   minSimilarity: 70,         // drop chunks below this similarity score (0–100)
+  filters: { mime_type: "application/pdf" },
 });
 
 console.log(answer);
 
 for (const chunk of chunks) {
-  console.log(chunk.similarity, chunk.chunk_text);
+  console.log(chunk.vector_similarity, chunk.chunk_text);
 }
 ```
+
+#### Hybrid (vector + keyword) search
+
+`findSimilar` and `rag` run hybrid search by default: a vector pass and a keyword/BM25 pass are fused server-side via weighted RRF (semantic-favored 7:3). Each result carries `vector_similarity`, `keyword_bm25_score`, `rrf_score`, and `rrf_score_normalized` (0–100, normalized so the batch's top result is always 100).
+
+```ts
+const results = await collection.findSimilar({
+  query: "password reset",
+  vectorSearchOnly: false,          // set true to skip the keyword pass entirely
+  hybridSettings: {
+    semanticWeight: 0.7,
+    fullTextWeight: 0.3,
+    rrfK: 60,
+    fullTextLimit: 200,
+  },
+});
+```
+
+#### Filtering by metadata
+
+Both `findSimilar` and `rag` accept a `filters` option — a MongoDB-style expression compiled server-side into a predicate over a document's built-in (`mime_type`, `source_name`, `file_uri`, `created_at`, `updated_at`, …) and registered metadata fields.
+
+```ts
+await collection.findSimilar({
+  query: "refund policy",
+  filters: {
+    $and: [
+      { mime_type: "application/pdf" },
+      { $or: [{ tags: { $contains: "billing" } }, { created_at: { $gte: "7 days ago" } }] },
+    ],
+  },
+});
+```
+
+Supported operators: `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, `$nin`, `$exists`, `$like`/`$ilike` (string fields), `$contains`/`$containsAny`/`$containsAll` (array fields), plus `$and`/`$or` for nesting.
 
 #### Prompt templates
 
