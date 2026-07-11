@@ -92,6 +92,8 @@ func (wp *WorkerPool) processJob(ctx context.Context, item queueItem) error {
 func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID string, collection meta.Collection) (int, error) {
 	job := item.job
 
+	sourceName := util.NameFromURI(job.FileUri)
+
 	reader := item.reader
 	if reader == nil {
 		if strings.HasPrefix(job.FileUri, "upload://") {
@@ -192,19 +194,19 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 		for i, ch := range batch {
 			hash := fmt.Sprintf("%x", sha256.Sum256([]byte(ch.Text)))
 			records[i] = db.ChunkDbRecord{
-				ID:          uuid.NewString(),
-				DocumentID:  documentID,
-				ChunkHash:   hash,
-				ChunkIndex:  ch.Index,
-				Vector:      embedder.Normalize(vectors[i]),
-				CreatedAt:   now,
-				UpdatedAt:   now,
-				MimeType:    job.MimeType,
-				FileUri:     job.FileUri,
-				SourceName:  collection.Name,
-				ChunkText:   &ch.Text,
-				ChunkHeader: ch.Header,
-				ExtraJSON:   job.ExtraJSON,
+				ID:           uuid.NewString(),
+				DocumentID:   documentID,
+				ChunkHash:    hash,
+				ChunkIndex:   ch.Index,
+				Vector:       embedder.Normalize(vectors[i]),
+				CreatedAt:    now,
+				UpdatedAt:    now,
+				MimeType:     job.MimeType,
+				FileUri:      job.FileUri,
+				SourceName:   sourceName,
+				ChunkText:    &ch.Text,
+				ChunkHeader:  ch.Header,
+				ExtraJSON:    job.ExtraJSON,
 				MetadataStr:  metaStr,
 				MetadataNum:  metaNum,
 				MetadataBool: metaBool,
@@ -255,4 +257,3 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 
 	return chunkCount, nil
 }
-
