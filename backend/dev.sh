@@ -12,10 +12,14 @@ PLATFORM="${OS}_${ARCH}"
 
 LANCEDB_LIB="${LANCEDB_MODULE}/lib/${PLATFORM}/liblancedb_go.a"
 
+# Redirected to stderr: --print-env's stdout must be only the two `export`
+# lines below, since callers do `source <(./dev.sh --print-env)` — on a cold
+# cache (nothing downloaded yet), download-artifacts.sh's progress/log
+# output would otherwise land on stdout too and get parsed as shell commands.
 if [ ! -f "$LANCEDB_LIB" ]; then
-  echo "lancedb native library not found, downloading..."
+  echo "lancedb native library not found, downloading..." >&2
   chmod -R u+w "$LANCEDB_MODULE"
-  (cd "$LANCEDB_MODULE" && bash scripts/download-artifacts.sh "$LANCEDB_VERSION")
+  (cd "$LANCEDB_MODULE" && bash scripts/download-artifacts.sh "$LANCEDB_VERSION") >&2
 fi
 
 export CGO_CFLAGS="-I${LANCEDB_MODULE}/include"
