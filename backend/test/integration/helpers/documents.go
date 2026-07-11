@@ -3,9 +3,11 @@ package helpers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/textproto"
 	"testing"
 	"time"
 
@@ -18,7 +20,10 @@ func UploadDoc(t *testing.T, app *fiber.App, slug, filename, content string, met
 	t.Helper()
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
-	part, err := w.CreateFormFile("file", filename)
+	h := textproto.MIMEHeader{}
+	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="file"; filename="%s"`, filename))
+	h.Set("Content-Type", "text/plain")
+	part, err := w.CreatePart(h)
 	if err != nil {
 		t.Fatalf("create form file: %v", err)
 	}
