@@ -22,12 +22,21 @@ export CGO_CFLAGS="-I${LANCEDB_MODULE}/include"
 
 case "$OS" in
   darwin)
-    export CGO_LDFLAGS="${LANCEDB_LIB} -framework Security -framework CoreFoundation"
+    export CGO_LDFLAGS="${LANCEDB_LIB} -lbz2 -framework Security -framework CoreFoundation"
     ;;
   linux)
-    export CGO_LDFLAGS="${LANCEDB_LIB} -lpthread -ldl -lm"
+    export CGO_LDFLAGS="${LANCEDB_LIB} -lpthread -ldl -lm -lbz2"
     ;;
 esac
+
+# --print-env: emit `export` lines instead of running the server, so other
+# commands (integration tests, CI) can pick up the same CGO env — e.g.
+# `source <(./dev.sh --print-env)`.
+if [ "$1" = "--print-env" ]; then
+  echo "export CGO_CFLAGS=\"${CGO_CFLAGS}\""
+  echo "export CGO_LDFLAGS=\"${CGO_LDFLAGS}\""
+  exit 0
+fi
 
 echo "Starting RagPack dev server (${PLATFORM})..."
 go run ./cmd/main.go

@@ -33,6 +33,15 @@ func (l *VectorDb) MigrateAll(ctx context.Context, collections []meta.Collection
 	return migrations.MigrateAll(ctx, l.conn, collections)
 }
 
+// Close releases the underlying native connection. Not part of the db.VectorDb
+// interface — the production server holds one connection for its whole
+// process lifetime and never needs to close it early, so callers that do
+// (e.g. tests opening a fresh connection per test case) use the concrete
+// type directly.
+func (l *VectorDb) Close() error {
+	return l.conn.Close()
+}
+
 func (l *VectorDb) DropTable(ctx context.Context, name string) error {
 	if err := l.conn.DropTable(ctx, name); err != nil {
 		return fmt.Errorf("lancedb: drop table %s: %w", name, err)

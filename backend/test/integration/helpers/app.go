@@ -1,0 +1,83 @@
+// Package helpers assembles the real app (via pkg/app.New, the same
+// sequence cmd/main.go runs at startup) and provides small HTTP/domain
+// helpers for the integration suite (backend/test/integration). A real
+// package rather than _test.go files, so it compiles like any other
+// dependency but is only ever imported by _test.go files — nothing in the
+// production build references it.
+package helpers
+
+import (
+	"context"
+	"path/filepath"
+	"testing"
+
+	"github.com/gofiber/fiber/v2"
+
+	"ragpack/pkg/app"
+	"ragpack/pkg/config"
+	lancedbpkg "ragpack/pkg/db/lancedb"
+	"ragpack/pkg/embedder"
+	"ragpack/pkg/llm"
+	"ragpack/pkg/meta"
+	sqlitemeta "ragpack/pkg/meta/sqlite"
+	"ragpack/test/integration/mocks"
+)
+
+// NewFullTestApp assembles the real app via pkg/app.New with real
+// SQLite/LanceDB backed by t.TempDir() (auto-removed on test completion,
+// pass or fail — see testing.T.TempDir) and fake embedder/LLM registries
+// swapped in. Returns both the app bundle (Admin + Public + Ingester) and
+// the meta store, for tests that need to create API keys against the
+// public (auth-required) surface.
+func NewFullTestApp(t *testing.T) (*app.App, meta.MetaStore) {
+	t.Helper()
+	ctx := context.Background()
+
+	ms, err := sqlitemeta.New(filepath.Join(t.TempDir(), "meta.db"))
+	if err != nil {
+		t.Fatalf("meta store: %v", err)
+	}
+	t.Cleanup(func() { ms.Close() })
+
+	vec := lancedbpkg.New()
+	if err := vec.Connect(ctx, filepath.Join(t.TempDir(), "lancedb")); err != nil {
+		t.Fatalf("vector store: %v", err)
+	}
+	t.Cleanup(func() { vec.Close() })
+
+	registry := embedder.NewRegistry()
+	registry.Register(&mocks.Embedder{Dim: 64, ModelName: "mock-embed"})
+
+	llmRegistry := llm.NewRegistry()
+	llmRegistry.Register(mocks.LLM{})
+
+	a := app.New(ctx, app.Deps{
+		Meta:      ms,
+		Vector:    vec,
+		Embedders: registry,
+		LLMs:      llmRegistry,
+		Config: config.Config{
+			Ingester: config.IngesterConfig{
+				WorkerCount:    2,
+				EmbedRateLimit: 100,
+				ChunkSize:      500,
+				ChunkOverlap:   50,
+				ChunkStrategy:  "auto",
+			},
+			DefaultPromptSlug: "basic_rag",
+			MaxUploadSizeMB:   25,
+		},
+	})
+	t.Cleanup(a.Ingester.Stop)
+
+	return a, ms
+}
+
+// NewTestApp returns just the admin (no-auth) app — what most tests need,
+// since they're exercising route/business logic, not the auth middleware
+// itself (see auth_test.go for that).
+func NewTestApp(t *testing.T) *fiber.App {
+	t.Helper()
+	a, _ := NewFullTestApp(t)
+	return a.Admin
+}
