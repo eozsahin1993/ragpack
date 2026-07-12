@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/logo";
-import { LayoutDashboard, Database, FileText, FlaskConical, ScrollText } from "lucide-react";
+import { LayoutDashboard, Database, FileText, FlaskConical, ScrollText, KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -12,6 +12,7 @@ const nav = [
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/prompts", label: "Prompts", icon: ScrollText },
   { href: "/playground", label: "Playground", icon: FlaskConical },
+  { href: "/keys", label: "API Keys", icon: KeyRound },
 ];
 
 export function Sidebar() {

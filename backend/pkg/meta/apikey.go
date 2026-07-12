@@ -62,7 +62,9 @@ type AdminGrantInput struct {
 }
 
 type APIKeyStore interface {
-	// CreateAPIKey creates a key and its grants atomically. grants must be non-empty; adminGrants is optional.
+	// CreateAPIKey creates a key and its grants atomically. At least one of
+	// grants/adminGrants must be non-empty — a key with neither can access
+	// nothing at all, collection or admin.
 	CreateAPIKey(ctx context.Context, name, plaintext string, grants []GrantInput, adminGrants []AdminGrantInput) (APIKey, error)
 	// ValidateAPIKey returns the matching key record (caller needs its ID to check grants).
 	ValidateAPIKey(ctx context.Context, plaintext string) (APIKey, error)

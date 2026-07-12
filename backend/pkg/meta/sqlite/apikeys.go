@@ -12,8 +12,8 @@ import (
 )
 
 func (s *MetaStore) CreateAPIKey(ctx context.Context, name, plaintext string, grants []meta.GrantInput, adminGrants []meta.AdminGrantInput) (meta.APIKey, error) {
-	if len(grants) == 0 {
-		return meta.APIKey{}, fmt.Errorf("sqlite: create api key: at least one grant is required")
+	if len(grants) == 0 && len(adminGrants) == 0 {
+		return meta.APIKey{}, fmt.Errorf("sqlite: create api key: at least one grant (collection or admin) is required")
 	}
 
 	tx, err := s.db.BeginTxx(ctx, nil)

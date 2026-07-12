@@ -137,6 +137,49 @@ export interface Prompt {
   updated_at: string;
 }
 
+export type Permission = "read" | "write" | "both";
+export type AdminResourceType = "keys" | "prompts" | "collections" | "*";
+
+export interface CollectionGrant {
+  id: string;
+  api_key_id: string;
+  collection_id?: string; // absent = every collection (wildcard)
+  permission: Permission;
+  created_at: string;
+}
+
+export interface AdminGrant {
+  id: string;
+  api_key_id: string;
+  resource_type: AdminResourceType;
+  permission: Permission;
+  created_at: string;
+}
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  key_hint: string;
+  created_at: string;
+  last_used_at?: string;
+  grants: CollectionGrant[];
+  admin_grants?: AdminGrant[];
+}
+
+export interface CreateApiKeyGrant {
+  collection_slug?: string; // omitted = every collection (wildcard)
+  permission: Permission;
+}
+
+export interface CreateApiKeyAdminGrant {
+  resource_type: AdminResourceType;
+  permission: Permission;
+}
+
+export interface CreatedApiKey extends ApiKey {
+  key: string; // plaintext — only ever present in the create response
+}
+
 export const api = {
   health: {
     get: () => req<HealthInfo>("/admin/health"),
@@ -270,5 +313,12 @@ export const api = {
       req<Prompt>(`/admin/prompts/${slug}`, { method: "PATCH", body: JSON.stringify(body) }),
     delete: (slug: string) =>
       req<void>(`/admin/prompts/${slug}`, { method: "DELETE" }),
+  },
+  keys: {
+    list: () => req<{ keys: ApiKey[] }>("/admin/keys"),
+    create: (body: { name: string; grants: CreateApiKeyGrant[]; admin_grants?: CreateApiKeyAdminGrant[] }) =>
+      req<CreatedApiKey>("/admin/keys", { method: "POST", body: JSON.stringify(body) }),
+    delete: (id: string) =>
+      req<void>(`/admin/keys/${id}`, { method: "DELETE" }),
   },
 };

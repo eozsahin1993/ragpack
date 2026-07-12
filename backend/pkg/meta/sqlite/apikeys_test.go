@@ -18,13 +18,43 @@ func newTestStore(t *testing.T) *MetaStore {
 	return ms
 }
 
-func TestCreateAPIKey_RequiresAtLeastOneGrant(t *testing.T) {
+func TestCreateAPIKey_RequiresAtLeastOneGrantOfEitherKind(t *testing.T) {
 	ms := newTestStore(t)
 	if _, err := ms.CreateAPIKey(context.Background(), "no-grants", "plaintext", nil, nil); err == nil {
-		t.Fatal("expected error creating a key with no grants, got nil")
+		t.Fatal("expected error creating a key with no grants of any kind, got nil")
 	}
 	if _, err := ms.CreateAPIKey(context.Background(), "empty-grants", "plaintext", []meta.GrantInput{}, nil); err == nil {
-		t.Fatal("expected error creating a key with an empty grant slice, got nil")
+		t.Fatal("expected error creating a key with an empty grant slice and no admin grants, got nil")
+	}
+}
+
+func TestCreateAPIKey_AdminOnlyKeyRequiresNoCollectionGrant(t *testing.T) {
+	ms := newTestStore(t)
+	ctx := context.Background()
+
+	// Zero collection grants, one admin grant — a pure instance-admin key
+	// (e.g. manages prompts, never touches any collection's content) must
+	// be creatable without a throwaway collection grant it'll never use.
+	key, err := ms.CreateAPIKey(ctx, "admin-only", "plaintext", nil, []meta.AdminGrantInput{
+		{ResourceType: meta.ResourcePrompts, Permission: meta.PermissionWrite},
+	})
+	if err != nil {
+		t.Fatalf("create admin-only api key: %v", err)
+	}
+
+	grants, err := ms.ListGrants(ctx, key.ID)
+	if err != nil {
+		t.Fatalf("list grants: %v", err)
+	}
+	if len(grants) != 0 {
+		t.Errorf("expected 0 collection grants, got %d", len(grants))
+	}
+	adminGrants, err := ms.ListAdminGrants(ctx, key.ID)
+	if err != nil {
+		t.Fatalf("list admin grants: %v", err)
+	}
+	if len(adminGrants) != 1 {
+		t.Errorf("expected 1 admin grant, got %d", len(adminGrants))
 	}
 }
 

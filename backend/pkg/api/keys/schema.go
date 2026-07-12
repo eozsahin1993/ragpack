@@ -1,6 +1,10 @@
 package keys
 
-import "ragpack/pkg/meta"
+import (
+	"fmt"
+
+	"ragpack/pkg/meta"
+)
 
 // GrantRequest is a collection grant. An omitted CollectionSlug means every collection. See meta.CollectionGrant.
 type GrantRequest struct {
@@ -15,18 +19,30 @@ type AdminGrantRequest struct {
 }
 
 type CreateRequest struct {
-	Name string `json:"name" validate:"required,min=1,max=100"`
-	// Non-empty: a key with no grants can access nothing.
-	Grants []GrantRequest `json:"grants" validate:"required,min=1,dive"`
-	// Optional — most keys have none.
-	AdminGrants []AdminGrantRequest `json:"admin_grants" validate:"omitempty,dive"`
+	Name        string              `json:"name"         validate:"required,min=1,max=100"`
+	Grants      []GrantRequest      `json:"grants"        validate:"omitempty,dive"`
+	AdminGrants []AdminGrantRequest `json:"admin_grants"  validate:"omitempty,dive"`
 }
 
-type CreateResponse struct {
-	Key         string                 `json:"key"`
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	KeyHint     string                 `json:"key_hint"`
+func (r *CreateRequest) Validate() error {
+	if len(r.Grants) == 0 && len(r.AdminGrants) == 0 {
+		return fmt.Errorf("at least one grant (collection or admin) is required")
+	}
+	return nil
+}
+
+// KeyResponse is an API key plus its grants — the shape returned by List,
+// and embedded in CreateResponse (which adds the one field List must never
+// expose: the plaintext key).
+type KeyResponse struct {
+	meta.APIKey
 	Grants      []meta.CollectionGrant `json:"grants"`
 	AdminGrants []meta.AdminGrant      `json:"admin_grants,omitempty"`
+}
+
+// CreateResponse is only returned once, from Create — the plaintext key is
+// never retrievable again afterward.
+type CreateResponse struct {
+	KeyResponse
+	Key string `json:"key"`
 }

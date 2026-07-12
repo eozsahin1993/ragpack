@@ -1,6 +1,8 @@
 package keys
 
 import (
+	"context"
+
 	"github.com/gofiber/fiber/v2"
 
 	"ragpack/pkg/api/validate"
@@ -16,18 +18,44 @@ func NewHandler(ms meta.MetaStore) *Handler {
 	return &Handler{meta: ms}
 }
 
+// keyResponse fetches k's grants and assembles the shared List/Create response shape.
+func (h *Handler) keyResponse(ctx context.Context, k meta.APIKey) (KeyResponse, error) {
+	grants, err := h.meta.ListGrants(ctx, k.ID)
+	if err != nil {
+		return KeyResponse{}, err
+	}
+	adminGrants, err := h.meta.ListAdminGrants(ctx, k.ID)
+	if err != nil {
+		return KeyResponse{}, err
+	}
+	return KeyResponse{APIKey: k, Grants: grants, AdminGrants: adminGrants}, nil
+}
+
 func (h *Handler) List(c *fiber.Ctx) error {
 	keys, err := h.meta.ListAPIKeys(c.Context())
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(fiber.Map{"keys": keys})
+
+	items := make([]KeyResponse, len(keys))
+	for i, k := range keys {
+		item, err := h.keyResponse(c.Context(), k)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		items[i] = item
+	}
+
+	return c.JSON(fiber.Map{"keys": items})
 }
 
 func (h *Handler) Create(c *fiber.Ctx) error {
 	var req CreateRequest
 	if err := validate.Body(c, &req); err != nil {
 		return err
+	}
+	if err := req.Validate(); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	grants := make([]meta.GrantInput, len(req.Grants))
@@ -58,23 +86,12 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	stored, err := h.meta.ListGrants(c.Context(), key.ID)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-	}
-	storedAdmin, err := h.meta.ListAdminGrants(c.Context(), key.ID)
+	item, err := h.keyResponse(c.Context(), key)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(CreateResponse{
-		Key:         plaintext,
-		ID:          key.ID,
-		Name:        key.Name,
-		KeyHint:     key.KeyHint,
-		Grants:      stored,
-		AdminGrants: storedAdmin,
-	})
+	return c.Status(fiber.StatusCreated).JSON(CreateResponse{KeyResponse: item, Key: plaintext})
 }
 
 func (h *Handler) Delete(c *fiber.Ctx) error {
