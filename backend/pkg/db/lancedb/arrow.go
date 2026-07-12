@@ -329,6 +329,52 @@ func rowToChunk(row map[string]interface{}) (db.ChunkDbRecord, error) {
 	return rec, nil
 }
 
+// metadataSlotColumns lists every metadata slot column name, for queries
+// that only need metadata values (e.g. the document metadata consistency
+// check) rather than full chunk records.
+func metadataSlotColumns() []string {
+	cols := make([]string, 0, metaStrSlots+metaNumSlots+metaBoolSlots+metaDateSlots+metaArrSlots)
+	for i := 1; i <= metaStrSlots; i++ {
+		cols = append(cols, db.MetadataSlotColumn("str", i))
+	}
+	for i := 1; i <= metaNumSlots; i++ {
+		cols = append(cols, db.MetadataSlotColumn("num", i))
+	}
+	for i := 1; i <= metaBoolSlots; i++ {
+		cols = append(cols, db.MetadataSlotColumn("bool", i))
+	}
+	for i := 1; i <= metaDateSlots; i++ {
+		cols = append(cols, db.MetadataSlotColumn("date", i))
+	}
+	for i := 1; i <= metaArrSlots; i++ {
+		cols = append(cols, db.MetadataSlotColumn("arr", i))
+	}
+	return cols
+}
+
+// rowToChunkMetadataOnly decodes a row containing only metadata slot columns
+// (see metadataSlotColumns). Unlike rowToChunk, it never errors on missing
+// fields — required chunk fields are intentionally absent from these rows.
+func rowToChunkMetadataOnly(row map[string]interface{}) db.ChunkDbRecord {
+	var rec db.ChunkDbRecord
+	for i := 0; i < metaStrSlots; i++ {
+		rec.MetadataStr[i] = extractOptionalString(row, db.MetadataSlotColumn("str", i+1))
+	}
+	for i := 0; i < metaNumSlots; i++ {
+		rec.MetadataNum[i] = extractOptionalFloat64(row, db.MetadataSlotColumn("num", i+1))
+	}
+	for i := 0; i < metaBoolSlots; i++ {
+		rec.MetadataBool[i] = extractOptionalBool(row, db.MetadataSlotColumn("bool", i+1))
+	}
+	for i := 0; i < metaDateSlots; i++ {
+		rec.MetadataDate[i] = extractOptionalInt64(row, db.MetadataSlotColumn("date", i+1))
+	}
+	for i := 0; i < metaArrSlots; i++ {
+		rec.MetadataArr[i] = extractOptionalStringSlice(row, db.MetadataSlotColumn("arr", i+1))
+	}
+	return rec
+}
+
 func extractString(row map[string]interface{}, key string) (string, error) {
 	v, ok := row[key]
 	if !ok {

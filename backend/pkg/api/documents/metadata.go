@@ -29,7 +29,7 @@ func (h *Handler) GetMetadata(c *fiber.Ctx) error {
 	if len(fields) == 0 {
 		return c.JSON(fiber.Map{"metadata": fiber.Map{}})
 	}
-	chunks, err := h.vec.ListChunksByDocument(c.Context(), col.TableName, doc.ID)
+	chunks, err := h.vec.ListChunkMetadataByDocument(c.Context(), col.TableName, doc.ID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

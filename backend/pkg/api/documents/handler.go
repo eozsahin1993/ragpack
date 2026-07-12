@@ -16,6 +16,10 @@ type Handler struct {
 	enforceACL bool
 }
 
+// chunksDefaultLimit is the page size for GET .../documents/:id/chunks when
+// the caller doesn't specify one — matches the web-admin's chunk list page size.
+const chunksDefaultLimit = 20
+
 // NewHandler builds a documents handler. Mounted both under /collections/:slug
 // and at the top level, so the access check happens here, not in router
 // middleware. enforceACL is false only from RegisterAdmin, which has no Auth middleware.
@@ -108,12 +112,14 @@ func (h *Handler) Chunks(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "collection not found"})
 	}
 
-	chunks, err := h.vec.ListChunksByDocument(c.Context(), col.TableName, doc.ID)
+	limit, offset := validate.PaginationWithDefault(c, chunksDefaultLimit)
+
+	chunks, total, err := h.vec.ListChunksByDocumentPage(c.Context(), col.TableName, doc.ID, limit, offset)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	return c.JSON(fiber.Map{"chunks": chunks, "total": len(chunks)})
+	return c.JSON(fiber.Map{"chunks": chunks, "total": total, "limit": limit, "offset": offset})
 }
 
 func (h *Handler) Update(c *fiber.Ctx) error {

@@ -244,9 +244,9 @@ export const api = {
     // looked up by id alone — see backend/pkg/api/documents/handler.go).
     get: (slug: string | null, id: string) =>
       req<Document>(slug ? `/admin/collections/${slug}/documents/${id}` : `/admin/documents/${id}`),
-    chunks: (slug: string | null, id: string) =>
-      req<{ chunks: Chunk[]; total: number }>(
-        slug ? `/admin/collections/${slug}/documents/${id}/chunks` : `/admin/documents/${id}/chunks`
+    chunks: (slug: string | null, id: string, limit = 20, offset = 0) =>
+      req<{ chunks: Chunk[]; total: number; limit: number; offset: number }>(
+        `${slug ? `/admin/collections/${slug}/documents/${id}/chunks` : `/admin/documents/${id}/chunks`}?limit=${limit}&offset=${offset}`
       ),
     update: (slug: string | null, id: string, body: { name?: string; extra_json?: string; metadata?: Record<string, unknown> }) =>
       req<Document>(

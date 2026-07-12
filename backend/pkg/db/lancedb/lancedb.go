@@ -112,25 +112,61 @@ func (l *VectorDb) DeleteChunksByDocument(ctx context.Context, tableName, docume
 	return nil
 }
 
-func (l *VectorDb) ListChunksByDocument(ctx context.Context, tableName, documentID string) ([]db.ChunkDbRecord, error) {
+// ListChunksByDocumentPage returns one page of chunks for a document plus the
+// total matching count, for chunk-browsing UI. total is fetched via a
+// separate id-only Select since LanceDB's Count is unfiltered-only.
+func (l *VectorDb) ListChunksByDocumentPage(ctx context.Context, tableName, documentID string, limit, offset int) ([]db.ChunkDbRecord, int, error) {
 	tbl, err := l.conn.OpenTable(ctx, tableName)
 	if err != nil {
-		return nil, fmt.Errorf("lancedb: open table %s: %w", tableName, err)
+		return nil, 0, fmt.Errorf("lancedb: open table %s: %w", tableName, err)
 	}
 	defer tbl.Close()
 
-	rows, err := tbl.SelectWithFilter(ctx, fmt.Sprintf("document_id = '%s'", documentID))
+	filter := fmt.Sprintf("document_id = '%s'", documentID)
+
+	countRows, err := tbl.Select(ctx, contracts.QueryConfig{Where: filter, Columns: []string{colID}})
 	if err != nil {
-		return nil, fmt.Errorf("lancedb: list chunks for document %s: %w", documentID, err)
+		return nil, 0, fmt.Errorf("lancedb: count chunks for document %s: %w", documentID, err)
+	}
+	total := len(countRows)
+
+	rows, err := tbl.Select(ctx, contracts.QueryConfig{Where: filter, Limit: &limit, Offset: &offset})
+	if err != nil {
+		return nil, 0, fmt.Errorf("lancedb: list chunks for document %s: %w", documentID, err)
 	}
 
 	chunks := make([]db.ChunkDbRecord, 0, len(rows))
 	for i, row := range rows {
 		rec, err := rowToChunk(row)
 		if err != nil {
-			return nil, fmt.Errorf("lancedb: row %d: %w", i, err)
+			return nil, 0, fmt.Errorf("lancedb: row %d: %w", i, err)
 		}
 		chunks = append(chunks, rec)
+	}
+	return chunks, total, nil
+}
+
+// ListChunkMetadataByDocument returns every chunk's metadata slot values for
+// a document (unpaginated — GetMetadata's consistency check needs all rows),
+// fetching only the metadata slot columns rather than full chunk records.
+func (l *VectorDb) ListChunkMetadataByDocument(ctx context.Context, tableName, documentID string) ([]db.ChunkDbRecord, error) {
+	tbl, err := l.conn.OpenTable(ctx, tableName)
+	if err != nil {
+		return nil, fmt.Errorf("lancedb: open table %s: %w", tableName, err)
+	}
+	defer tbl.Close()
+
+	rows, err := tbl.Select(ctx, contracts.QueryConfig{
+		Where:   fmt.Sprintf("document_id = '%s'", documentID),
+		Columns: metadataSlotColumns(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("lancedb: list chunk metadata for document %s: %w", documentID, err)
+	}
+
+	chunks := make([]db.ChunkDbRecord, 0, len(rows))
+	for _, row := range rows {
+		chunks = append(chunks, rowToChunkMetadataOnly(row))
 	}
 	return chunks, nil
 }

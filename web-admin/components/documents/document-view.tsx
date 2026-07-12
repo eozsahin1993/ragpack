@@ -30,10 +30,12 @@ export function DocumentView({ slug: slugProp, id, onDeleted }: DocumentViewProp
   const [slug, setSlug] = useState<string | null>(slugProp);
   const [doc, setDoc] = useState<Document | null>(null);
   const [chunks, setChunks] = useState<Chunk[]>([]);
+  const [chunkTotal, setChunkTotal] = useState(0);
   const [metadataFields, setMetadataFields] = useState<MetadataField[]>([]);
   const [currentMetadata, setCurrentMetadata] = useState<Record<string, unknown>>({});
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [chunksLoading, setChunksLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
@@ -87,15 +89,13 @@ export function DocumentView({ slug: slugProp, id, onDeleted }: DocumentViewProp
         if (cancelled) return;
         setSlug(resolvedSlug);
 
-        const [c, mf, md] = await Promise.all([
-          api.documents.chunks(resolvedSlug, id),
+        const [mf, md] = await Promise.all([
           api.metadataFields.list(resolvedSlug),
           api.documents.metadata(resolvedSlug, id),
         ]);
         if (cancelled) return;
 
         setDoc(d);
-        setChunks(c.chunks ?? []);
         setMetadataFields(mf.fields ?? []);
         setCurrentMetadata(md.metadata ?? {});
         const label = docLabel(d);
@@ -111,8 +111,29 @@ export function DocumentView({ slug: slugProp, id, onDeleted }: DocumentViewProp
     return () => { cancelled = true; };
   }, [slugProp, id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const totalPages = Math.ceil(chunks.length / PAGE_SIZE);
-  const visibleChunks = chunks.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  useEffect(() => {
+    if (!slug) return;
+    let cancelled = false;
+
+    async function loadChunks() {
+      setChunksLoading(true);
+      try {
+        const c = await api.documents.chunks(slug, id, PAGE_SIZE, page * PAGE_SIZE);
+        if (cancelled) return;
+        setChunks(c.chunks ?? []);
+        setChunkTotal(c.total ?? 0);
+      } catch (e) {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to load chunks");
+      } finally {
+        if (!cancelled) setChunksLoading(false);
+      }
+    }
+
+    loadChunks();
+    return () => { cancelled = true; };
+  }, [slug, id, page]);
+
+  const totalPages = Math.ceil(chunkTotal / PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -169,19 +190,19 @@ export function DocumentView({ slug: slugProp, id, onDeleted }: DocumentViewProp
       )}
 
       {/* Chunks */}
-      {loading ? (
+      {loading || chunksLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : chunks.length === 0 ? (
+      ) : chunkTotal === 0 ? (
         <p className="text-sm text-muted-foreground">No chunks found for this document.</p>
       ) : (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">{chunks.length} chunks</p>
-            <Pagination page={page} totalPages={totalPages} total={chunks.length} pageSize={PAGE_SIZE} onPageChange={setPage} />
+            <p className="text-sm text-muted-foreground">{chunkTotal} chunks</p>
+            <Pagination page={page} totalPages={totalPages} total={chunkTotal} pageSize={PAGE_SIZE} onPageChange={setPage} />
           </div>
 
           <div className="space-y-3">
-            {visibleChunks.map(ch => (
+            {chunks.map(ch => (
               <ChunkCard
                 key={ch.id}
                 chunkIndex={ch.chunk_index}
@@ -192,7 +213,7 @@ export function DocumentView({ slug: slugProp, id, onDeleted }: DocumentViewProp
             ))}
           </div>
 
-          <Pagination page={page} totalPages={totalPages} total={chunks.length} pageSize={PAGE_SIZE} onPageChange={setPage} />
+          <Pagination page={page} totalPages={totalPages} total={chunkTotal} pageSize={PAGE_SIZE} onPageChange={setPage} />
         </div>
       )}
     </div>
