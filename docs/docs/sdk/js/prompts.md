@@ -24,11 +24,11 @@ RagPack ships with three built-in system prompts. You can also create your own v
 const prompts = await client.prompts.list();
 
 for (const p of prompts) {
-  console.log(p.slug, p.name, p.isSystem);
+  console.log(p.slug, p.name, p.is_system);
 }
 ```
 
-System prompts (`isSystem: true`) are listed first, followed by any custom prompts you've created.
+System prompts (`is_system: true`) are listed first, followed by any custom prompts you've created.
 
 ## Get a prompt
 

@@ -132,8 +132,11 @@ const collection = client.collection("my-docs");
 // Ingest a file
 await collection.ingest(file);
 
-// Semantic search: returns ranked chunks
-const results = await collection.findSimilar({ query: "what is RagPack?" });
+// Semantic search: returns ranked chunks (hybrid by default, with optional filters)
+const results = await collection.findSimilar({
+  query: "what is RagPack?",
+  filters: { category: "docs" },
+});
 
 // RAG: retrieves chunks and returns an LLM answer
 const { answer, chunks } = await collection.rag({
@@ -141,6 +144,11 @@ const { answer, chunks } = await collection.rag({
   promptSlug: "basic-rag",
   model: "gpt-4o",
 });
+
+// Documents: fetch, read typed metadata, or update name/extra_json/metadata
+const doc = await collection.documents.get(docId);
+const metadata = await collection.documents.metadata(docId);
+await collection.documents.update(docId, { metadata: { status: "published" } });
 ```
 
 For the full SDK reference, see [ragpack.dev/docs/sdk/js](https://ragpack.dev/docs/sdk/js).
@@ -203,15 +211,15 @@ Supported formats: `.txt`, `.md`, `.html`, `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/collections/:slug/query` | Semantic search, returns ranked chunks |
+| `POST` | `/collections/:slug/query` | Semantic or hybrid search, returns ranked chunks |
 | `POST` | `/collections/:slug/rag` | RAG, retrieves chunks and returns an LLM answer |
 
 ```bash
-# Semantic search
+# Semantic search (hybrid by default — vector + keyword, merged with weighted RRF)
 curl -X POST http://localhost:9000/api/v1/collections/my-docs/query \
   -H "Authorization: Bearer $RAGPACK_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"query": "how do I configure authentication?", "top_k": 5}'
+  -d '{"query": "how do I configure authentication?", "top_k": 5, "filters": {"category": "docs"}}'
 
 # RAG
 curl -X POST http://localhost:9000/api/v1/collections/my-docs/rag \
@@ -220,7 +228,7 @@ curl -X POST http://localhost:9000/api/v1/collections/my-docs/rag \
   -d '{"query": "how do I configure authentication?", "top_k": 5, "prompt_slug": "my-prompt", "model": "llama3"}'
 ```
 
-The query response includes `chunk_text`, `file_uri`, `distance`, and `similarity` score (0–100). The RAG response adds `answer` and `formatted_prompt`.
+The query response includes `chunk_text`, `file_uri`, `vector_distance`, and `vector_similarity` (0–100), plus `keyword_bm25_score`, `rrf_score`, and `rrf_score_normalized` when hybrid search ran. Pass `vector_search_only: true` to skip the keyword pass. The RAG response adds `answer` and `formatted_prompt`.
 
 ### Documents
 
@@ -228,8 +236,20 @@ The query response includes `chunk_text`, `file_uri`, `distance`, and `similarit
 |---|---|---|
 | `GET` | `/collections/:slug/documents` | List ingested documents (paginated) |
 | `GET` | `/collections/:slug/documents/:id` | Get a document |
+| `GET` | `/collections/:slug/documents/:id/metadata` | Get a document's typed metadata field values |
+| `PATCH` | `/collections/:slug/documents/:id` | Update `name`, `extra_json`, and/or `metadata` |
 | `DELETE` | `/collections/:slug/documents/:id` | Delete a document and its chunks |
 | `GET` | `/collections/:slug/documents/:id/chunks` | List all chunks |
+
+### API keys
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/keys` | List API keys |
+| `POST` | `/keys` | Create an API key |
+| `DELETE` | `/keys/:id` | Delete an API key |
+
+Keys carry two independent, fail-closed grant kinds: per-collection `grants` (`read`/`write`/`both`, or wildcard by omitting `collection_slug`) and `admin_grants` for instance administration (`keys`/`prompts`/`collections`/`*`) — so a key that can manage prompts doesn't automatically get collection access, and vice versa. See the [API reference](https://ragpack.dev/docs/api) for the full grant model and examples.
 
 ## Admin UI
 
@@ -239,7 +259,8 @@ The admin UI at [http://localhost:3000](http://localhost:3000) lets you:
 - Ingest documents via URL or file upload
 - Monitor ingestion status (ingesting / complete / failed)
 - Delete individual documents
-- Run queries against a collection
+- Run queries against a collection, with hybrid search and filters
+- Manage API keys and their collection/admin grants
 
 ## Embedding models
 

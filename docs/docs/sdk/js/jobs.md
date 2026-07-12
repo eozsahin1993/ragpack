@@ -21,7 +21,7 @@ When you ingest a document, RagPack queues an ingestion job and processes it asy
 const jobs = await collection.jobs.list();
 
 for (const job of jobs) {
-  console.log(job.id, job.status, job.fileUri);
+  console.log(job.id, job.status, job.file_uri);
 }
 ```
 
@@ -68,9 +68,14 @@ Throws a `RagPackError` with status `422` if the job fails, or `408` if the time
 | Field | Type | Description |
 |---|---|---|
 | `id` | `string` | Unique job identifier |
-| `fileUri` | `string` | Source URI of the ingested document |
-| `mimeType` | `string` | Detected MIME type |
+| `file_uri` | `string` | Source URI of the ingested document |
+| `mime_type` | `string` | Detected MIME type |
+| `extra_json` | `string \| undefined` | Freeform JSON metadata carried from the ingest request onto the resulting document |
+| `metadata` | `string \| undefined` | Typed metadata field values carried from the ingest request |
+| `intent` | `string` | `ingest` \| `refresh` |
+| `force` | `boolean` | Whether this job was forced to re-run despite a matching existing document |
 | `status` | `string` | `pending` \| `processing` \| `complete` \| `failed` |
 | `error` | `string \| undefined` | Error message if `status` is `failed` |
-| `createdAt` | `string` | ISO 8601 timestamp |
-| `updatedAt` | `string` | ISO 8601 timestamp of last status change |
+| `executed_at` | `string \| undefined` | When the worker picked up this job; unset while still `pending` |
+| `created_at` | `string` | ISO 8601 timestamp |
+| `updated_at` | `string` | ISO 8601 timestamp of last status change |
