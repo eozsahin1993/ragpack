@@ -3,6 +3,7 @@ package documents
 import (
 	"github.com/gofiber/fiber/v2"
 
+	"ragpack/pkg/api/middleware"
 	"ragpack/pkg/api/validate"
 	"ragpack/pkg/db"
 	"ragpack/pkg/ingester"
@@ -10,12 +11,23 @@ import (
 )
 
 type Handler struct {
-	meta meta.MetaStore
-	vec  db.VectorDb
+	meta       meta.MetaStore
+	vec        db.VectorDb
+	enforceACL bool
 }
 
-func NewHandler(ms meta.MetaStore, vec db.VectorDb) *Handler {
-	return &Handler{meta: ms, vec: vec}
+// NewHandler builds a documents handler. Mounted both under /collections/:slug
+// and at the top level, so the access check happens here, not in router
+// middleware. enforceACL is false only from RegisterAdmin, which has no Auth middleware.
+func NewHandler(ms meta.MetaStore, vec db.VectorDb, enforceACL bool) *Handler {
+	return &Handler{meta: ms, vec: vec, enforceACL: enforceACL}
+}
+
+func (h *Handler) checkAccess(c *fiber.Ctx, collectionID string, required meta.Permission) error {
+	if !h.enforceACL {
+		return nil
+	}
+	return middleware.CheckAccess(c, h.meta, collectionID, required)
 }
 
 func (h *Handler) List(c *fiber.Ctx) error {
@@ -30,8 +42,17 @@ func (h *Handler) List(c *fiber.Ctx) error {
 		if err != nil {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "collection not found"})
 		}
+		if err := h.checkAccess(c, col.ID, meta.PermissionRead); err != nil {
+			return err
+		}
 		filter.CollectionID = &col.ID
+	} else if h.enforceACL {
+		// No collection to check grants against, so require wildcard rather than fail open.
+		if err := middleware.RequireWildcard(h.meta, meta.PermissionRead)(c); err != nil {
+			return err
+		}
 	}
+
 	if q.Status != "" {
 		status := meta.DocumentStatus(q.Status)
 		filter.Status = &status
@@ -67,6 +88,9 @@ func (h *Handler) Get(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "document not found"})
 	}
+	if err := h.checkAccess(c, doc.CollectionID, meta.PermissionRead); err != nil {
+		return err
+	}
 	return c.JSON(doc)
 }
 
@@ -74,6 +98,9 @@ func (h *Handler) Chunks(c *fiber.Ctx) error {
 	doc, err := h.meta.GetDocument(c.Context(), c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "document not found"})
+	}
+	if err := h.checkAccess(c, doc.CollectionID, meta.PermissionRead); err != nil {
+		return err
 	}
 
 	col, err := h.meta.GetCollectionByID(c.Context(), doc.CollectionID)
@@ -99,6 +126,14 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 	}
 
 	docID := c.Params("id")
+
+	existing, err := h.meta.GetDocument(c.Context(), docID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "document not found"})
+	}
+	if err := h.checkAccess(c, existing.CollectionID, meta.PermissionWrite); err != nil {
+		return err
+	}
 
 	if err := h.meta.UpdateDocument(c.Context(), docID, meta.DocumentPatch{
 		Name:      req.Name,
@@ -143,6 +178,9 @@ func (h *Handler) Delete(c *fiber.Ctx) error {
 	doc, err := h.meta.GetDocument(c.Context(), c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "document not found"})
+	}
+	if err := h.checkAccess(c, doc.CollectionID, meta.PermissionWrite); err != nil {
+		return err
 	}
 
 	col, err := h.meta.GetCollectionByID(c.Context(), doc.CollectionID)

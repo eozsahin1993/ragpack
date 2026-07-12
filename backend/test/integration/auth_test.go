@@ -16,6 +16,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
+	"ragpack/pkg/meta"
 	"ragpack/test/integration/helpers"
 )
 
@@ -50,7 +51,12 @@ func TestPublicAPIAcceptsValidKey(t *testing.T) {
 	a, ms := helpers.NewFullTestApp(t)
 
 	const plaintext = "test-secret-key"
-	if _, err := ms.CreateAPIKey(context.Background(), "test key", plaintext); err != nil {
+	grants := []meta.GrantInput{{Permission: meta.PermissionBoth}}
+	// GET /collections is gated on the "collections" admin resource (see
+	// pkg/api/collections/router.go), not a collection grant, so this key
+	// needs both to reach it.
+	adminGrants := []meta.AdminGrantInput{{ResourceType: meta.ResourceCollections, Permission: meta.PermissionRead}}
+	if _, err := ms.CreateAPIKey(context.Background(), "test key", plaintext, grants, adminGrants); err != nil {
 		t.Fatalf("create api key: %v", err)
 	}
 

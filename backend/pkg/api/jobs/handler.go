@@ -9,11 +9,22 @@ import (
 )
 
 type Handler struct {
-	meta meta.MetaStore
+	meta       meta.MetaStore
+	enforceACL bool
 }
 
-func NewHandler(ms meta.MetaStore) *Handler {
-	return &Handler{meta: ms}
+// NewHandler builds a jobs handler. Like documents, mounted both under
+// /collections/:slug and at the top level, so the access check happens here.
+// enforceACL is false only from RegisterAdmin, which has no Auth middleware.
+func NewHandler(ms meta.MetaStore, enforceACL bool) *Handler {
+	return &Handler{meta: ms, enforceACL: enforceACL}
+}
+
+func (h *Handler) checkAccess(c *fiber.Ctx, collectionID string, required meta.Permission) error {
+	if !h.enforceACL {
+		return nil
+	}
+	return middleware.CheckAccess(c, h.meta, collectionID, required)
 }
 
 // ListJobs returns jobs, optionally scoped by collection (via middleware) and/or status.
@@ -22,7 +33,16 @@ func (h *Handler) ListJobs(c *fiber.Ctx) error {
 
 	filter := meta.JobFilter{}
 	if col, ok := c.Locals(middleware.LocalCollection).(meta.Collection); ok {
+		if err := h.checkAccess(c, col.ID, meta.PermissionRead); err != nil {
+			return err
+		}
 		filter.CollectionID = &col.ID
+	} else if h.enforceACL {
+		// No collection in the URL: only an unrestricted key can list across
+		// every collection — see documents.List for the same reasoning.
+		if err := middleware.RequireWildcard(h.meta, meta.PermissionRead)(c); err != nil {
+			return err
+		}
 	}
 	if s := c.Query("status"); s != "" {
 		status := meta.JobStatus(s)
@@ -55,6 +75,9 @@ func (h *Handler) GetJob(c *fiber.Ctx) error {
 	if col, scoped := c.Locals(middleware.LocalCollection).(meta.Collection); scoped && job.CollectionID != col.ID {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "job not found"})
 	}
+	if err := h.checkAccess(c, job.CollectionID, meta.PermissionRead); err != nil {
+		return err
+	}
 	return c.JSON(job)
 }
 
@@ -67,6 +90,9 @@ func (h *Handler) DeleteJob(c *fiber.Ctx) error {
 	}
 	if col, scoped := c.Locals(middleware.LocalCollection).(meta.Collection); scoped && job.CollectionID != col.ID {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "job not found"})
+	}
+	if err := h.checkAccess(c, job.CollectionID, meta.PermissionWrite); err != nil {
+		return err
 	}
 	if job.Status == meta.JobStatusPending || job.Status == meta.JobStatusProcessing {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "cannot delete an active job"})

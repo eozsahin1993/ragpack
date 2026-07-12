@@ -15,6 +15,9 @@ func (h *Handler) GetMetadata(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "document not found"})
 	}
+	if err := h.checkAccess(c, doc.CollectionID, meta.PermissionRead); err != nil {
+		return err
+	}
 	col, err := h.meta.GetCollectionByID(c.Context(), doc.CollectionID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "collection not found"})

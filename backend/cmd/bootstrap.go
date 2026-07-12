@@ -23,7 +23,10 @@ func bootstrapAPIKey(ctx context.Context, ms meta.MetaStore, cfg config.Config) 
 		if err != nil {
 			log.Fatalf("auth: generate master key: %v", err)
 		}
-		if _, err := ms.CreateAPIKey(ctx, "master", plaintext); err != nil {
+
+		masterGrant := []meta.GrantInput{{Permission: meta.PermissionBoth}}
+		masterAdminGrant := []meta.AdminGrantInput{{ResourceType: meta.ResourceAll, Permission: meta.PermissionBoth}}
+		if _, err := ms.CreateAPIKey(ctx, "master", plaintext, masterGrant, masterAdminGrant); err != nil {
 			log.Fatalf("auth: store master key: %v", err)
 		}
 		keyFile := filepath.Join(cfg.DataPath, "api_key")
