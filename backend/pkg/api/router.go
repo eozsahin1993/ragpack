@@ -103,7 +103,7 @@ func mountRoutes(
 		adminMW(meta.ResourcePrompts, meta.PermissionRead), adminMW(meta.ResourcePrompts, meta.PermissionWrite))
 
 	collGroup := r.Group("/collections")
-	collections.Register(collGroup, collections.NewHandler(ms, vec, registry),
+	collections.Register(collGroup, collections.NewHandler(ms, vec, registry, enforceACL),
 		adminMW(meta.ResourceCollections, meta.PermissionRead), adminMW(meta.ResourceCollections, meta.PermissionWrite))
 
 	nameGroup := collGroup.Group("/:slug")

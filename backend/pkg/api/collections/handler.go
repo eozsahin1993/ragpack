@@ -12,13 +12,16 @@ import (
 )
 
 type Handler struct {
-	meta     meta.MetaStore
-	vec      db.VectorDb
-	registry *embedder.Registry
+	meta       meta.MetaStore
+	vec        db.VectorDb
+	registry   *embedder.Registry
+	enforceACL bool
 }
 
-func NewHandler(ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry) *Handler {
-	return &Handler{meta: ms, vec: vec, registry: registry}
+// enforceACL is false only from RegisterAdmin, which has no Auth middleware;
+// also gates whether responses include internal fields like table_name.
+func NewHandler(ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, enforceACL bool) *Handler {
+	return &Handler{meta: ms, vec: vec, registry: registry, enforceACL: enforceACL}
 }
 
 func (h *Handler) Create(c *fiber.Ctx) error {
@@ -65,7 +68,7 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(toResponse(col))
+	return c.Status(fiber.StatusCreated).JSON(toResponse(col, !h.enforceACL))
 }
 
 func (h *Handler) List(c *fiber.Ctx) error {
@@ -83,7 +86,7 @@ func (h *Handler) List(c *fiber.Ctx) error {
 
 	responses := make([]CollectionResponse, len(cols))
 	for i, col := range cols {
-		responses[i] = toResponse(col)
+		responses[i] = toResponse(col, !h.enforceACL)
 	}
 	return c.JSON(fiber.Map{"collections": responses, "total": total, "limit": limit, "offset": offset})
 }
@@ -93,7 +96,7 @@ func (h *Handler) GetByID(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "collection not found"})
 	}
-	return c.JSON(toResponse(col))
+	return c.JSON(toResponse(col, !h.enforceACL))
 }
 
 func (h *Handler) GetBySlug(c *fiber.Ctx) error {
@@ -101,7 +104,7 @@ func (h *Handler) GetBySlug(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "collection not found"})
 	}
-	return c.JSON(toResponse(col))
+	return c.JSON(toResponse(col, !h.enforceACL))
 }
 
 func (h *Handler) PatchCollection(c *fiber.Ctx) error {
@@ -114,7 +117,7 @@ func (h *Handler) PatchCollection(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(toResponse(col))
+	return c.JSON(toResponse(col, !h.enforceACL))
 }
 
 func (h *Handler) DeleteByID(c *fiber.Ctx) error {

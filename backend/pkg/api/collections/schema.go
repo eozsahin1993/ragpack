@@ -27,10 +27,11 @@ type PatchRequest struct {
 // — Response types —
 
 type CollectionResponse struct {
-	ID          string               `json:"id"`
-	Name        string               `json:"name"`
-	Slug        string               `json:"slug"`
-	TableName   string               `json:"table_name"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+	// Internal LanceDB table name; only populated on the admin surface.
+	TableName   string               `json:"table_name,omitempty"`
 	EmbedModel  string               `json:"embed_model"`
 	VectorDim   int                  `json:"vector_dim"`
 	CreatedAt   time.Time            `json:"created_at"`
@@ -43,15 +44,17 @@ type ChunkConfigResponse struct {
 	Overlap  *int    `json:"overlap,omitempty"`
 }
 
-func toResponse(c meta.Collection) CollectionResponse {
+func toResponse(c meta.Collection, includeInternal bool) CollectionResponse {
 	r := CollectionResponse{
-		ID:        c.ID,
-		Name:      c.Name,
-		Slug:      c.Slug,
-		TableName: c.TableName,
+		ID:         c.ID,
+		Name:       c.Name,
+		Slug:       c.Slug,
 		EmbedModel: c.EmbedModel,
-		VectorDim: c.VectorDim,
-		CreatedAt: c.CreatedAt,
+		VectorDim:  c.VectorDim,
+		CreatedAt:  c.CreatedAt,
+	}
+	if includeInternal {
+		r.TableName = c.TableName
 	}
 	if c.ChunkStrategy != nil || c.ChunkSize != nil || c.ChunkOverlap != nil {
 		r.ChunkConfig = &ChunkConfigResponse{

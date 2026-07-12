@@ -50,8 +50,16 @@ export interface Job {
   file_uri: string;
   mime_type: string;
   display_name?: string;
+  /** Freeform JSON metadata carried from the ingest request onto the resulting document. */
+  extra_json?: string;
+  /** Typed metadata field values carried from the ingest request. */
+  metadata?: string;
+  intent: "ingest" | "refresh";
+  force: boolean;
   status: "pending" | "processing" | "complete" | "failed";
   error?: string;
+  /** When the worker picked up this job; unset while still `pending`. */
+  executed_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -63,6 +71,10 @@ export interface Document {
   file_uri: string;
   mime_type: string;
   name?: string;
+  /** Caller-supplied ID for correlating with an external system, set at ingest time. */
+  external_id?: string;
+  /** Freeform JSON metadata, set at ingest time or via `documents.update()`. */
+  extra_json?: string;
   chunk_count: number;
   status: "ingesting" | "complete" | "failed";
   error?: string;

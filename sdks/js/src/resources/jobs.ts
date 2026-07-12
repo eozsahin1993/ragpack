@@ -27,8 +27,7 @@ export class JobsResource {
    * @param id - The job ID.
    */
   async get(id: string): Promise<Job> {
-    const r = await this.req<{ job: Job }>(`/collections/${this.slug}/jobs/${id}`);
-    return r.job;
+    return this.req<Job>(`/collections/${this.slug}/jobs/${id}`);
   }
 
   /**
