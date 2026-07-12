@@ -1,6 +1,6 @@
 {
   "name": "ragpack",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Self-hosted RAG and semantic search — CLI",
   "bin": {
     "ragpack": "./bin/ragpack.js"
