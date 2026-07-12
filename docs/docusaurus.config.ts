@@ -3,7 +3,7 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'RagPack — Lightweight Self-Hosted RAG Infrastructure',
+  title: 'RagPack: Lightweight Self-Hosted RAG Infrastructure',
   tagline: 'Open-source RAG infrastructure for developers. Self-hosted, works with Ollama, no cloud bill. Add semantic search to your app in minutes.',
   favicon: 'img/favicon.svg',
 
