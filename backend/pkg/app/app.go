@@ -7,11 +7,14 @@ package app
 import (
 	"context"
 	"errors"
+	"log"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 
+	"ragpack/pkg/analytics"
 	"ragpack/pkg/api"
 	"ragpack/pkg/api/validate"
 	"ragpack/pkg/chunker"
@@ -30,6 +33,7 @@ type App struct {
 	Admin     *fiber.App
 	Ingester  ingester.Ingester
 	Telemetry *telemetry.Recorder
+	Analytics *analytics.Engine // nil when telemetry is disabled or engine init failed
 }
 
 type Deps struct {
@@ -54,6 +58,26 @@ func New(ctx context.Context, d Deps) *App {
 		RedactText:    d.Config.Telemetry.RedactText,
 	})
 
+	// No honest no-op for a read query the way Recorder has for a write (see
+	// analytics.Engine's doc comment), so skip constructing the engine
+	// entirely when telemetry is off rather than building one that would
+	// always return empty results — RegisterAdmin skips mounting the routes
+	// when eng is nil, so they 404 instead.
+	var eng *analytics.Engine
+	if d.Config.Telemetry.Enabled {
+		var err error
+		eng, err = analytics.New(analytics.Config{
+			Dir:          d.Config.Telemetry.Dir,
+			MemoryLimit:  d.Config.Telemetry.DuckDB.MemoryLimit,
+			MaxThreads:   d.Config.Telemetry.DuckDB.MaxThreads,
+			QueryTimeout: time.Duration(d.Config.Telemetry.DuckDB.QueryTimeoutSeconds) * time.Second,
+		})
+		if err != nil {
+			log.Printf("analytics: duckdb engine init failed, analytics endpoints disabled: %v", err)
+			eng = nil
+		}
+	}
+
 	ing := ingester.New(d.Meta, d.Vector, d.Embedders, d.Config.Ingester.WorkerCount, d.Config.Ingester.EmbedRateLimit, chunkCfg, rec)
 	ing.Start(ctx, d.Config.Ingester.WorkerCount)
 
@@ -61,9 +85,9 @@ func New(ctx context.Context, d Deps) *App {
 	api.RegisterPublic(publicApp, d.Meta, d.Vector, d.Embedders, d.LLMs, ing, d.Config.DefaultPromptSlug, d.Config.MaxUploadSizeMB, rec)
 
 	adminApp := newFiberApp(d.Config.MaxUploadSizeMB)
-	api.RegisterAdmin(adminApp, d.Meta, d.Vector, d.Embedders, d.LLMs, ing, d.Config.DefaultPromptSlug, d.Config.MaxUploadSizeMB, rec)
+	api.RegisterAdmin(adminApp, d.Meta, d.Vector, d.Embedders, d.LLMs, ing, d.Config.DefaultPromptSlug, d.Config.MaxUploadSizeMB, rec, eng)
 
-	return &App{Public: publicApp, Admin: adminApp, Ingester: ing, Telemetry: rec}
+	return &App{Public: publicApp, Admin: adminApp, Ingester: ing, Telemetry: rec, Analytics: eng}
 }
 
 func newFiberApp(maxUploadSize int) *fiber.App {

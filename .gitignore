@@ -4,6 +4,8 @@
 
 # Storage (runtime data)
 *.db
+*.db-shm
+*.db-wal
 lancedb_data/
 uploads/
 backend/.data/

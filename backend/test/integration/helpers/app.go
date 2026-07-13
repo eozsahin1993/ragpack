@@ -66,6 +66,22 @@ func NewFullTestApp(t *testing.T) (*app.App, meta.MetaStore) {
 			},
 			DefaultPromptSlug: "basic_rag",
 			MaxUploadSizeMB:   25,
+			// On by default in production (config.Load()); matching that
+			// here means the integration suite actually exercises the
+			// telemetry write path and the analytics engine/routes
+			// (skipped entirely when disabled — see pkg/app.New), not just
+			// the ingestion/query business logic around them.
+			Telemetry: config.TelemetryConfig{
+				Enabled:       true,
+				Dir:           filepath.Join(t.TempDir(), "telemetry"),
+				RetentionDays: 14,
+				MaxSizeMB:     500,
+				DuckDB: config.DuckDBConfig{
+					MemoryLimit:         "256MB",
+					MaxThreads:          2,
+					QueryTimeoutSeconds: 10,
+				},
+			},
 		},
 	})
 	// t.Cleanup runs LIFO: registering cancel after Stop means cancel fires
@@ -73,6 +89,12 @@ func NewFullTestApp(t *testing.T) (*app.App, meta.MetaStore) {
 	// Stop's wg.Wait() blocks on them — Stop() itself never cancels
 	// anything (see pkg/ingester.WorkerPool.Stop), it only waits, so
 	// without this a background-context caller hangs forever.
+	//
+	// Same shutdown order as cmd/main.go: ingester stops (so its final
+	// telemetry events still get flushed) before Telemetry.Close, then
+	// Analytics.Close.
+	t.Cleanup(func() { a.Analytics.Close() })
+	t.Cleanup(func() { a.Telemetry.Close() })
 	t.Cleanup(a.Ingester.Stop)
 	t.Cleanup(cancel)
 

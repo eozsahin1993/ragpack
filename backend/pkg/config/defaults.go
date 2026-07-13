@@ -42,4 +42,11 @@ const (
 	// Telemetry
 	DefaultTelemetryRetentionDays = 14
 	DefaultTelemetryMaxSizeMB     = 500
+
+	// Telemetry analytics (DuckDB) — blast-radius caps so an ad hoc
+	// dashboard query can't OOM or stall the process that also serves the
+	// real RAG API.
+	DefaultDuckDBMemoryLimit         = "256MB"
+	DefaultDuckDBMaxThreads          = 2
+	DefaultDuckDBQueryTimeoutSeconds = 10
 )

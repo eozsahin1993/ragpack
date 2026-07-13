@@ -37,6 +37,15 @@ type TelemetryConfig struct {
 	RetentionDays int
 	MaxSizeMB     int
 	RedactText    bool
+	DuckDB        DuckDBConfig
+}
+
+// DuckDBConfig caps the analytics query engine's resource use — see
+// pkg/analytics.Engine.
+type DuckDBConfig struct {
+	MemoryLimit         string // e.g. "256MB", passed verbatim into PRAGMA memory_limit
+	MaxThreads          int
+	QueryTimeoutSeconds int
 }
 
 type OpenAIConfig struct {
@@ -134,6 +143,11 @@ func Load() Config {
 			RetentionDays: getEnvInt("TELEMETRY_RETENTION_DAYS", DefaultTelemetryRetentionDays),
 			MaxSizeMB:     getEnvInt("TELEMETRY_MAX_SIZE_MB", DefaultTelemetryMaxSizeMB),
 			RedactText:    getEnvBool("TELEMETRY_REDACT_TEXT", false),
+			DuckDB: DuckDBConfig{
+				MemoryLimit:         getEnv("TELEMETRY_DUCKDB_MEMORY_LIMIT", DefaultDuckDBMemoryLimit),
+				MaxThreads:          getEnvInt("TELEMETRY_DUCKDB_MAX_THREADS", DefaultDuckDBMaxThreads),
+				QueryTimeoutSeconds: getEnvInt("TELEMETRY_DUCKDB_QUERY_TIMEOUT_SECONDS", DefaultDuckDBQueryTimeoutSeconds),
+			},
 		},
 	}
 }

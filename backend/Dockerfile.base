@@ -8,7 +8,9 @@ ARG TARGETARCH
 ARG GO_VERSION=1.26.0
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y curl ca-certificates gcc && rm -rf /var/lib/apt/lists/*
+# g++ is for DuckDB (pkg/analytics) — it's a C++ project, gcc alone isn't
+# enough to link it even via a Go/cgo static-lib build.
+RUN apt-get update && apt-get install -y curl ca-certificates gcc g++ && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz" -o /tmp/go.tar.gz && \
     tar -C /usr/local -xzf /tmp/go.tar.gz && \

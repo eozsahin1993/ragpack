@@ -70,6 +70,7 @@ func handleShutdown(cancel context.CancelFunc, a *app.App) {
 	}
 	// After workers and servers stop, so their final events still get flushed.
 	a.Telemetry.Close()
+	a.Analytics.Close()
 }
 
 func mustListen(app *fiber.App, port, name string) {

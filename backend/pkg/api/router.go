@@ -3,6 +3,8 @@ package api
 import (
 	"github.com/gofiber/fiber/v2"
 
+	"ragpack/pkg/analytics"
+	analyticsapi "ragpack/pkg/api/analytics"
 	"ragpack/pkg/api/collections"
 	"ragpack/pkg/api/collections/metadata_fields"
 	"ragpack/pkg/api/documents"
@@ -54,10 +56,21 @@ func RegisterAdmin(
 	defaultPromptSlug string,
 	maxUploadSize int,
 	rec *telemetry.Recorder,
+	eng *analytics.Engine,
 ) {
 	app.Get("/admin/health", healthHandler)
 	adminGroup := app.Group("/admin")
 	mountRoutes(adminGroup, ms, vec, registry, llmRegistry, ing, defaultPromptSlug, maxUploadSize, false, rec)
+
+	// Deliberately not part of mountRoutes/RegisterPublic — analytics is
+	// never meant to be public-facing (see TELEMETRY_ANALYTICS_PLAN.md's
+	// trust boundary section), so it's admin-only by construction, not by
+	// an ACL check. eng is nil when telemetry is disabled (see app.New) —
+	// skipping registration means the routes just 404 rather than needing a
+	// disabled-engine sentinel error in every handler.
+	if eng != nil {
+		analyticsapi.Register(adminGroup.Group("/analytics"), analyticsapi.NewHandler(eng))
+	}
 }
 
 // mountRoutes wires up the shared route set for both the public (API-key
