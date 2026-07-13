@@ -69,6 +69,39 @@ export interface MetadataField {
   created_at: string;
 }
 
+export interface VolumePoint {
+  day: string; // YYYY-MM-DD, UTC
+  event_type: "ingestion" | "query" | "rag";
+  count: number;
+}
+
+export interface CollectionCost {
+  collection_slug: string;
+  ingestion_cost_usd: number;
+  llm_cost_usd: number;
+}
+
+export interface LatencyBucket {
+  endpoint: "query" | "rag";
+  sample_count: number;
+  p50_ms: number;
+  p95_ms: number;
+}
+
+export interface MimeSuccessRate {
+  mime_type: string;
+  total_count: number;
+  success_rate: number;
+}
+
+export interface CollectionTokens {
+  collection_slug: string;
+  ingestion_embed_tokens: number;
+  query_embed_tokens: number;
+  llm_input_tokens: number;
+  llm_output_tokens: number;
+}
+
 export interface QueryResultItem {
   source: string;
   file_uri: string;
@@ -319,5 +352,17 @@ export const api = {
       req<CreatedApiKey>("/admin/keys", { method: "POST", body: JSON.stringify(body) }),
     delete: (id: string) =>
       req<void>(`/admin/keys/${id}`, { method: "DELETE" }),
+  },
+  analytics: {
+    volume: (days = 30) =>
+      req<{ points: VolumePoint[] }>(`/admin/analytics/volume?days=${days}`),
+    costByCollection: (days = 30) =>
+      req<{ collections: CollectionCost[] }>(`/admin/analytics/cost-by-collection?days=${days}`),
+    latency: (days = 30) =>
+      req<{ buckets: LatencyBucket[] }>(`/admin/analytics/latency?days=${days}`),
+    ingestionSuccessRate: (days = 30) =>
+      req<{ mime_types: MimeSuccessRate[] }>(`/admin/analytics/ingestion-success-rate?days=${days}`),
+    tokenUsage: (days = 30) =>
+      req<{ collections: CollectionTokens[] }>(`/admin/analytics/token-usage?days=${days}`),
   },
 };

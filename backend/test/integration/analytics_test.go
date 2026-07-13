@@ -31,7 +31,7 @@ func TestAnalyticsEndpointsReturnEmptyOnFreshInstall(t *testing.T) {
 		{"/admin/analytics/volume", "points"},
 		{"/admin/analytics/cost-by-collection", "collections"},
 		{"/admin/analytics/latency", "buckets"},
-		{"/admin/analytics/ingestion-failure-rate", "mime_types"},
+		{"/admin/analytics/ingestion-success-rate", "mime_types"},
 		{"/admin/analytics/token-usage", "collections"},
 	}
 	for _, tc := range cases {

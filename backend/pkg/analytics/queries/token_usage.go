@@ -2,7 +2,6 @@ package queries
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 	"time"
 )
@@ -35,12 +34,12 @@ FROM query_events WHERE occurred_at >= ?`
 // TokenUsageByCollection sums every token counter tracked across both
 // tables (ingestion embedding, query embedding, LLM input, LLM output),
 // grouped by collection_slug.
-func TokenUsageByCollection(ctx context.Context, db *sql.DB, dir string, cutoff time.Time) ([]CollectionTokens, error) {
-	ingOK, err := ensureView(ctx, db, dir, "ingestion_events")
+func TokenUsageByCollection(ctx context.Context, s *Store, cutoff time.Time) ([]CollectionTokens, error) {
+	ingOK, err := s.ensureView(ctx, "ingestion_events")
 	if err != nil {
 		return nil, err
 	}
-	qOK, err := ensureView(ctx, db, dir, "query_events")
+	qOK, err := s.ensureView(ctx, "query_events")
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +65,7 @@ func TokenUsageByCollection(ctx context.Context, db *sql.DB, dir string, cutoff 
 		FROM (` + strings.Join(parts, " UNION ALL ") + `) t
 		GROUP BY collection_slug ORDER BY collection_slug`
 
-	rows, err := db.QueryContext(ctx, stmt, args...)
+	rows, err := s.db.QueryContext(ctx, stmt, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -76,11 +76,16 @@
   --border: oklch(0.918 0 0);
   --input: oklch(0.918 0 0);
   --ring: #211C64;
-  --chart-1: #4338CA;
-  --chart-2: #6563FF;
-  --chart-3: #9D96FF;
-  --chart-4: #B2B1FF;
-  --chart-5: #D8D8FF;
+  /* Categorical chart palette — validated via dataviz skill's
+     validate_palette.js against this app's actual card surface (#ffffff
+     light / #171717 dark): lightness band, chroma floor, CVD separation
+     (worst adjacent tritan ΔE 9.6 in dark — floor band, so 4-series charts
+     must carry direct labels, not color alone), and contrast all pass.
+     Fixed slot order — assign in sequence per chart, never cycle. */
+  --chart-1: #4338CA; /* indigo (brand) */
+  --chart-2: #0F9B8E; /* teal */
+  --chart-3: #C2410C; /* burnt orange */
+  --chart-4: #B91C5C; /* magenta */
   --radius: 0.5rem;
 
   /* semantic status colors */
@@ -123,11 +128,12 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* Same 4 hue families as light mode, restepped for the dark band (OKLCH
+     L 0.48-0.67) — see the light-mode comment above for validation notes. */
+  --chart-1: #7C7AFF; /* indigo (brand) */
+  --chart-2: #0D9488; /* teal */
+  --chart-3: #EA580C; /* burnt orange */
+  --chart-4: #DB2777; /* magenta */
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);

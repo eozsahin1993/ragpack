@@ -38,8 +38,8 @@ func (h *Handler) Latency(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"buckets": buckets})
 }
 
-func (h *Handler) IngestionFailureRate(c *fiber.Ctx) error {
-	rates, err := h.eng.IngestionFailureRate(c.Context(), cutoffFromDays(c))
+func (h *Handler) IngestionSuccessRate(c *fiber.Ctx) error {
+	rates, err := h.eng.IngestionSuccessRate(c.Context(), cutoffFromDays(c))
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

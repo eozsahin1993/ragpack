@@ -2,6 +2,7 @@ package analytics_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -77,12 +78,16 @@ func TestQueriesAgainstRealParquet(t *testing.T) {
 		if len(costs) != 1 {
 			t.Fatalf("want 1 collection, got %d", len(costs))
 		}
-		want := 0.001 + 0.0005 + 0.01 // ingestion embed costs + the one llm_cost_usd
+		wantIngestion := 0.001 + 0.0005 // the two complete ingestion embed costs
+		wantLLM := 0.01                // the one rag event's llm_cost_usd
 		if costs[0].CollectionSlug != "docs" {
 			t.Errorf("collection_slug: got %q", costs[0].CollectionSlug)
 		}
-		if diff := costs[0].TotalCostUSD - want; diff > 1e-9 || diff < -1e-9 {
-			t.Errorf("total_cost_usd: got %v, want %v", costs[0].TotalCostUSD, want)
+		if diff := costs[0].IngestionCostUSD - wantIngestion; diff > 1e-9 || diff < -1e-9 {
+			t.Errorf("ingestion_cost_usd: got %v, want %v", costs[0].IngestionCostUSD, wantIngestion)
+		}
+		if diff := costs[0].LLMCostUSD - wantLLM; diff > 1e-9 || diff < -1e-9 {
+			t.Errorf("llm_cost_usd: got %v, want %v", costs[0].LLMCostUSD, wantLLM)
 		}
 	})
 
@@ -112,20 +117,20 @@ func TestQueriesAgainstRealParquet(t *testing.T) {
 		}
 	})
 
-	t.Run("IngestionFailureRate", func(t *testing.T) {
-		rates, err := eng.IngestionFailureRate(ctx, cutoff)
+	t.Run("IngestionSuccessRate", func(t *testing.T) {
+		rates, err := eng.IngestionSuccessRate(ctx, cutoff)
 		if err != nil {
-			t.Fatalf("IngestionFailureRate: %v", err)
+			t.Fatalf("IngestionSuccessRate: %v", err)
 		}
 		byMime := map[string]float64{}
 		for _, r := range rates {
-			byMime[r.MimeType] = r.FailureRate
+			byMime[r.MimeType] = r.SuccessRate
 		}
 		if byMime["application/pdf"] != 0.5 {
-			t.Errorf("pdf failure_rate: got %v, want 0.5", byMime["application/pdf"])
+			t.Errorf("pdf success_rate: got %v, want 0.5", byMime["application/pdf"])
 		}
-		if byMime["text/html"] != 0 {
-			t.Errorf("html failure_rate: got %v, want 0", byMime["text/html"])
+		if byMime["text/html"] != 1 {
+			t.Errorf("html success_rate: got %v, want 1", byMime["text/html"])
 		}
 	})
 
@@ -168,8 +173,8 @@ func TestQueriesOnEmptyDatabase(t *testing.T) {
 	if v, err := eng.Latency(ctx, cutoff); err != nil || len(v) != 0 {
 		t.Errorf("Latency: got %v, %v; want empty, nil", v, err)
 	}
-	if v, err := eng.IngestionFailureRate(ctx, cutoff); err != nil || len(v) != 0 {
-		t.Errorf("IngestionFailureRate: got %v, %v; want empty, nil", v, err)
+	if v, err := eng.IngestionSuccessRate(ctx, cutoff); err != nil || len(v) != 0 {
+		t.Errorf("IngestionSuccessRate: got %v, %v; want empty, nil", v, err)
 	}
 	if v, err := eng.TokenUsageByCollection(ctx, cutoff); err != nil || len(v) != 0 {
 		t.Errorf("TokenUsageByCollection: got %v, %v; want empty, nil", v, err)
@@ -192,7 +197,7 @@ func TestPartiallyEmptyDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CostByCollection: %v", err)
 	}
-	if len(costs) != 1 || costs[0].TotalCostUSD != 0.002 {
+	if len(costs) != 1 || costs[0].IngestionCostUSD != 0.002 || costs[0].LLMCostUSD != 0 {
 		t.Errorf("want ingestion-only cost 0.002, got %+v", costs)
 	}
 
@@ -270,5 +275,55 @@ func TestQueryTimeoutAborts(t *testing.T) {
 	}
 	if elapsed > 5*time.Second {
 		t.Errorf("query took %v to abort after a 50ms timeout — cancellation isn't bounding runaway queries", elapsed)
+	}
+}
+
+// TestConcurrentQueriesAgainstFreshEngine reproduces a real bug found via the
+// actual web-admin dashboard, not by any single-query test: the page fires
+// all 5 analytics endpoints at once (Promise.all), and against a *fresh*
+// Engine — where no view has been created yet — multiple query methods
+// raced to CREATE OR REPLACE VIEW the same table simultaneously, which
+// DuckDB rejects as a catalog write-write conflict. Every prior test in this
+// file only ever called one query method at a time, so this never surfaced
+// until real concurrent HTTP load hit it. Store.ensureView's cache+mutex
+// (see queries/views.go) is the fix under test here.
+func TestConcurrentQueriesAgainstFreshEngine(t *testing.T) {
+	dir := t.TempDir()
+	rec := telemetry.New(telemetry.Config{Enabled: true, Dir: dir, RetentionDays: 14, MaxSizeMB: 500})
+	rec.Record(&ingestion.Event{CollectionSlug: "docs", MimeType: "application/pdf", Status: "complete", EmbedTokens: i64(100), EmbedCostUSD: f64(0.001)})
+	rec.Record(&query.Event{CollectionSlug: "docs", Endpoint: "query", Status: "complete", TotalMs: 100, EmbedQueryTokens: i64(10)})
+	rec.Close()
+
+	// A fresh engine per attempt — the race is specifically about the first
+	// time a view is created, so reusing one engine across attempts (where
+	// later calls hit the cache) would hide it. Several attempts because a
+	// goroutine-scheduling race isn't guaranteed to reproduce every run.
+	ctx := context.Background()
+	cutoff := time.Now().UTC().Add(-time.Hour)
+	for attempt := 0; attempt < 10; attempt++ {
+		eng := newTestEngine(t, dir)
+
+		var wg sync.WaitGroup
+		errs := make(chan error, 5)
+		run := func(f func() error) {
+			defer wg.Done()
+			if err := f(); err != nil {
+				errs <- err
+			}
+		}
+
+		wg.Add(5)
+		go run(func() error { _, err := eng.VolumeOverTime(ctx, cutoff); return err })
+		go run(func() error { _, err := eng.CostByCollection(ctx, cutoff); return err })
+		go run(func() error { _, err := eng.Latency(ctx, cutoff); return err })
+		go run(func() error { _, err := eng.IngestionSuccessRate(ctx, cutoff); return err })
+		go run(func() error { _, err := eng.TokenUsageByCollection(ctx, cutoff); return err })
+		wg.Wait()
+		close(errs)
+
+		for err := range errs {
+			t.Errorf("attempt %d: concurrent query failed: %v", attempt, err)
+		}
+		eng.Close()
 	}
 }

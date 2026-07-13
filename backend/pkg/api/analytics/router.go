@@ -10,6 +10,6 @@ func Register(r fiber.Router, h *Handler) {
 	r.Get("/volume", h.Volume)
 	r.Get("/cost-by-collection", h.CostByCollection)
 	r.Get("/latency", h.Latency)
-	r.Get("/ingestion-failure-rate", h.IngestionFailureRate)
+	r.Get("/ingestion-success-rate", h.IngestionSuccessRate)
 	r.Get("/token-usage", h.TokenUsage)
 }

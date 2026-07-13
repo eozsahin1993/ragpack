@@ -2,7 +2,6 @@ package queries
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 	"time"
 )
@@ -25,12 +24,12 @@ FROM query_events WHERE occurred_at >= ? GROUP BY 1, 2`
 
 // VolumeOverTime returns ingestion + query/RAG event counts bucketed by UTC
 // day, for occurred_at >= cutoff.
-func VolumeOverTime(ctx context.Context, db *sql.DB, dir string, cutoff time.Time) ([]VolumePoint, error) {
-	ingOK, err := ensureView(ctx, db, dir, "ingestion_events")
+func VolumeOverTime(ctx context.Context, s *Store, cutoff time.Time) ([]VolumePoint, error) {
+	ingOK, err := s.ensureView(ctx, "ingestion_events")
 	if err != nil {
 		return nil, err
 	}
-	qOK, err := ensureView(ctx, db, dir, "query_events")
+	qOK, err := s.ensureView(ctx, "query_events")
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +49,7 @@ func VolumeOverTime(ctx context.Context, db *sql.DB, dir string, cutoff time.Tim
 	}
 	stmt := strings.Join(parts, " UNION ALL ") + " ORDER BY 1, 2"
 
-	rows, err := db.QueryContext(ctx, stmt, args...)
+	rows, err := s.db.QueryContext(ctx, stmt, args...)
 	if err != nil {
 		return nil, err
 	}

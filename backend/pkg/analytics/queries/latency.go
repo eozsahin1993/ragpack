@@ -2,7 +2,6 @@ package queries
 
 import (
 	"context"
-	"database/sql"
 	"time"
 )
 
@@ -24,13 +23,13 @@ GROUP BY endpoint ORDER BY endpoint`
 // Latency returns p50/p95 total_ms for completed query/RAG calls, split by
 // endpoint. Failed calls are excluded — their total_ms reflects an
 // early-return error path, not real query latency.
-func Latency(ctx context.Context, db *sql.DB, dir string, cutoff time.Time) ([]LatencyBucket, error) {
-	ok, err := ensureView(ctx, db, dir, "query_events")
+func Latency(ctx context.Context, s *Store, cutoff time.Time) ([]LatencyBucket, error) {
+	ok, err := s.ensureView(ctx, "query_events")
 	if err != nil || !ok {
 		return []LatencyBucket{}, err
 	}
 
-	rows, err := db.QueryContext(ctx, latencySQL, cutoff)
+	rows, err := s.db.QueryContext(ctx, latencySQL, cutoff)
 	if err != nil {
 		return nil, err
 	}

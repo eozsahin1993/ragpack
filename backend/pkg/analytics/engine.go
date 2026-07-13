@@ -30,8 +30,9 @@ type Config struct {
 // skip constructing one at all when telemetry is disabled, and
 // pkg/api/router skips registering the routes in that case.
 type Engine struct {
-	db  *sql.DB
-	cfg Config
+	db    *sql.DB
+	cfg   Config
+	store *queries.Store
 }
 
 func New(cfg Config) (*Engine, error) {
@@ -60,7 +61,7 @@ func New(cfg Config) (*Engine, error) {
 			return nil, fmt.Errorf("analytics: %s: %w", stmt, err)
 		}
 	}
-	return &Engine{db: db, cfg: cfg}, nil
+	return &Engine{db: db, cfg: cfg, store: queries.NewStore(db, cfg.Dir)}, nil
 }
 
 // Close is nil-safe, matching telemetry.Recorder's convention.
@@ -84,29 +85,29 @@ func (e *Engine) withTimeout(ctx context.Context) (context.Context, context.Canc
 func (e *Engine) VolumeOverTime(ctx context.Context, cutoff time.Time) ([]queries.VolumePoint, error) {
 	ctx, cancel := e.withTimeout(ctx)
 	defer cancel()
-	return queries.VolumeOverTime(ctx, e.db, e.cfg.Dir, cutoff)
+	return queries.VolumeOverTime(ctx, e.store, cutoff)
 }
 
 func (e *Engine) CostByCollection(ctx context.Context, cutoff time.Time) ([]queries.CollectionCost, error) {
 	ctx, cancel := e.withTimeout(ctx)
 	defer cancel()
-	return queries.CostByCollection(ctx, e.db, e.cfg.Dir, cutoff)
+	return queries.CostByCollection(ctx, e.store, cutoff)
 }
 
 func (e *Engine) Latency(ctx context.Context, cutoff time.Time) ([]queries.LatencyBucket, error) {
 	ctx, cancel := e.withTimeout(ctx)
 	defer cancel()
-	return queries.Latency(ctx, e.db, e.cfg.Dir, cutoff)
+	return queries.Latency(ctx, e.store, cutoff)
 }
 
-func (e *Engine) IngestionFailureRate(ctx context.Context, cutoff time.Time) ([]queries.MimeFailureRate, error) {
+func (e *Engine) IngestionSuccessRate(ctx context.Context, cutoff time.Time) ([]queries.MimeSuccessRate, error) {
 	ctx, cancel := e.withTimeout(ctx)
 	defer cancel()
-	return queries.IngestionFailureRate(ctx, e.db, e.cfg.Dir, cutoff)
+	return queries.IngestionSuccessRate(ctx, e.store, cutoff)
 }
 
 func (e *Engine) TokenUsageByCollection(ctx context.Context, cutoff time.Time) ([]queries.CollectionTokens, error) {
 	ctx, cancel := e.withTimeout(ctx)
 	defer cancel()
-	return queries.TokenUsageByCollection(ctx, e.db, e.cfg.Dir, cutoff)
+	return queries.TokenUsageByCollection(ctx, e.store, cutoff)
 }
