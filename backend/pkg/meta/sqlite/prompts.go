@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -79,6 +80,13 @@ func (s *MetaStore) CountPrompts(ctx context.Context) (int, error) {
 	return count, nil
 }
 
+// UpdatePrompt writes only the columns actually present in input — never a
+// full-row rewrite of fields read moments earlier. With more than one SQLite
+// connection now in flight (see sqlite.go), two concurrent partial updates
+// to the same prompt (e.g. one changing Name, one changing Content) could
+// otherwise race: both read the same starting row, and whichever writes
+// second silently clobbers the other's change with its own stale copy of
+// the field it never meant to touch.
 func (s *MetaStore) UpdatePrompt(ctx context.Context, slug string, input meta.UpdatePromptInput) (meta.Prompt, error) {
 	p, err := s.GetPromptBySlug(ctx, slug)
 	if err != nil {
@@ -88,18 +96,28 @@ func (s *MetaStore) UpdatePrompt(ctx context.Context, slug string, input meta.Up
 		return meta.Prompt{}, meta.ErrSystemReadOnly
 	}
 
+	var clauses []string
+	var args []any
 	if input.Name != nil {
 		p.Name = *input.Name
 		p.Slug = slugify(*input.Name)
+		clauses = append(clauses, "name = ?", "slug = ?")
+		args = append(args, p.Name, p.Slug)
 	}
 	if input.Content != nil {
 		p.Content = *input.Content
+		clauses = append(clauses, "content = ?")
+		args = append(args, p.Content)
 	}
-	p.UpdatedAt = time.Now().UTC()
+	if len(clauses) == 0 {
+		return p, nil
+	}
 
-	_, err = s.db.ExecContext(ctx, `
-		UPDATE prompts SET name = ?, slug = ?, content = ?, updated_at = ? WHERE id = ?
-	`, p.Name, p.Slug, p.Content, p.UpdatedAt, p.ID)
+	p.UpdatedAt = time.Now().UTC()
+	clauses = append(clauses, "updated_at = ?")
+	args = append(args, p.UpdatedAt, p.ID)
+
+	_, err = s.db.ExecContext(ctx, "UPDATE prompts SET "+strings.Join(clauses, ", ")+" WHERE id = ?", args...)
 	if err != nil {
 		return meta.Prompt{}, fmt.Errorf("sqlite: update prompt %q: %w", slug, err)
 	}

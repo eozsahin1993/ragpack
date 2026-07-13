@@ -36,12 +36,15 @@ type MetaStore struct {
 }
 
 func New(path string) (*MetaStore, error) {
-	db, err := sqlx.Open("sqlite", path+"?_foreign_keys=on")
+	// WAL lets reads proceed without waiting on a writer; busy_timeout makes a
+	// second concurrent writer retry instead of failing immediately with
+	// SQLITE_BUSY (SQLite still allows only one writer at a time, WAL or not).
+	db, err := sqlx.Open("sqlite", path+"?_foreign_keys=on&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)")
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: open failed: %w", err)
 	}
 
-	db.SetMaxOpenConns(1)
+	db.SetMaxOpenConns(10)
 
 	goose.SetBaseFS(migrations)
 	goose.SetLogger(goose.NopLogger())

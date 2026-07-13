@@ -24,11 +24,10 @@ const (
 )
 
 type APIKey struct {
-	ID         string     `db:"id"           json:"id"`
-	Name       string     `db:"name"         json:"name"`
-	KeyHint    string     `db:"key_hint"     json:"key_hint"`
-	CreatedAt  time.Time  `db:"created_at"   json:"created_at"`
-	LastUsedAt *time.Time `db:"last_used_at" json:"last_used_at,omitempty"`
+	ID        string    `db:"id"         json:"id"`
+	Name      string    `db:"name"       json:"name"`
+	KeyHint   string    `db:"key_hint"   json:"key_hint"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
 }
 
 // CollectionGrant grants access to one collection, or every collection (current and future) when CollectionID is nil.

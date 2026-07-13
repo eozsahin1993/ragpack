@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { DataTable } from "@/components/data-table";
 import { ApiKey, Collection, Permission, AdminResourceType } from "@/lib/api";
-import { timeAgo } from "@/lib/utils";
 
 const PERMISSION_LABEL: Record<Permission, string> = {
   read: "Read",
@@ -63,16 +62,15 @@ export function KeysTable({ keys, collections, loading, onDelete }: KeysTablePro
       { label: "Name" },
       { label: "Key" },
       { label: "Capabilities" },
-      { label: "Last used" },
       { label: "", className: "w-10" },
     ]}>
       {loading ? (
         <TableRow key="loading">
-          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">Loading…</TableCell>
+          <TableCell colSpan={4} className="text-center text-muted-foreground py-8">Loading…</TableCell>
         </TableRow>
       ) : keys.length === 0 ? (
         <TableRow key="empty">
-          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+          <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
             No API keys yet. Create one to authenticate external clients.
           </TableCell>
         </TableRow>
@@ -88,13 +86,6 @@ export function KeysTable({ keys, collections, loading, onDelete }: KeysTablePro
             <code className="text-xs text-muted-foreground">rp_••••{k.key_hint}</code>
           </TableCell>
           <TableCell className="max-w-xl">{renderCapabilities(k)}</TableCell>
-          <TableCell className="text-muted-foreground text-sm">
-            {k.last_used_at ? (
-              <span title={new Date(k.last_used_at).toLocaleString()}>{timeAgo(k.last_used_at)}</span>
-            ) : (
-              "Never"
-            )}
-          </TableCell>
           <TableCell>
             <button
               onClick={() => onDelete(k)}

@@ -161,7 +161,6 @@ export interface ApiKey {
   name: string;
   key_hint: string;
   created_at: string;
-  last_used_at?: string;
   grants: CollectionGrant[];
   admin_grants?: AdminGrant[];
 }

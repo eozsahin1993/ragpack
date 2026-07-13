@@ -60,21 +60,24 @@ func (s *MetaStore) CreateAPIKey(ctx context.Context, name, plaintext string, gr
 	return k, nil
 }
 
+// ValidateAPIKey is a pure read — deliberately. It's on every authenticated
+// request's critical path, so it must never be the thing that puts a write
+// on SQLite's single global writer lock; see migration 00020.
 func (s *MetaStore) ValidateAPIKey(ctx context.Context, plaintext string) (meta.APIKey, error) {
 	hash := auth.Hash(plaintext)
 	var k meta.APIKey
-	if err := s.db.GetContext(ctx, &k, `SELECT id, name, key_hint, created_at, last_used_at FROM api_keys WHERE key_hash = ?`, hash); err != nil {
+	if err := s.db.GetContext(ctx, &k, `SELECT id, name, key_hint, created_at FROM api_keys WHERE key_hash = ?`, hash); err != nil {
 		return meta.APIKey{}, fmt.Errorf("invalid key")
 	}
-	_, _ = s.db.ExecContext(ctx, `UPDATE api_keys SET last_used_at = ? WHERE id = ?`, time.Now().UTC(), k.ID)
 	return k, nil
 }
 
 func (s *MetaStore) ListAPIKeys(ctx context.Context) ([]meta.APIKey, error) {
 	var keys []meta.APIKey
 	if err := s.db.SelectContext(ctx, &keys, `
-		SELECT id, name, key_hint, created_at, last_used_at
-		FROM api_keys ORDER BY created_at DESC
+		SELECT id, name, key_hint, created_at
+		FROM api_keys
+		ORDER BY created_at DESC
 	`); err != nil {
 		return nil, fmt.Errorf("sqlite: list api keys: %w", err)
 	}
