@@ -38,6 +38,8 @@ func (p *MarkdownParser) Parse(_ context.Context, r io.ReadCloser) iter.Seq2[Uni
 		}
 
 		scanner := bufio.NewScanner(r)
+		// Raise past the 64KB default; a single line can legitimately exceed it.
+		scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
 		for scanner.Scan() {
 			line := scanner.Text()
 			level := markdownHeaderLevel(line)
