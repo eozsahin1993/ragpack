@@ -14,6 +14,8 @@ import (
 	"ragpack/pkg/embedder"
 	"ragpack/pkg/llm"
 	"ragpack/pkg/meta"
+	"ragpack/pkg/telemetry"
+	tquery "ragpack/pkg/telemetry/query"
 )
 
 const (
@@ -27,10 +29,11 @@ type Handler struct {
 	registry          *embedder.Registry
 	llmRegistry       *llm.Registry
 	defaultPromptSlug string
+	telemetry         *telemetry.Recorder
 }
 
-func NewHandler(ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, defaultPromptSlug string) *Handler {
-	return &Handler{meta: ms, vectorDb: vec, registry: registry, llmRegistry: llmRegistry, defaultPromptSlug: defaultPromptSlug}
+func NewHandler(ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, llmRegistry *llm.Registry, defaultPromptSlug string, rec *telemetry.Recorder) *Handler {
+	return &Handler{meta: ms, vectorDb: vec, registry: registry, llmRegistry: llmRegistry, defaultPromptSlug: defaultPromptSlug, telemetry: rec}
 }
 
 // resolveHybridSettings fills in db.DefaultHybridSettings for any unset field.
@@ -55,6 +58,8 @@ func resolveHybridSettings(s *HybridSettings) db.HybridSettings {
 }
 
 func (h *Handler) Query(c *fiber.Ctx) error {
+	start := time.Now()
+
 	collection, err := h.meta.GetCollectionBySlug(c.Context(), c.Params("slug"))
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "collection not found"})
@@ -73,8 +78,12 @@ func (h *Handler) Query(c *fiber.Ctx) error {
 		return writeFilterErr(c, err)
 	}
 
-	vector, err := h.embedQuery(c, collection.EmbedModel, req.Query)
+	hybrid := resolveHybridSettings(req.HybridSettings)
+	ev := h.newQueryEvent(c, collection, "query", req.Query, req.TopK, req.VectorSearchOnly, hybrid, req.Filters)
+
+	vector, err := h.embedQuery(c, collection.EmbedModel, req.Query, &ev)
 	if err != nil {
+		h.recordFailure(&ev, start, "embed query failed")
 		return err
 	}
 
@@ -82,9 +91,12 @@ func (h *Handler) Query(c *fiber.Ctx) error {
 	if !req.VectorSearchOnly {
 		keywordQuery = req.Query
 	}
-	results, err := h.vectorDb.QuerySimilarVectors(c.Context(), collection.TableName, vector, req.TopK, sqlFilter, keywordQuery, resolveHybridSettings(req.HybridSettings))
+	searchStart := time.Now()
+	results, err := h.vectorDb.QuerySimilarVectors(c.Context(), collection.TableName, vector, req.TopK, sqlFilter, keywordQuery, hybrid)
+	ev.VectorSearchMs = time.Since(searchStart).Milliseconds()
 	if err != nil {
 		log.Printf("query error: %v", err)
+		h.recordFailure(&ev, start, err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
@@ -107,10 +119,13 @@ func (h *Handler) Query(c *fiber.Ctx) error {
 		}
 	}
 
+	h.finishQueryEvent(&ev, start, results, nil, nil)
 	return c.JSON(QueryResponse{Results: items})
 }
 
 func (h *Handler) Rag(c *fiber.Ctx) error {
+	start := time.Now()
+
 	collection, err := h.meta.GetCollectionBySlug(c.Context(), c.Params("slug"))
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "collection not found"})
@@ -137,8 +152,13 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 		return writeFilterErr(c, err)
 	}
 
-	vector, err := h.embedQuery(c, collection.EmbedModel, req.Query)
+	hybrid := resolveHybridSettings(req.HybridSettings)
+	ev := h.newQueryEvent(c, collection, "rag", req.Query, req.TopK, req.VectorSearchOnly, hybrid, req.Filters)
+	ev.PromptSlug = &prompt.Slug
+
+	vector, err := h.embedQuery(c, collection.EmbedModel, req.Query, &ev)
 	if err != nil {
+		h.recordFailure(&ev, start, "embed query failed")
 		return err
 	}
 
@@ -146,9 +166,12 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 	if !req.VectorSearchOnly {
 		keywordQuery = req.Query
 	}
-	results, err := h.vectorDb.QuerySimilarVectors(c.Context(), collection.TableName, vector, req.TopK, sqlFilter, keywordQuery, resolveHybridSettings(req.HybridSettings))
+	searchStart := time.Now()
+	results, err := h.vectorDb.QuerySimilarVectors(c.Context(), collection.TableName, vector, req.TopK, sqlFilter, keywordQuery, hybrid)
+	ev.VectorSearchMs = time.Since(searchStart).Milliseconds()
 	if err != nil {
 		log.Printf("rag query error: %v", err)
+		h.recordFailure(&ev, start, err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
@@ -184,23 +207,33 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 	if req.Model != "" {
 		provider, err = h.llmRegistry.Get(req.Model)
 		if err != nil {
+			h.recordFailure(&ev, start, fmt.Sprintf("model %q not available", req.Model))
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("model %q not available: %v", req.Model, err)})
 		}
 	} else {
 		_, provider, err = h.llmRegistry.Default()
 		if err != nil {
+			h.recordFailure(&ev, start, "no LLM configured")
 			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": fmt.Sprintf("no LLM configured: %v", err)})
 		}
 	}
+	llmModel := provider.Model()
+	ev.LLMModel = &llmModel
 
 	llmCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	answer, err := provider.Complete(llmCtx, formatted)
+	llmStart := time.Now()
+	answer, llmUsage, err := provider.Complete(llmCtx, formatted)
+	llmMs := time.Since(llmStart).Milliseconds()
+	ev.LLMMs = &llmMs
 	if err != nil {
 		log.Printf("rag llm error: %v", err)
+		h.recordLLMFailure(&ev, start, results, formatted, "LLM call failed: "+err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "LLM call failed"})
 	}
+	h.setLLMUsage(&ev, llmModel, llmUsage)
 
+	h.finishQueryEvent(&ev, start, results, &formatted, &answer)
 	return c.JSON(RagResponse{
 		FormattedPrompt: formatted,
 		Answer:          answer,
@@ -209,14 +242,29 @@ func (h *Handler) Rag(c *fiber.Ctx) error {
 	})
 }
 
-func (h *Handler) embedQuery(c *fiber.Ctx, embedModel, query string) ([]float32, error) {
+// embedQuery embeds the query text, recording duration/usage on ev. Error
+// paths write the HTTP response themselves and return
+// validate.ErrResponseWritten so callers just propagate the error.
+func (h *Handler) embedQuery(c *fiber.Ctx, embedModel, query string, ev *tquery.Event) ([]float32, error) {
 	emb, err := h.registry.Get(embedModel)
 	if err != nil {
-		return nil, c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "no embedder available for this collection's model"})
+		if err := c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "no embedder available for this collection's model"}); err != nil {
+			return nil, err
+		}
+		return nil, validate.ErrResponseWritten
 	}
-	vectors, err := emb.Embed(c.Context(), []string{query})
+	embedStart := time.Now()
+	vectors, usage, err := emb.Embed(c.Context(), []string{query})
+	ev.EmbedMs = time.Since(embedStart).Milliseconds()
+	if usage.TotalTokens > 0 {
+		tokens := int64(usage.TotalTokens)
+		ev.EmbedQueryTokens = &tokens
+	}
 	if err != nil {
-		return nil, c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to embed query"})
+		if err := c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to embed query"}); err != nil {
+			return nil, err
+		}
+		return nil, validate.ErrResponseWritten
 	}
 	return embedder.Normalize(vectors[0]), nil
 }

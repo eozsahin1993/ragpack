@@ -21,13 +21,15 @@ import (
 	"ragpack/pkg/ingester"
 	"ragpack/pkg/llm"
 	"ragpack/pkg/meta"
+	"ragpack/pkg/telemetry"
 )
 
 // App bundles the running pieces so callers can start/stop them uniformly.
 type App struct {
-	Public   *fiber.App
-	Admin    *fiber.App
-	Ingester ingester.Ingester
+	Public    *fiber.App
+	Admin     *fiber.App
+	Ingester  ingester.Ingester
+	Telemetry *telemetry.Recorder
 }
 
 type Deps struct {
@@ -44,16 +46,24 @@ func New(ctx context.Context, d Deps) *App {
 		Overlap:   d.Config.Ingester.ChunkOverlap,
 		Strategy:  d.Config.Ingester.ChunkStrategy,
 	}
-	ing := ingester.New(d.Meta, d.Vector, d.Embedders, d.Config.Ingester.WorkerCount, d.Config.Ingester.EmbedRateLimit, chunkCfg)
+	rec := telemetry.New(telemetry.Config{
+		Enabled:       d.Config.Telemetry.Enabled,
+		Dir:           d.Config.Telemetry.Dir,
+		RetentionDays: d.Config.Telemetry.RetentionDays,
+		MaxSizeMB:     d.Config.Telemetry.MaxSizeMB,
+		RedactText:    d.Config.Telemetry.RedactText,
+	})
+
+	ing := ingester.New(d.Meta, d.Vector, d.Embedders, d.Config.Ingester.WorkerCount, d.Config.Ingester.EmbedRateLimit, chunkCfg, rec)
 	ing.Start(ctx, d.Config.Ingester.WorkerCount)
 
 	publicApp := newFiberApp(d.Config.MaxUploadSizeMB)
-	api.RegisterPublic(publicApp, d.Meta, d.Vector, d.Embedders, d.LLMs, ing, d.Config.DefaultPromptSlug, d.Config.MaxUploadSizeMB)
+	api.RegisterPublic(publicApp, d.Meta, d.Vector, d.Embedders, d.LLMs, ing, d.Config.DefaultPromptSlug, d.Config.MaxUploadSizeMB, rec)
 
 	adminApp := newFiberApp(d.Config.MaxUploadSizeMB)
-	api.RegisterAdmin(adminApp, d.Meta, d.Vector, d.Embedders, d.LLMs, ing, d.Config.DefaultPromptSlug, d.Config.MaxUploadSizeMB)
+	api.RegisterAdmin(adminApp, d.Meta, d.Vector, d.Embedders, d.LLMs, ing, d.Config.DefaultPromptSlug, d.Config.MaxUploadSizeMB, rec)
 
-	return &App{Public: publicApp, Admin: adminApp, Ingester: ing}
+	return &App{Public: publicApp, Admin: adminApp, Ingester: ing, Telemetry: rec}
 }
 
 func newFiberApp(maxUploadSize int) *fiber.App {

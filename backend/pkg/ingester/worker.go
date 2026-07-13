@@ -72,7 +72,10 @@ func (wp *WorkerPool) processJob(ctx context.Context, item queueItem) error {
 		docID = doc.ID
 	}
 
-	chunkCount, processErr := wp.process(ctx, item, docID, collection)
+	processStart := time.Now()
+	var stats ingestStats
+	chunkCount, processErr := wp.process(ctx, item, docID, collection, &stats)
+	wp.recordIngestion(job, docID, collection, chunkCount, processErr, time.Since(processStart).Milliseconds(), stats)
 	if processErr != nil {
 		errStr := processErr.Error()
 		if err := wp.metaStore.UpdateDocumentStatus(ctx, docID, meta.DocumentStatusFailed, 0, &errStr); err != nil {
@@ -89,7 +92,7 @@ func (wp *WorkerPool) processJob(ctx context.Context, item queueItem) error {
 	return wp.metaStore.UpdateJobStatus(ctx, jobID, meta.JobStatusComplete, nil)
 }
 
-func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID string, collection meta.Collection) (int, error) {
+func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID string, collection meta.Collection, stats *ingestStats) (int, error) {
 	job := item.job
 
 	sourceName := util.NameFromURI(job.FileUri)
@@ -99,11 +102,13 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 		if strings.HasPrefix(job.FileUri, "upload://") {
 			return 0, fmt.Errorf("uploaded file is no longer available; please re-submit the file")
 		}
+		fetchStart := time.Now()
 		src, err := fetcher.New(ctx, job.FileUri)
 		if err != nil {
 			return 0, fmt.Errorf("build fetcher: %w", err)
 		}
 		reader, err = src.Fetch(ctx, job.FileUri)
+		stats.fetchMs = time.Since(fetchStart).Milliseconds()
 		if err != nil {
 			return 0, fmt.Errorf("fetch: %w", err)
 		}
@@ -183,13 +188,19 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 				texts[i] = ch.Text
 			}
 		}
+		waitStart := time.Now()
 		if err := wp.limiter.Wait(ctx); err != nil {
 			return fmt.Errorf("rate limiter: %w", err)
 		}
-		vectors, err := emb.Embed(ctx, texts)
+		stats.waitMs += time.Since(waitStart).Milliseconds()
+
+		embedStart := time.Now()
+		vectors, usage, err := emb.Embed(ctx, texts)
+		stats.embedMs += time.Since(embedStart).Milliseconds()
 		if err != nil {
 			return fmt.Errorf("embed batch at chunk %d: %w", chunkCount, err)
 		}
+		stats.embedTokens += usage.TotalTokens
 		records := make([]db.ChunkDbRecord, len(batch))
 		for i, ch := range batch {
 			hash := fmt.Sprintf("%x", sha256.Sum256([]byte(ch.Text)))
@@ -214,14 +225,17 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 				MetadataArr:  metaArr,
 			}
 		}
+		insertStart := time.Now()
 		if err := wp.vectorDb.InsertBatch(ctx, collection.TableName, records); err != nil {
 			return fmt.Errorf("insert batch at chunk %d: %w", chunkCount, err)
 		}
+		stats.insertMs += time.Since(insertStart).Milliseconds()
 		chunkCount += len(batch)
 		batch = batch[:0]
 		return nil
 	}
 
+	loopStart := time.Now()
 	for chunk, err := range chunker.Chunk(parser.Parse(ctx, reader)) {
 		if err != nil {
 			return 0, fmt.Errorf("chunk: %w", err)
@@ -236,11 +250,14 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 	if err := flush(); err != nil {
 		return 0, err
 	}
+	stats.loopMs = time.Since(loopStart).Milliseconds()
 
 	// Fold any new chunks into existing metadata indexes so queries stay fast.
+	optimizeStart := time.Now()
 	if err := wp.vectorDb.OptimizeIndex(ctx, collection.TableName); err != nil {
 		log.Printf("ingester: job %s: optimize index: %v", job.ID, err)
 	}
+	stats.optimizeMs = time.Since(optimizeStart).Milliseconds()
 
 	name := ""
 	if title := parser.Title(); title != nil {

@@ -52,18 +52,18 @@ func (e *OpenAIEmbedder) Dimensions() (int, error) {
 	return e.dims, nil
 }
 
-func (e *OpenAIEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
+func (e *OpenAIEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, Usage, error) {
 	body, err := json.Marshal(map[string]any{
 		"input": texts,
 		"model": e.model,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("openai embedder: marshal request: %w", err)
+		return nil, Usage{}, fmt.Errorf("openai embedder: marshal request: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.baseURL+"/embeddings", bytes.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("openai embedder: build request: %w", err)
+		return nil, Usage{}, fmt.Errorf("openai embedder: build request: %w", err)
 	}
 	if e.apiKey != "" {
 		req.Header.Set("Authorization", "Bearer "+e.apiKey)
@@ -72,14 +72,14 @@ func (e *OpenAIEmbedder) Embed(ctx context.Context, texts []string) ([][]float32
 
 	resp, err := e.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("openai embedder: request failed: %w", err)
+		return nil, Usage{}, fmt.Errorf("openai embedder: request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		var errBody map[string]any
 		json.NewDecoder(resp.Body).Decode(&errBody)
-		return nil, fmt.Errorf("openai embedder: status %d: %v", resp.StatusCode, errBody)
+		return nil, Usage{}, fmt.Errorf("openai embedder: status %d: %v", resp.StatusCode, errBody)
 	}
 
 	var result struct {
@@ -87,9 +87,12 @@ func (e *OpenAIEmbedder) Embed(ctx context.Context, texts []string) ([][]float32
 			Embedding []float32 `json:"embedding"`
 			Index     int       `json:"index"`
 		} `json:"data"`
+		Usage struct {
+			TotalTokens int `json:"total_tokens"`
+		} `json:"usage"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("openai embedder: decode response: %w", err)
+		return nil, Usage{}, fmt.Errorf("openai embedder: decode response: %w", err)
 	}
 
 	// sort by index to guarantee order matches input
@@ -98,5 +101,5 @@ func (e *OpenAIEmbedder) Embed(ctx context.Context, texts []string) ([][]float32
 		embeddings[d.Index] = d.Embedding
 	}
 
-	return embeddings, nil
+	return embeddings, Usage{TotalTokens: result.Usage.TotalTokens}, nil
 }

@@ -11,11 +11,12 @@ import (
 
 type Registry struct {
 	embedders    map[string]Embedder
+	localModels  map[string]bool
 	defaultModel string
 }
 
 func NewRegistry() *Registry {
-	return &Registry{embedders: make(map[string]Embedder)}
+	return &Registry{embedders: make(map[string]Embedder), localModels: make(map[string]bool)}
 }
 
 func NewRegistryFromConfig(ctx context.Context, cfg config.Config) *Registry {
@@ -37,6 +38,7 @@ func NewRegistryFromConfig(ctx context.Context, cfg config.Config) *Registry {
 			log.Printf("warning: failed to init Ollama embedder (%s): %v", cfg.Ollama.Model, err)
 		} else {
 			registry.Register(emb)
+			registry.localModels[emb.Model()] = true
 			log.Printf("embedder registered: ollama/%s", emb.Model())
 		}
 	}
@@ -47,6 +49,7 @@ func NewRegistryFromConfig(ctx context.Context, cfg config.Config) *Registry {
 			log.Printf("warning: failed to init TEI embedder (%s): %v", cfg.TEI.Model, err)
 		} else {
 			registry.Register(emb)
+			registry.localModels[emb.Model()] = true // self-hosted, confirmed $0 — not an "unpriced" OpenAI-compatible model
 			log.Printf("embedder registered: tei/%s", emb.Model())
 		}
 	}
@@ -97,6 +100,13 @@ func (r *Registry) Get(model string) (Embedder, error) {
 		return nil, fmt.Errorf("embed model %q not found in registry — ensure it is configured in .env", model)
 	}
 	return emb, nil
+}
+
+// IsLocal reports whether model runs on a local/self-hosted provider (Ollama,
+// self-hosted TEI), which is a confirmed $0 cost — distinct from a hosted
+// model with no pricing table entry, which is unpriced/unknown.
+func (r *Registry) IsLocal(model string) bool {
+	return r.localModels[model]
 }
 
 func (r *Registry) Default() (string, Embedder, error) {

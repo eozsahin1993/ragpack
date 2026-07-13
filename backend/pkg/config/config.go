@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/joho/godotenv"
@@ -25,8 +26,17 @@ type Config struct {
 	Anthropic   AnthropicConfig
 
 	Ingester          IngesterConfig
+	Telemetry         TelemetryConfig
 	DefaultPromptSlug string
 	MaxUploadSizeMB   int
+}
+
+type TelemetryConfig struct {
+	Enabled       bool
+	Dir           string
+	RetentionDays int
+	MaxSizeMB     int
+	RedactText    bool
 }
 
 type OpenAIConfig struct {
@@ -69,10 +79,12 @@ func Load() Config {
 		log.Println("no .env file found, reading from environment")
 	}
 
+	dataPath := getEnv("DATA_PATH", DefaultDataPath)
+
 	return Config{
 		Port:          getEnv("PORT", DefaultPort),
 		AdminPort:     getEnv("ADMIN_PORT", DefaultAdminPort),
-		DataPath:      getEnv("DATA_PATH", DefaultDataPath),
+		DataPath:      dataPath,
 		SqlitePath:    getEnv("SQLITE_PATH", DefaultSqlitePath),
 		LanceDBPath:   getEnv("LANCEDB_PATH", DefaultLanceDBPath),
 		EmbedProvider: getEnv("DEFAULT_EMBED_PROVIDER", DefaultEmbedProvider),
@@ -115,7 +127,24 @@ func Load() Config {
 			ChunkOverlap:   getEnvInt("CHUNK_OVERLAP", DefaultChunkOverlap),
 			ChunkStrategy:  getEnv("CHUNK_STRATEGY", DefaultChunkStrategy),
 		},
+
+		Telemetry: TelemetryConfig{
+			Enabled:       getEnvBool("TELEMETRY_ENABLED", true),
+			Dir:           getEnv("TELEMETRY_DIR", filepath.Join(dataPath, "telemetry")),
+			RetentionDays: getEnvInt("TELEMETRY_RETENTION_DAYS", DefaultTelemetryRetentionDays),
+			MaxSizeMB:     getEnvInt("TELEMETRY_MAX_SIZE_MB", DefaultTelemetryMaxSizeMB),
+			RedactText:    getEnvBool("TELEMETRY_REDACT_TEXT", false),
+		},
 	}
+}
+
+func getEnvBool(key string, fallback bool) bool {
+	if v := os.Getenv(key); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			return b
+		}
+	}
+	return fallback
 }
 
 func getEnv(key, fallback string) string {

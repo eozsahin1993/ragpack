@@ -39,44 +39,45 @@ func (e *OllamaEmbedder) Dimensions() (int, error) {
 	return e.dims, nil
 }
 
-func (e *OllamaEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
+func (e *OllamaEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, Usage, error) {
 	body, err := json.Marshal(map[string]any{
 		"model": e.model,
 		"input": texts,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("ollama embedder: marshal request: %w", err)
+		return nil, Usage{}, fmt.Errorf("ollama embedder: marshal request: %w", err)
 	}
 
 	url := e.baseURL + "/api/embed"
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("ollama embedder: build request: %w", err)
+		return nil, Usage{}, fmt.Errorf("ollama embedder: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := e.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("ollama embedder: request failed: %w", err)
+		return nil, Usage{}, fmt.Errorf("ollama embedder: request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		var errBody map[string]any
 		json.NewDecoder(resp.Body).Decode(&errBody)
-		return nil, fmt.Errorf("ollama embedder: status %d: %v", resp.StatusCode, errBody)
+		return nil, Usage{}, fmt.Errorf("ollama embedder: status %d: %v", resp.StatusCode, errBody)
 	}
 
 	var result struct {
-		Embeddings [][]float32 `json:"embeddings"`
+		Embeddings      [][]float32 `json:"embeddings"`
+		PromptEvalCount int         `json:"prompt_eval_count"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("ollama embedder: decode response: %w", err)
+		return nil, Usage{}, fmt.Errorf("ollama embedder: decode response: %w", err)
 	}
 
 	if len(result.Embeddings) != len(texts) {
-		return nil, fmt.Errorf("ollama embedder: expected %d embeddings, got %d", len(texts), len(result.Embeddings))
+		return nil, Usage{}, fmt.Errorf("ollama embedder: expected %d embeddings, got %d", len(texts), len(result.Embeddings))
 	}
 
-	return result.Embeddings, nil
+	return result.Embeddings, Usage{TotalTokens: result.PromptEvalCount}, nil
 }

@@ -13,7 +13,6 @@ import (
 	"ragpack/pkg/config"
 	lancedbpkg "ragpack/pkg/db/lancedb"
 	"ragpack/pkg/embedder"
-	"ragpack/pkg/ingester"
 	"ragpack/pkg/llm"
 	sqlitemeta "ragpack/pkg/meta/sqlite"
 )
@@ -53,22 +52,24 @@ func main() {
 		Config:    cfg,
 	})
 
-	go handleShutdown(cancel, a.Ingester, a.Public, a.Admin)
+	go handleShutdown(cancel, a)
 
 	go mustListen(a.Admin, cfg.AdminPort, "admin (internal)")
 	mustListen(a.Public, cfg.Port, "public API")
 }
 
-func handleShutdown(cancel context.CancelFunc, ing ingester.Ingester, apps ...*fiber.App) {
+func handleShutdown(cancel context.CancelFunc, a *app.App) {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
 	log.Println("shutting down...")
 	cancel()
-	ing.Stop()
-	for _, app := range apps {
-		app.Shutdown()
+	a.Ingester.Stop()
+	for _, srv := range []*fiber.App{a.Public, a.Admin} {
+		srv.Shutdown()
 	}
+	// After workers and servers stop, so their final events still get flushed.
+	a.Telemetry.Close()
 }
 
 func mustListen(app *fiber.App, port, name string) {

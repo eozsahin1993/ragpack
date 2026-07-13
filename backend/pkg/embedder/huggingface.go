@@ -41,41 +41,46 @@ func (e *HuggingFaceEmbedder) Dimensions() (int, error) {
 	return e.dims, nil
 }
 
-func (e *HuggingFaceEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
+func (e *HuggingFaceEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, Usage, error) {
 	body, err := json.Marshal(map[string]any{
 		"inputs":  texts,
 		"options": map[string]bool{"wait_for_model": true},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("huggingface embedder: marshal request: %w", err)
+		return nil, Usage{}, fmt.Errorf("huggingface embedder: marshal request: %w", err)
 	}
 
 	url := fmt.Sprintf("%s/pipeline/feature-extraction/%s", hfInferenceBaseURL, e.model)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("huggingface embedder: build request: %w", err)
+		return nil, Usage{}, fmt.Errorf("huggingface embedder: build request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+e.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := e.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("huggingface embedder: request failed: %w", err)
+		return nil, Usage{}, fmt.Errorf("huggingface embedder: request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		var errBody map[string]any
 		json.NewDecoder(resp.Body).Decode(&errBody)
-		return nil, fmt.Errorf("huggingface embedder: status %d: %v", resp.StatusCode, errBody)
+		return nil, Usage{}, fmt.Errorf("huggingface embedder: status %d: %v", resp.StatusCode, errBody)
 	}
 
 	var raw json.RawMessage
 	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
-		return nil, fmt.Errorf("huggingface embedder: decode response: %w", err)
+		return nil, Usage{}, fmt.Errorf("huggingface embedder: decode response: %w", err)
 	}
 
-	return parseHFEmbeddings(raw, len(texts))
+	embeddings, err := parseHFEmbeddings(raw, len(texts))
+	if err != nil {
+		return nil, Usage{}, err
+	}
+	// HF's feature-extraction pipeline doesn't report token usage in its response.
+	return embeddings, Usage{}, nil
 }
 
 func parseHFEmbeddings(raw json.RawMessage, n int) ([][]float32, error) {

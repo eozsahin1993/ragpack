@@ -9,11 +9,12 @@ import (
 
 type Registry struct {
 	providers    map[string]LLM
+	localModels  map[string]bool
 	defaultModel string
 }
 
 func NewRegistry() *Registry {
-	return &Registry{providers: make(map[string]LLM)}
+	return &Registry{providers: make(map[string]LLM), localModels: make(map[string]bool)}
 }
 
 func NewRegistryFromConfig(cfg config.Config) *Registry {
@@ -28,6 +29,7 @@ func NewRegistryFromConfig(cfg config.Config) *Registry {
 	if cfg.Ollama.BaseURL != "" && cfg.Ollama.LLMModel != "" {
 		llm := NewOllama(cfg.Ollama.BaseURL, cfg.Ollama.LLMModel)
 		registry.Register(llm)
+		registry.localModels[llm.Model()] = true
 		log.Printf("llm registered: ollama/%s", llm.Model())
 	}
 
@@ -71,6 +73,15 @@ func (r *Registry) Get(model string) (LLM, error) {
 		return nil, fmt.Errorf("llm model %q not found in registry — ensure it is configured in .env", model)
 	}
 	return l, nil
+}
+
+// IsLocal reports whether model runs on a local/self-hosted provider (Ollama),
+// which is a confirmed $0 cost — distinct from a hosted model with no pricing
+// table entry, which is unpriced/unknown. Ollama model names are user-chosen
+// and can't be recognized by a pricing lookup, so locality is tracked here
+// at registration time instead.
+func (r *Registry) IsLocal(model string) bool {
+	return r.localModels[model]
 }
 
 func (r *Registry) Default() (string, LLM, error) {

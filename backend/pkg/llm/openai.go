@@ -36,19 +36,19 @@ func NewOpenAICompatible(apiKey, model, baseURL string, timeout time.Duration) *
 
 func (l *OpenAILLM) Model() string { return l.model }
 
-func (l *OpenAILLM) Complete(ctx context.Context, prompt string) (string, error) {
+func (l *OpenAILLM) Complete(ctx context.Context, prompt string) (string, Usage, error) {
 	body, err := json.Marshal(map[string]any{
 		"model":      l.model,
 		"max_tokens": l.maxTokens,
 		"messages":   []map[string]string{{"role": "user", "content": prompt}},
 	})
 	if err != nil {
-		return "", fmt.Errorf("openai llm: marshal request: %w", err)
+		return "", Usage{}, fmt.Errorf("openai llm: marshal request: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, l.baseURL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
-		return "", fmt.Errorf("openai llm: build request: %w", err)
+		return "", Usage{}, fmt.Errorf("openai llm: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	if l.apiKey != "" {
@@ -57,14 +57,14 @@ func (l *OpenAILLM) Complete(ctx context.Context, prompt string) (string, error)
 
 	resp, err := l.client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("openai llm: request failed: %w", err)
+		return "", Usage{}, fmt.Errorf("openai llm: request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		var errBody map[string]any
 		json.NewDecoder(resp.Body).Decode(&errBody)
-		return "", fmt.Errorf("openai llm: status %d: %v", resp.StatusCode, errBody)
+		return "", Usage{}, fmt.Errorf("openai llm: status %d: %v", resp.StatusCode, errBody)
 	}
 
 	var result struct {
@@ -73,13 +73,18 @@ func (l *OpenAILLM) Complete(ctx context.Context, prompt string) (string, error)
 				Content string `json:"content"`
 			} `json:"message"`
 		} `json:"choices"`
+		Usage struct {
+			PromptTokens     int `json:"prompt_tokens"`
+			CompletionTokens int `json:"completion_tokens"`
+		} `json:"usage"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("openai llm: decode response: %w", err)
+		return "", Usage{}, fmt.Errorf("openai llm: decode response: %w", err)
 	}
 	if len(result.Choices) == 0 {
-		return "", fmt.Errorf("openai llm: empty response")
+		return "", Usage{}, fmt.Errorf("openai llm: empty response")
 	}
 
-	return result.Choices[0].Message.Content, nil
+	usage := Usage{InputTokens: result.Usage.PromptTokens, OutputTokens: result.Usage.CompletionTokens}
+	return result.Choices[0].Message.Content, usage, nil
 }

@@ -19,6 +19,7 @@ import (
 	"ragpack/pkg/ingester"
 	"ragpack/pkg/llm"
 	"ragpack/pkg/meta"
+	"ragpack/pkg/telemetry"
 )
 
 // RegisterPublic mounts the external API (requires auth) on the given app.
@@ -32,12 +33,13 @@ func RegisterPublic(
 	ing ingester.Ingester,
 	defaultPromptSlug string,
 	maxUploadSize int,
+	rec *telemetry.Recorder,
 ) {
 	app.Get("/api/v1/health", healthHandler)
 
 	v1 := app.Group("/api/v1")
 	v1.Use(middleware.Auth(ms))
-	mountRoutes(v1, ms, vec, registry, llmRegistry, ing, defaultPromptSlug, maxUploadSize, true)
+	mountRoutes(v1, ms, vec, registry, llmRegistry, ing, defaultPromptSlug, maxUploadSize, true, rec)
 }
 
 // RegisterAdmin mounts the admin API (no auth) on the given app.
@@ -51,10 +53,11 @@ func RegisterAdmin(
 	ing ingester.Ingester,
 	defaultPromptSlug string,
 	maxUploadSize int,
+	rec *telemetry.Recorder,
 ) {
 	app.Get("/admin/health", healthHandler)
 	adminGroup := app.Group("/admin")
-	mountRoutes(adminGroup, ms, vec, registry, llmRegistry, ing, defaultPromptSlug, maxUploadSize, false)
+	mountRoutes(adminGroup, ms, vec, registry, llmRegistry, ing, defaultPromptSlug, maxUploadSize, false, rec)
 }
 
 // mountRoutes wires up the shared route set for both the public (API-key
@@ -71,6 +74,7 @@ func mountRoutes(
 	defaultPromptSlug string,
 	maxUploadSize int,
 	enforceACL bool,
+	rec *telemetry.Recorder,
 ) {
 	requireRead := fiber.Handler(middleware.NoOp)
 	requireWrite := fiber.Handler(middleware.NoOp)
@@ -110,7 +114,7 @@ func mountRoutes(
 	nameGroup.Use(middleware.Collection(ms))
 	jobs.Register(nameGroup.Group("/jobs"), jobs.NewHandler(ms, enforceACL))
 	ingest.Register(nameGroup, ingest.NewHandler(ms, ing, maxUploadSize), requireWrite)
-	query.Register(nameGroup, query.NewHandler(ms, vec, registry, llmRegistry, defaultPromptSlug), requireRead)
+	query.Register(nameGroup, query.NewHandler(ms, vec, registry, llmRegistry, defaultPromptSlug, rec), requireRead)
 	documents.Register(nameGroup, documents.NewHandler(ms, vec, enforceACL))
 
 	metadata_fields.Register(nameGroup.Group("/metadata-fields"), metadata_fields.NewHandler(ms, vec), requireRead, requireWrite)

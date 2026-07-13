@@ -13,6 +13,7 @@ import (
 	"ragpack/pkg/db"
 	"ragpack/pkg/embedder"
 	"ragpack/pkg/meta"
+	"ragpack/pkg/telemetry"
 )
 
 const (
@@ -38,10 +39,11 @@ type WorkerPool struct {
 	registry  *embedder.Registry
 	chunkCfg  chunker.Config
 	limiter   *rate.Limiter
+	telemetry *telemetry.Recorder
 	wg        sync.WaitGroup
 }
 
-func New(metaStore meta.MetaStore, vectorDb db.VectorDb, registry *embedder.Registry, workers int, ratePerSec float64, chunkCfg chunker.Config) Ingester {
+func New(metaStore meta.MetaStore, vectorDb db.VectorDb, registry *embedder.Registry, workers int, ratePerSec float64, chunkCfg chunker.Config, rec *telemetry.Recorder) Ingester {
 	return &WorkerPool{
 		queue:     make(chan queueItem, workers*10),
 		metaStore: metaStore,
@@ -49,6 +51,7 @@ func New(metaStore meta.MetaStore, vectorDb db.VectorDb, registry *embedder.Regi
 		registry:  registry,
 		chunkCfg:  chunkCfg,
 		limiter:   rate.NewLimiter(rate.Limit(ratePerSec), 1),
+		telemetry: rec,
 	}
 }
 

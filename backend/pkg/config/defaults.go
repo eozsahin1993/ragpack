@@ -38,4 +38,8 @@ const (
 
 	// RAG
 	DefaultPromptSlug = "basic_rag"
+
+	// Telemetry
+	DefaultTelemetryRetentionDays = 14
+	DefaultTelemetryMaxSizeMB     = 500
 )
