@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -74,7 +75,7 @@ func (wp *WorkerPool) processJob(ctx context.Context, item queueItem) error {
 
 	processStart := time.Now()
 	var stats ingestStats
-	chunkCount, processErr := wp.process(ctx, item, docID, collection, &stats)
+	chunkCount, processErr := wp.safeProcess(ctx, item, docID, collection, &stats)
 	wp.recordIngestion(job, docID, collection, chunkCount, processErr, time.Since(processStart).Milliseconds(), stats)
 	if processErr != nil {
 		errStr := processErr.Error()
@@ -90,6 +91,19 @@ func (wp *WorkerPool) processJob(ctx context.Context, item queueItem) error {
 	}
 
 	return wp.metaStore.UpdateJobStatus(ctx, jobID, meta.JobStatusComplete, nil)
+}
+
+// safeProcess runs process with a panic guard: a bad document (malformed input,
+// an edge case in a parser/chunker) must fail that one document, not take down
+// the whole server — the worker goroutine has no other recover point above it.
+func (wp *WorkerPool) safeProcess(ctx context.Context, item queueItem, documentID string, collection meta.Collection, stats *ingestStats) (count int, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("ingester: job %s: panic during processing: %v\n%s", item.job.ID, r, debug.Stack())
+			err = fmt.Errorf("internal error during processing: %v", r)
+		}
+	}()
+	return wp.process(ctx, item, documentID, collection, stats)
 }
 
 func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID string, collection meta.Collection, stats *ingestStats) (int, error) {

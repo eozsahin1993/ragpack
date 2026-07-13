@@ -15,6 +15,12 @@ import (
 
 // writeParquet writes one immutable file per flush:
 // <dir>/<table>/<YYYY-MM-DD>/<unixnano>.parquet
+//
+// The file is built under a .tmp name and moved into place with os.Rename
+// only once fully written. analytics.Store's read_parquet glob re-expands on
+// every dashboard query (see queries/views.go), so a query can race a flush;
+// writing in place let it pick up a file with no footer yet ("no magic byte
+// found") — rename is atomic, so the glob only ever sees a complete file.
 func writeParquet(dir, table string, rec arrow.Record) {
 	defer rec.Release()
 
@@ -24,25 +30,39 @@ func writeParquet(dir, table string, rec arrow.Record) {
 		log.Printf("telemetry: mkdir %s: %v", outDir, err)
 		return
 	}
-	path := filepath.Join(outDir, fmt.Sprintf("%d.parquet", time.Now().UnixNano()))
+	finalPath := filepath.Join(outDir, fmt.Sprintf("%d.parquet", time.Now().UnixNano()))
+	tmpPath := finalPath + ".tmp"
 
-	f, err := os.Create(path)
+	f, err := os.Create(tmpPath)
 	if err != nil {
-		log.Printf("telemetry: create %s: %v", path, err)
+		log.Printf("telemetry: create %s: %v", tmpPath, err)
 		return
 	}
 	props := parquet.NewWriterProperties(parquet.WithCompression(compress.Codecs.Zstd))
 	w, err := pqarrow.NewFileWriter(rec.Schema(), f, props, pqarrow.DefaultWriterProps())
 	if err != nil {
-		log.Printf("telemetry: parquet writer %s: %v", path, err)
+		log.Printf("telemetry: parquet writer %s: %v", tmpPath, err)
 		f.Close()
+		os.Remove(tmpPath)
 		return
 	}
 	if err := w.Write(rec); err != nil {
-		log.Printf("telemetry: write %s: %v", path, err)
+		log.Printf("telemetry: write %s: %v", tmpPath, err)
+		w.Close()
+		f.Close()
+		os.Remove(tmpPath)
+		return
 	}
 	if err := w.Close(); err != nil {
-		log.Printf("telemetry: close %s: %v", path, err)
+		log.Printf("telemetry: close %s: %v", tmpPath, err)
+		f.Close()
+		os.Remove(tmpPath)
+		return
 	}
 	f.Close()
+
+	if err := os.Rename(tmpPath, finalPath); err != nil {
+		log.Printf("telemetry: rename %s -> %s: %v", tmpPath, finalPath, err)
+		os.Remove(tmpPath)
+	}
 }

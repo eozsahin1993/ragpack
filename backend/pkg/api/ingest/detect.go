@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"ragpack/pkg/fetcher"
 )
 
 var extMime = map[string]string{
@@ -37,11 +39,17 @@ func detectMimeType(ctx context.Context, uri string) string {
 		client := &http.Client{Timeout: 5 * time.Second}
 		req, err := http.NewRequestWithContext(ctx, http.MethodHead, uri, nil)
 		if err == nil {
+			// Use the same identity as the real fetch so a bot-detection layer
+			// can't treat this probe differently than the fetch it's predicting for.
+			fetcher.SetRequestHeaders(req)
 			if resp, err := client.Do(req); err == nil {
 				resp.Body.Close()
-				ct := resp.Header.Get("Content-Type")
-				if ct != "" {
-					return strings.TrimSpace(strings.SplitN(ct, ";", 2)[0])
+				// Only trust Content-Type from a real 200 — an error/interstitial
+				// page can carry its own unrelated Content-Type.
+				if resp.StatusCode == http.StatusOK {
+					if ct := resp.Header.Get("Content-Type"); ct != "" {
+						return strings.TrimSpace(strings.SplitN(ct, ";", 2)[0])
+					}
 				}
 			}
 		}

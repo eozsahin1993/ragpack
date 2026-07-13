@@ -18,14 +18,22 @@ func NewHTTPFetcher() *HTTPFetcher {
 	}
 }
 
+// SetRequestHeaders applies the identity RagPack presents to remote servers
+// for both the real fetch and any pre-fetch probe (e.g. MIME-type detection).
+// Kept in one place so a probe request and the fetch it's predicting for are
+// never treated differently by the origin's bot detection.
+func SetRequestHeaders(req *http.Request) {
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; RagPack/1.0; +https://github.com/eozsahin1993/ragpack)")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+}
+
 func (f *HTTPFetcher) Fetch(ctx context.Context, uri string) (io.ReadCloser, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
 	if err != nil {
 		return nil, fmt.Errorf("http fetcher: build request: %w", err)
 	}
 
-	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; RagPack/1.0; +https://github.com/eozsahin1993/ragpack)")
-	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+	SetRequestHeaders(req)
 
 	resp, err := f.client.Do(req)
 	if err != nil {

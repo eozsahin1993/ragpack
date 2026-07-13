@@ -27,7 +27,7 @@ func splitOversize(text string, idx int, cfg Config, header *string, dst *[]Chun
 		if end >= total {
 			end = total
 		} else {
-			end = snapWordEnd(runes, end)
+			end = snapWordEnd(runes, end, start)
 		}
 
 		t := strings.TrimSpace(string(runes[start:end]))
@@ -50,13 +50,16 @@ func splitOversize(text string, idx int, cfg Config, header *string, dst *[]Chun
 }
 
 // snapWordEnd walks backward from pos to the nearest word boundary so chunks
-// don't end mid-word. Returns pos unchanged if no boundary is found (single long token).
-func snapWordEnd(runes []rune, pos int) int {
+// don't end mid-word. Never walks past min, so it can't snap into the previous
+// chunk's window when pos itself starts mid-word (e.g. after an overlap that
+// landed inside a token). Returns pos unchanged if no boundary is found in
+// (min, pos].
+func snapWordEnd(runes []rune, pos, min int) int {
 	i := pos
-	for i > 0 && !isWordBoundary(runes[i-1]) {
+	for i > min && !isWordBoundary(runes[i-1]) {
 		i--
 	}
-	if i == 0 {
+	if i == min {
 		return pos
 	}
 	return i
