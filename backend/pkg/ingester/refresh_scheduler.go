@@ -102,10 +102,8 @@ func (wp *WorkerPool) checkAndMaybeRefresh(ctx context.Context, col meta.Collect
 		newETag = &result.ETag
 	}
 
-	// Bypasses Submit() (no etag param there) — same queue a manual refresh uses. Non-blocking: a full queue leaves the job pending for the next requeue poll.
-	select {
-	case wp.queue <- queueItem{job: job, reader: result.Body, etag: newETag}:
-	default:
+	// Bypasses Submit() (no etag param there) — same queue a manual refresh uses.
+	if !wp.tryEnqueue(queueItem{job: job, reader: result.Body, etag: newETag}) {
 		result.Body.Close()
 	}
 }

@@ -35,13 +35,14 @@ type queueItem struct {
 
 type WorkerPool struct {
 	queue     chan queueItem
+	inFlight  sync.Map // jobID -> struct{}: currently enqueued (in the channel) or being processed by this process
 	metaStore meta.MetaStore
 	vectorDb  db.VectorDb
 	registry  *embedder.Registry
 	chunkCfg  chunker.Config
 	limiter   *rate.Limiter
 	telemetry *telemetry.Recorder
-	wg        sync.WaitGroup
+	waitGroup sync.WaitGroup
 }
 
 func New(metaStore meta.MetaStore, vectorDb db.VectorDb, registry *embedder.Registry, workers int, ratePerSec float64, chunkCfg chunker.Config, rec *telemetry.Recorder) Ingester {
@@ -62,11 +63,33 @@ func (wp *WorkerPool) Start(ctx context.Context, workers int) {
 }
 
 func (wp *WorkerPool) Submit(job meta.Job, r io.ReadCloser) {
-	wp.queue <- queueItem{job: job, reader: r}
+	wp.enqueue(queueItem{job: job, reader: r})
+}
+
+// enqueue skips a job already in-flight (inFlight.LoadOrStore is the atomic arbiter, not DB status) and otherwise blocks until it's placed on the channel.
+func (wp *WorkerPool) enqueue(item queueItem) {
+	if _, dup := wp.inFlight.LoadOrStore(item.job.ID, struct{}{}); dup {
+		return
+	}
+	wp.queue <- item
+}
+
+// tryEnqueue is enqueue for callers that can't block on a full channel — un-marks the job on failure so a later attempt can retry it.
+func (wp *WorkerPool) tryEnqueue(item queueItem) bool {
+	if _, dup := wp.inFlight.LoadOrStore(item.job.ID, struct{}{}); dup {
+		return false
+	}
+	select {
+	case wp.queue <- item:
+		return true
+	default:
+		wp.inFlight.Delete(item.job.ID)
+		return false
+	}
 }
 
 func (wp *WorkerPool) Stop() {
-	wp.wg.Wait()
+	wp.waitGroup.Wait()
 }
 
 func (wp *WorkerPool) loop(ctx context.Context, workers int) {
@@ -74,7 +97,7 @@ func (wp *WorkerPool) loop(ctx context.Context, workers int) {
 	wp.requeue(ctx, true)
 
 	for i := 0; i < workers; i++ {
-		wp.wg.Add(1)
+		wp.waitGroup.Add(1)
 		go wp.run(ctx)
 	}
 
@@ -109,21 +132,20 @@ func (wp *WorkerPool) requeue(ctx context.Context, includeProcessing bool) {
 		jobs = append(jobs, js...)
 	}
 
+	requeued := 0
 	for _, j := range jobs {
-		select {
-		case wp.queue <- queueItem{job: j}:
-		default:
-			// queue full — job stays in SQLite and will be picked up next poll
+		if wp.tryEnqueue(queueItem{job: j}) {
+			requeued++
 		}
 	}
 
-	if len(jobs) > 0 {
-		log.Printf("ingester: re-queued %d jobs", len(jobs))
+	if requeued > 0 {
+		log.Printf("ingester: re-queued %d jobs", requeued)
 	}
 }
 
 func (wp *WorkerPool) run(ctx context.Context) {
-	defer wp.wg.Done()
+	defer wp.waitGroup.Done()
 	for {
 		select {
 		case <-ctx.Done():
@@ -132,6 +154,7 @@ func (wp *WorkerPool) run(ctx context.Context) {
 			if err := wp.processJob(ctx, item); err != nil {
 				log.Printf("ingester: job %s failed: %v", item.job.ID, err)
 			}
+			wp.inFlight.Delete(item.job.ID)
 		}
 	}
 }
