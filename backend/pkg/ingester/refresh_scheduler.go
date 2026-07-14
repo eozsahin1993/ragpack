@@ -12,7 +12,7 @@ import (
 
 // autoRefreshCheckInterval is the scheduler's own tick — independent of any
 // collection's refresh_interval_seconds, which is checked against last_auto_refresh_at.
-const autoRefreshCheckInterval = 5 * time.Minute
+const autoRefreshCheckInterval = 25 * time.Minute
 
 // refreshScheduler is a second ticker alongside loop()'s requeue poller.
 func (wp *WorkerPool) refreshScheduler(ctx context.Context) {

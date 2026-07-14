@@ -40,8 +40,8 @@ const (
 	DefaultPromptSlug = "basic_rag"
 
 	// Collection auto-refresh
-	DefaultMinCollectionRefreshSeconds     = 900  // 15 minutes
-	DefaultDefaultCollectionRefreshSeconds = 3600 // 1 hour
+	DefaultMinCollectionRefreshSeconds     = 3600     // 1 hour
+	DefaultDefaultCollectionRefreshSeconds = 3600 * 6 // 6 hour
 
 	// Telemetry
 	DefaultTelemetryRetentionDays = 14

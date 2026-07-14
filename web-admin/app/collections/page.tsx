@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Trash2, ChevronRight, Database } from "lucide-react";
+import { Plus, Trash2, ChevronRight, Database, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,7 @@ import {
 import { api, Collection, EmbedderInfo } from "@/lib/api";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
+import { describeInterval, timeAgo } from "@/lib/utils";
 
 export default function CollectionsPage() {
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -145,15 +146,16 @@ export default function CollectionsPage() {
         { label: "Slug" },
         { label: "Model" },
         { label: "Dimensions" },
+        { label: "Auto-refresh" },
         { label: "", className: "w-20" },
       ]}>
         {loading ? (
           <TableRow>
-            <TableCell colSpan={5} className="text-center text-muted-foreground py-10">Loading…</TableCell>
+            <TableCell colSpan={6} className="text-center text-muted-foreground py-10">Loading…</TableCell>
           </TableRow>
         ) : collections.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
+            <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
               No collections yet. Create one to get started.
             </TableCell>
           </TableRow>
@@ -173,6 +175,23 @@ export default function CollectionsPage() {
             </TableCell>
             <TableCell className="text-muted-foreground text-sm">{c.embed_model}</TableCell>
             <TableCell className="text-muted-foreground text-sm">{c.vector_dim}</TableCell>
+            <TableCell className="text-sm">
+              {c.refresh_enabled && c.refresh_interval_seconds ? (
+                <span
+                  className="badge-success inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium"
+                  title={
+                    c.last_auto_refresh_at
+                      ? `Last checked ${timeAgo(c.last_auto_refresh_at)} (${new Date(c.last_auto_refresh_at).toLocaleString()})`
+                      : "Not checked yet"
+                  }
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  Every {describeInterval(c.refresh_interval_seconds)}
+                </span>
+              ) : (
+                <span className="text-muted-foreground/50">Off</span>
+              )}
+            </TableCell>
             <TableCell>
               <button
                 onClick={() => handleDelete(c.slug, c.name)}

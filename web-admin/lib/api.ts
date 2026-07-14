@@ -17,6 +17,10 @@ export interface Collection {
   vector_dim: number;
   table_name: string;
   created_at: string;
+  // Admin-only — omitted entirely from the public API surface.
+  refresh_enabled?: boolean;
+  refresh_interval_seconds?: number;
+  last_auto_refresh_at?: string;
 }
 
 export interface Job {
@@ -225,6 +229,9 @@ export const api = {
       req<Collection>("/admin/collections", { method: "POST", body: JSON.stringify(body) }),
     get: (slug: string) => req<Collection>(`/admin/collections/${slug}`),
     getById: (id: string) => req<Collection>(`/admin/collections/id/${id}`),
+    // PATCH only exists on the /id/:id route, not by slug — see backend/pkg/api/collections/router.go.
+    update: (id: string, body: { name?: string; refresh_enabled?: boolean; refresh_interval_seconds?: number }) =>
+      req<Collection>(`/admin/collections/id/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
     delete: (slug: string) =>
       req<void>(`/admin/collections/${slug}`, { method: "DELETE" }),
   },

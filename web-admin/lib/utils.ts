@@ -27,6 +27,19 @@ export function friendlyMimeType(mime: string) {
   return MIME_LABELS[mime] ?? mime.split("/").pop() ?? mime;
 }
 
+export function describeInterval(seconds: number) {
+  if (seconds % 86400 === 0) {
+    const days = seconds / 86400;
+    return `${days} day${days === 1 ? "" : "s"}`;
+  }
+  if (seconds % 3600 === 0) {
+    const hours = seconds / 3600;
+    return `${hours} hour${hours === 1 ? "" : "s"}`;
+  }
+  const minutes = Math.round(seconds / 60);
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+}
+
 export function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60_000);

@@ -2,20 +2,22 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { api, Collection, Document, MetadataField } from "@/lib/api";
 import { DocumentsTable, docLabel } from "@/components/documents/documents-table";
 import { DocumentEditDialog } from "@/components/documents/document-edit-dialog";
 import { MetadataFieldsPanel } from "./_components/metadata-fields-panel";
-import { cn } from "@/lib/utils";
+import { RefreshSettingsPanel } from "./_components/refresh-settings-panel";
+import { cn, describeInterval, timeAgo } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
 
 const TABS = [
   { key: "documents", label: "Documents" },
   { key: "metadata", label: "Document properties" },
+  { key: "settings", label: "Settings" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -100,9 +102,25 @@ export default function CollectionPage() {
         <div>
           <h1 className="text-xl font-semibold">{collection?.name ?? slug}</h1>
           {collection && (
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {collection.embed_model} · {collection.vector_dim}d
-            </p>
+            <div className="flex items-center gap-2 mt-1.5">
+              <p className="text-sm text-muted-foreground">
+                {collection.embed_model} · {collection.vector_dim}d
+              </p>
+              {collection.refresh_enabled && collection.refresh_interval_seconds && (
+                <span className="badge-success inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium">
+                  <RefreshCw className="w-3 h-3" />
+                  Every {describeInterval(collection.refresh_interval_seconds)}
+                  {collection.last_auto_refresh_at && (
+                    <span
+                      className="font-normal opacity-70"
+                      title={new Date(collection.last_auto_refresh_at).toLocaleString()}
+                    >
+                      · checked {timeAgo(collection.last_auto_refresh_at)}
+                    </span>
+                  )}
+                </span>
+              )}
+            </div>
           )}
         </div>
         <Button
@@ -178,6 +196,12 @@ export default function CollectionPage() {
       {activeTab === "metadata" && (
         <div className="mt-4">
           <MetadataFieldsPanel slug={slug} />
+        </div>
+      )}
+
+      {activeTab === "settings" && collection && (
+        <div className="mt-4 max-w-xl">
+          <RefreshSettingsPanel collection={collection} onUpdated={setCollection} />
         </div>
       )}
     </div>
