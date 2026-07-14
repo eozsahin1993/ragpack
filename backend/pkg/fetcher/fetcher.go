@@ -11,6 +11,20 @@ type Fetcher interface {
 	Fetch(ctx context.Context, uri string) (io.ReadCloser, error)
 }
 
+// ConditionalFetcher is an optional capability (http(s):// and s3:// implement it); the refresh scheduler type-asserts for it.
+type ConditionalFetcher interface {
+	FetchConditional(ctx context.Context, uri, etag, lastModified string) (*FetchResult, error)
+}
+
+// FetchResult is the outcome of a conditional fetch. Body is nil when
+// NotModified is true — nothing to close, nothing to read.
+type FetchResult struct {
+	Body         io.ReadCloser
+	NotModified  bool
+	ETag         string
+	LastModified string
+}
+
 // New returns the appropriate Fetcher for the given URI scheme.
 // S3 fetcher loads credentials from the default AWS credential chain
 // (env vars, ~/.aws/credentials, IAM role).

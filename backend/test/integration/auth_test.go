@@ -21,7 +21,7 @@ import (
 )
 
 func TestPublicAPIRequiresAuth(t *testing.T) {
-	a, _ := helpers.NewFullTestApp(t)
+	a, _, _ := helpers.NewFullTestApp(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/collections", nil)
 	resp, err := a.Public.Test(req, -1)
@@ -34,7 +34,7 @@ func TestPublicAPIRequiresAuth(t *testing.T) {
 }
 
 func TestPublicAPIRejectsInvalidKey(t *testing.T) {
-	a, _ := helpers.NewFullTestApp(t)
+	a, _, _ := helpers.NewFullTestApp(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/collections", nil)
 	req.Header.Set("Authorization", "Bearer not-a-real-key")
@@ -48,7 +48,7 @@ func TestPublicAPIRejectsInvalidKey(t *testing.T) {
 }
 
 func TestPublicAPIAcceptsValidKey(t *testing.T) {
-	a, ms := helpers.NewFullTestApp(t)
+	a, ms, _ := helpers.NewFullTestApp(t)
 
 	const plaintext = "test-secret-key"
 	grants := []meta.GrantInput{{Permission: meta.PermissionBoth}}

@@ -77,6 +77,12 @@ type VectorDb interface {
 	// keywordQuery empty = vector-only; non-empty fuses in an FTS pass (hybrid search).
 	QuerySimilarVectors(ctx context.Context, tableName string, vector []float32, topK int, filter string, keywordQuery string, hybrid HybridSettings) ([]ChunkQueryResult, error)
 	DeleteChunksByDocument(ctx context.Context, tableName, documentID string) error
+	// DeleteChunksByIDs deletes specific chunks (chunkIDs) within one document — not a list of documents.
+	DeleteChunksByIDs(ctx context.Context, tableName, documentID string, chunkIDs []string) error
+	// ChunkVectorsForHashes returns vectors for the given hashes that already exist — called once per insert batch, bounded regardless of document size.
+	ChunkVectorsForHashes(ctx context.Context, tableName, documentID string, hashes []string) (map[string][]float32, error)
+	// ListChunkIDsByDocument returns every chunk ID currently stored for a document
+	ListChunkIDsByDocument(ctx context.Context, tableName, documentID string) ([]string, error)
 	// ListChunksByDocumentPage returns one page of chunks plus the total matching count.
 	ListChunksByDocumentPage(ctx context.Context, tableName, documentID string, limit, offset int) ([]ChunkDbRecord, int, error)
 	// ListChunkMetadataByDocument returns every chunk's metadata slot values (unpaginated, metadata columns only).

@@ -17,6 +17,12 @@ type Collection struct {
 	ChunkStrategy *string `db:"chunk_strategy" json:"chunk_strategy,omitempty"`
 	ChunkSize     *int    `db:"chunk_size"     json:"chunk_size,omitempty"`
 	ChunkOverlap  *int    `db:"chunk_overlap"  json:"chunk_overlap,omitempty"`
+
+	// RefreshEnabled defaults to false — auto-refresh is opt-in, only turned
+	// on explicitly (e.g. from the admin dashboard).
+	RefreshEnabled         bool       `db:"refresh_enabled"          json:"refresh_enabled"`
+	RefreshIntervalSeconds *int       `db:"refresh_interval_seconds" json:"refresh_interval_seconds,omitempty"`
+	LastAutoRefreshAt      *time.Time `db:"last_auto_refresh_at"     json:"last_auto_refresh_at,omitempty"`
 }
 
 // CreateCollectionInput carries all parameters for creating a new collection.
@@ -30,17 +36,31 @@ type CreateCollectionInput struct {
 	ChunkOverlap  *int
 }
 
+// CollectionPatch holds optional fields for a partial collection update. Nil
+// fields are left untouched.
+type CollectionPatch struct {
+	Name                   *string
+	RefreshEnabled         *bool
+	RefreshIntervalSeconds *int
+}
+
 type CollectionReader interface {
 	GetCollectionByID(ctx context.Context, id string) (Collection, error)
 	GetCollectionBySlug(ctx context.Context, slug string) (Collection, error)
 	ListCollections(ctx context.Context, limit, offset int) ([]Collection, error)
 	ListAllCollections(ctx context.Context) ([]Collection, error)
 	CountCollections(ctx context.Context) (int, error)
+	// ListCollectionsDueForAutoRefresh returns collections whose auto-refresh
+	// interval has elapsed since last_auto_refresh_at (or that have never run).
+	ListCollectionsDueForAutoRefresh(ctx context.Context, now time.Time) ([]Collection, error)
 }
 
 type CollectionWriter interface {
 	CreateCollection(ctx context.Context, input CreateCollectionInput) (Collection, error)
-	UpdateCollectionName(ctx context.Context, id, name string) (Collection, error)
+	UpdateCollection(ctx context.Context, id string, patch CollectionPatch) (Collection, error)
+	// TouchCollectionAutoRefreshed stamps last_auto_refresh_at once per check of
+	// this collection — one write regardless of how many documents it holds.
+	TouchCollectionAutoRefreshed(ctx context.Context, id string, at time.Time) error
 	DeleteCollection(ctx context.Context, id string) error
 }
 

@@ -25,7 +25,7 @@ import (
 )
 
 func TestACL_EveryRouteEnforcesAccessControl(t *testing.T) {
-	a, ms := helpers.NewFullTestApp(t)
+	a, ms, _ := helpers.NewFullTestApp(t)
 
 	slugA := helpers.CreateCollection(t, a.Admin, "Route Coverage A")
 	slugB := helpers.CreateCollection(t, a.Admin, "Route Coverage B")

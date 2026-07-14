@@ -12,16 +12,17 @@ import (
 )
 
 type Handler struct {
-	meta       meta.MetaStore
-	vec        db.VectorDb
-	registry   *embedder.Registry
-	enforceACL bool
+	meta              meta.MetaStore
+	vec               db.VectorDb
+	registry          *embedder.Registry
+	enforceACL        bool
+	minRefreshSeconds int
 }
 
-// enforceACL is false only from RegisterAdmin, which has no Auth middleware;
-// also gates whether responses include internal fields like table_name.
-func NewHandler(ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, enforceACL bool) *Handler {
-	return &Handler{meta: ms, vec: vec, registry: registry, enforceACL: enforceACL}
+// enforceACL is false only from RegisterAdmin (no Auth middleware); also gates internal response fields like table_name.
+// minRefreshSeconds is an explicit dependency (not global validator state) so it can vary per-app, e.g. per test.
+func NewHandler(ms meta.MetaStore, vec db.VectorDb, registry *embedder.Registry, enforceACL bool, minRefreshSeconds int) *Handler {
+	return &Handler{meta: ms, vec: vec, registry: registry, enforceACL: enforceACL, minRefreshSeconds: minRefreshSeconds}
 }
 
 func (h *Handler) Create(c *fiber.Ctx) error {
@@ -113,7 +114,25 @@ func (h *Handler) PatchCollection(c *fiber.Ctx) error {
 		return err
 	}
 
-	col, err := h.meta.UpdateCollectionName(c.Context(), c.Params("id"), req.Name)
+	id := c.Params("id")
+	col, err := h.meta.GetCollectionByID(c.Context(), id)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "collection not found"})
+	}
+
+	if h.enforceACL && (req.RefreshEnabled != nil || req.RefreshIntervalSeconds != nil) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "refresh_enabled/refresh_interval_seconds are only configurable via the admin surface"})
+	}
+	if req.RefreshIntervalSeconds != nil && *req.RefreshIntervalSeconds < h.minRefreshSeconds {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("refresh_interval_seconds must be at least %d", h.minRefreshSeconds)})
+	}
+
+	patch := meta.CollectionPatch{
+		Name:                   req.Name,
+		RefreshEnabled:         req.RefreshEnabled,
+		RefreshIntervalSeconds: req.RefreshIntervalSeconds,
+	}
+	col, err = h.meta.UpdateCollection(c.Context(), id, patch)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

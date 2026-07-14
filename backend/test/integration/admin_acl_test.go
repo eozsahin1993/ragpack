@@ -41,7 +41,7 @@ func doAuthJSON(t *testing.T, app *fiber.App, method, path, key string, body any
 }
 
 func TestAdminACL_ResourceTypesAreIndependentlyGranted(t *testing.T) {
-	a, ms := helpers.NewFullTestApp(t)
+	a, ms, _ := helpers.NewFullTestApp(t)
 
 	// A key with write access to prompts only — must be able to manage
 	// prompts, but still locked out of keys/collections management, proving
@@ -63,7 +63,7 @@ func TestAdminACL_ResourceTypesAreIndependentlyGranted(t *testing.T) {
 }
 
 func TestAdminACL_ReadDoesNotCoverWrite(t *testing.T) {
-	a, ms := helpers.NewFullTestApp(t)
+	a, ms, _ := helpers.NewFullTestApp(t)
 
 	readOnly := helpers.CreateAdminAPIKey(t, ms, "collections-reader",
 		[]meta.AdminGrantInput{helpers.AdminGrant(meta.ResourceCollections, meta.PermissionRead)},
@@ -78,7 +78,7 @@ func TestAdminACL_ReadDoesNotCoverWrite(t *testing.T) {
 }
 
 func TestAdminACL_WildcardResourceTypeCoversEverything(t *testing.T) {
-	a, ms := helpers.NewFullTestApp(t)
+	a, ms, _ := helpers.NewFullTestApp(t)
 
 	root := helpers.CreateAdminAPIKey(t, ms, "root-admin",
 		[]meta.AdminGrantInput{helpers.AdminGrant(meta.ResourceAll, meta.PermissionBoth)},

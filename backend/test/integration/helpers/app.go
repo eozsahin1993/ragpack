@@ -26,10 +26,11 @@ import (
 // NewFullTestApp assembles the real app via pkg/app.New with real
 // SQLite/LanceDB backed by t.TempDir() (auto-removed on test completion,
 // pass or fail — see testing.T.TempDir) and fake embedder/LLM registries
-// swapped in. Returns both the app bundle (Admin + Public + Ingester) and
-// the meta store, for tests that need to create API keys against the
-// public (auth-required) surface.
-func NewFullTestApp(t *testing.T) (*app.App, meta.MetaStore) {
+// swapped in. Returns the app bundle, the meta store (for tests creating API
+// keys against the public surface), and the mock embedder itself (its
+// CallCount() lets a test assert whether an ingest actually called the
+// embedder, e.g. to verify chunk-reuse skipped it).
+func NewFullTestApp(t *testing.T) (*app.App, meta.MetaStore, *mocks.Embedder) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -45,8 +46,9 @@ func NewFullTestApp(t *testing.T) (*app.App, meta.MetaStore) {
 	}
 	t.Cleanup(func() { vec.Close() })
 
+	emb := &mocks.Embedder{Dim: 64, ModelName: "mock-embed"}
 	registry := embedder.NewRegistry()
-	registry.Register(&mocks.Embedder{Dim: 64, ModelName: "mock-embed"})
+	registry.Register(emb)
 
 	llmRegistry := llm.NewRegistry()
 	llmRegistry.Register(mocks.LLM{})
@@ -64,8 +66,9 @@ func NewFullTestApp(t *testing.T) (*app.App, meta.MetaStore) {
 				ChunkOverlap:   50,
 				ChunkStrategy:  "auto",
 			},
-			DefaultPromptSlug: "basic_rag",
-			MaxUploadSizeMB:   25,
+			DefaultPromptSlug:           "basic_rag",
+			MaxUploadSizeMB:             25,
+			MinCollectionRefreshSeconds: config.DefaultMinCollectionRefreshSeconds,
 			// On by default in production (config.Load()); matching that
 			// here means the integration suite actually exercises the
 			// telemetry write path and the analytics engine/routes
@@ -98,7 +101,7 @@ func NewFullTestApp(t *testing.T) (*app.App, meta.MetaStore) {
 	t.Cleanup(a.Ingester.Stop)
 	t.Cleanup(cancel)
 
-	return a, ms
+	return a, ms, emb
 }
 
 // NewTestApp returns just the admin (no-auth) app — what most tests need,
@@ -106,6 +109,6 @@ func NewFullTestApp(t *testing.T) (*app.App, meta.MetaStore) {
 // itself (see auth_test.go for that).
 func NewTestApp(t *testing.T) *fiber.App {
 	t.Helper()
-	a, _ := NewFullTestApp(t)
+	a, _, _ := NewFullTestApp(t)
 	return a.Admin
 }

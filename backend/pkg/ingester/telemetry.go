@@ -13,13 +13,15 @@ import (
 
 // ingestStats accumulates stage timings/usage during process().
 type ingestStats struct {
-	fetchMs     int64
-	loopMs      int64
-	waitMs      int64
-	embedMs     int64
-	insertMs    int64
-	optimizeMs  int64
-	embedTokens int
+	fetchMs      int64
+	loopMs       int64
+	waitMs       int64
+	embedMs      int64
+	insertMs     int64
+	optimizeMs   int64
+	embedTokens  int
+	reusedChunks int // chunks whose fingerprint matched an old vector — no embed call
+	staleChunks  int // chunks present before this reingest but not in the fresh parse
 }
 
 // recordIngestion emits the ingestion_events row for one process() attempt.

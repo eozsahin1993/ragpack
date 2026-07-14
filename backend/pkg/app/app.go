@@ -82,10 +82,10 @@ func New(ctx context.Context, d Deps) *App {
 	ing.Start(ctx, d.Config.Ingester.WorkerCount)
 
 	publicApp := newFiberApp(d.Config.MaxUploadSizeMB)
-	api.RegisterPublic(publicApp, d.Meta, d.Vector, d.Embedders, d.LLMs, ing, d.Config.DefaultPromptSlug, d.Config.MaxUploadSizeMB, rec)
+	api.RegisterPublic(publicApp, d.Meta, d.Vector, d.Embedders, d.LLMs, ing, d.Config.DefaultPromptSlug, d.Config.MaxUploadSizeMB, d.Config.MinCollectionRefreshSeconds, rec)
 
 	adminApp := newFiberApp(d.Config.MaxUploadSizeMB)
-	api.RegisterAdmin(adminApp, d.Meta, d.Vector, d.Embedders, d.LLMs, ing, d.Config.DefaultPromptSlug, d.Config.MaxUploadSizeMB, rec, eng)
+	api.RegisterAdmin(adminApp, d.Meta, d.Vector, d.Embedders, d.LLMs, ing, d.Config.DefaultPromptSlug, d.Config.MaxUploadSizeMB, d.Config.MinCollectionRefreshSeconds, rec, eng)
 
 	return &App{Public: publicApp, Admin: adminApp, Ingester: ing, Telemetry: rec, Analytics: eng}
 }

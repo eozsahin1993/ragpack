@@ -35,13 +35,14 @@ func RegisterPublic(
 	ing ingester.Ingester,
 	defaultPromptSlug string,
 	maxUploadSize int,
+	minRefreshSeconds int,
 	rec *telemetry.Recorder,
 ) {
 	app.Get("/api/v1/health", healthHandler)
 
 	v1 := app.Group("/api/v1")
 	v1.Use(middleware.Auth(ms))
-	mountRoutes(v1, ms, vec, registry, llmRegistry, ing, defaultPromptSlug, maxUploadSize, true, rec)
+	mountRoutes(v1, ms, vec, registry, llmRegistry, ing, defaultPromptSlug, maxUploadSize, minRefreshSeconds, true, rec)
 }
 
 // RegisterAdmin mounts the admin API (no auth) on the given app.
@@ -55,12 +56,13 @@ func RegisterAdmin(
 	ing ingester.Ingester,
 	defaultPromptSlug string,
 	maxUploadSize int,
+	minRefreshSeconds int,
 	rec *telemetry.Recorder,
 	eng *analytics.Engine,
 ) {
 	app.Get("/admin/health", healthHandler)
 	adminGroup := app.Group("/admin")
-	mountRoutes(adminGroup, ms, vec, registry, llmRegistry, ing, defaultPromptSlug, maxUploadSize, false, rec)
+	mountRoutes(adminGroup, ms, vec, registry, llmRegistry, ing, defaultPromptSlug, maxUploadSize, minRefreshSeconds, false, rec)
 
 	// Deliberately not part of mountRoutes/RegisterPublic — analytics is
 	// never meant to be public-facing (see TELEMETRY_ANALYTICS_PLAN.md's
@@ -86,6 +88,7 @@ func mountRoutes(
 	ing ingester.Ingester,
 	defaultPromptSlug string,
 	maxUploadSize int,
+	minRefreshSeconds int,
 	enforceACL bool,
 	rec *telemetry.Recorder,
 ) {
@@ -120,7 +123,7 @@ func mountRoutes(
 		adminMW(meta.ResourcePrompts, meta.PermissionRead), adminMW(meta.ResourcePrompts, meta.PermissionWrite))
 
 	collGroup := r.Group("/collections")
-	collections.Register(collGroup, collections.NewHandler(ms, vec, registry, enforceACL),
+	collections.Register(collGroup, collections.NewHandler(ms, vec, registry, enforceACL, minRefreshSeconds),
 		adminMW(meta.ResourceCollections, meta.PermissionRead), adminMW(meta.ResourceCollections, meta.PermissionWrite))
 
 	nameGroup := collGroup.Group("/:slug")

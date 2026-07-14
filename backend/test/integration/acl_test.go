@@ -53,7 +53,7 @@ func collectionID(t *testing.T, ms meta.MetaStore, slug string) string {
 }
 
 func TestACL_KeyScopedToOneCollectionCannotReachAnother(t *testing.T) {
-	a, ms := helpers.NewFullTestApp(t)
+	a, ms, _ := helpers.NewFullTestApp(t)
 	slugA := helpers.CreateCollection(t, a.Admin, "ACL Tenant A")
 	slugB := helpers.CreateCollection(t, a.Admin, "ACL Tenant B")
 
@@ -69,7 +69,7 @@ func TestACL_KeyScopedToOneCollectionCannotReachAnother(t *testing.T) {
 }
 
 func TestACL_ReadGrantCannotIngest(t *testing.T) {
-	a, ms := helpers.NewFullTestApp(t)
+	a, ms, _ := helpers.NewFullTestApp(t)
 	slug := helpers.CreateCollection(t, a.Admin, "Read Only Tenant")
 
 	key := helpers.CreateAPIKey(t, ms, "read-only-key",
@@ -84,7 +84,7 @@ func TestACL_ReadGrantCannotIngest(t *testing.T) {
 }
 
 func TestACL_WildcardGrantCoversCollectionsCreatedAfterTheKey(t *testing.T) {
-	a, ms := helpers.NewFullTestApp(t)
+	a, ms, _ := helpers.NewFullTestApp(t)
 
 	key := helpers.CreateAPIKey(t, ms, "wildcard-key", helpers.WildcardGrant(meta.PermissionRead))
 
@@ -97,7 +97,7 @@ func TestACL_WildcardGrantCoversCollectionsCreatedAfterTheKey(t *testing.T) {
 }
 
 func TestACL_AdminSurfaceBypassesACLEntirely(t *testing.T) {
-	a, _ := helpers.NewFullTestApp(t)
+	a, _, _ := helpers.NewFullTestApp(t)
 	slug := helpers.CreateCollection(t, a.Admin, "Admin Bypass Tenant")
 
 	// No Authorization header at all — the admin surface has no auth
@@ -119,7 +119,7 @@ func TestACL_AdminSurfaceBypassesACLEntirely(t *testing.T) {
 // keys or collections just because it happens to carry a wildcard
 // CollectionGrant.
 func TestACL_CollectionGrantsDoNotImplyAdminCapability(t *testing.T) {
-	a, ms := helpers.NewFullTestApp(t)
+	a, ms, _ := helpers.NewFullTestApp(t)
 	slug := helpers.CreateCollection(t, a.Admin, "Scoped Tenant")
 
 	scoped := helpers.CreateAPIKey(t, ms, "scoped-key",
@@ -140,7 +140,7 @@ func TestACL_CollectionGrantsDoNotImplyAdminCapability(t *testing.T) {
 }
 
 func TestACL_TopLevelDocumentRouteChecksTheDocumentsOwnCollection(t *testing.T) {
-	a, ms := helpers.NewFullTestApp(t)
+	a, ms, _ := helpers.NewFullTestApp(t)
 	slugA := helpers.CreateCollection(t, a.Admin, "Doc Owner Tenant")
 	slugB := helpers.CreateCollection(t, a.Admin, "Other Tenant")
 

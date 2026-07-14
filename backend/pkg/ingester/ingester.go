@@ -30,10 +30,11 @@ type Ingester interface {
 type queueItem struct {
 	job    meta.Job
 	reader io.ReadCloser // non-nil for direct uploads, nil for URI-based
+	etag   *string       // set only by the auto-refresh scheduler, when it found a new ETag
 }
 
 type WorkerPool struct {
-	queue    chan queueItem
+	queue     chan queueItem
 	metaStore meta.MetaStore
 	vectorDb  db.VectorDb
 	registry  *embedder.Registry
@@ -57,6 +58,7 @@ func New(metaStore meta.MetaStore, vectorDb db.VectorDb, registry *embedder.Regi
 
 func (wp *WorkerPool) Start(ctx context.Context, workers int) {
 	go wp.loop(ctx, workers)
+	go wp.refreshScheduler(ctx)
 }
 
 func (wp *WorkerPool) Submit(job meta.Job, r io.ReadCloser) {

@@ -1,6 +1,9 @@
 package ingester
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -10,6 +13,41 @@ import (
 	"ragpack/pkg/db"
 	"ragpack/pkg/meta"
 )
+
+// metadataSlots holds one document's typed metadata-field values, resolved
+// once and reused as-is on every chunk record for that document.
+type metadataSlots struct {
+	str     [20]*string
+	num     [10]*float64
+	boolean [10]*bool
+	date    [10]*int64
+	arr     [10][]string
+}
+
+// resolveMetadataSlots looks up the collection's metadata field mapping once
+// (avoids redundant SQLite reads per batch) and routes job.Metadata into it.
+func (wp *WorkerPool) resolveMetadataSlots(ctx context.Context, job meta.Job, collection meta.Collection) (metadataSlots, error) {
+	var slots metadataSlots
+	if job.Metadata == nil {
+		return slots, nil
+	}
+	metaFields, err := wp.metaStore.ListMetadataFields(ctx, collection.ID)
+	if err != nil {
+		return slots, fmt.Errorf("list metadata fields: %w", err)
+	}
+	if len(metaFields) == 0 {
+		return slots, nil
+	}
+	fieldMap := make(map[string]meta.MetadataField, len(metaFields))
+	for _, f := range metaFields {
+		fieldMap[f.Name] = f
+	}
+	var rawMeta map[string]interface{}
+	if jsonErr := json.Unmarshal([]byte(*job.Metadata), &rawMeta); jsonErr == nil {
+		slots.str, slots.num, slots.boolean, slots.date, slots.arr = routeMetadataSlots(rawMeta, fieldMap, job.ID)
+	}
+	return slots, nil
+}
 
 // MergeMetadataSlots populates the typed slot maps in patch from user-supplied metadata.
 // Unregistered fields and type mismatches are silently skipped.

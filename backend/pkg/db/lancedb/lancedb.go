@@ -117,7 +117,26 @@ func (l *VectorDb) InsertBatch(ctx context.Context, tableName string, records []
 	return nil
 }
 
+// DeleteChunksByDocument is the unconditional final-deletion path (document delete) — Delete() hides a row
+// from a plain Select immediately (verified empirically, no tombstone window), so compact is storage-reclaim only.
 func (l *VectorDb) DeleteChunksByDocument(ctx context.Context, tableName, documentID string) error {
+	return l.deleteChunksByDocumentFilter(ctx, tableName, fmt.Sprintf("document_id = '%s'", documentID))
+}
+
+// DeleteChunksByIDs deletes exactly the given chunk IDs within one document (chunkIDs read pre-reingest, see ListChunkIDsByDocument).
+func (l *VectorDb) DeleteChunksByIDs(ctx context.Context, tableName, documentID string, chunkIDs []string) error {
+	if len(chunkIDs) == 0 {
+		return nil
+	}
+	quoted := make([]string, len(chunkIDs))
+	for i, id := range chunkIDs {
+		quoted[i] = fmt.Sprintf("'%s'", id) // uuids only — no quoting risk
+	}
+	filter := fmt.Sprintf("document_id = '%s' AND id IN (%s)", documentID, strings.Join(quoted, ","))
+	return l.deleteChunksByDocumentFilter(ctx, tableName, filter)
+}
+
+func (l *VectorDb) deleteChunksByDocumentFilter(ctx context.Context, tableName, filter string) error {
 	tbl, err := l.conn.OpenTable(ctx, tableName)
 	if err != nil {
 		return fmt.Errorf("lancedb: open table %s: %w", tableName, err)
@@ -128,20 +147,84 @@ func (l *VectorDb) DeleteChunksByDocument(ctx context.Context, tableName, docume
 	lock.Lock()
 	defer lock.Unlock()
 
-	if err := tbl.Delete(ctx, fmt.Sprintf("document_id = '%s'", documentID)); err != nil {
-		return fmt.Errorf("lancedb: delete chunks for document %s: %w", documentID, err)
+	if err := tbl.Delete(ctx, filter); err != nil {
+		return fmt.Errorf("lancedb: delete chunks on %s: %w", tableName, err)
 	}
 
-	// Compact-only (not OptimizeAll) + MaterializeDeletions: LanceDB soft-deletes, and a tombstoned row still surfaces in queries until compacted.
 	materialize := true
 	action := contracts.OptimizeAction{
 		Kind:       contracts.OptimizeCompact,
 		Compaction: contracts.CompactionParams{MaterializeDeletions: &materialize},
 	}
 	if err := optimizeWithRetry(ctx, tbl, action); err != nil {
-		return fmt.Errorf("lancedb: optimize after delete on %s: %w", tableName, err)
+		return fmt.Errorf("lancedb: compact deletes on %s: %w", tableName, err)
 	}
 	return nil
+}
+
+// ChunkVectorsForHashes narrow-projects (hash + vector only) the given
+// document's hashes that already exist — bounded per call, not whole-document.
+func (l *VectorDb) ChunkVectorsForHashes(ctx context.Context, tableName, documentID string, hashes []string) (map[string][]float32, error) {
+	if len(hashes) == 0 {
+		return nil, nil
+	}
+	tbl, err := l.conn.OpenTable(ctx, tableName)
+	if err != nil {
+		return nil, fmt.Errorf("lancedb: open table %s: %w", tableName, err)
+	}
+	defer tbl.Close()
+
+	quoted := make([]string, len(hashes))
+	for i, h := range hashes {
+		quoted[i] = fmt.Sprintf("'%s'", h) // hex sha256 output only — no quoting risk
+	}
+	rows, err := tbl.Select(ctx, contracts.QueryConfig{
+		Where:   fmt.Sprintf("document_id = '%s' AND chunk_hash IN (%s)", documentID, strings.Join(quoted, ",")),
+		Columns: []string{colChunkHash, colVector}, // narrow projection — no text, no metadata
+	})
+	if err != nil {
+		return nil, fmt.Errorf("lancedb: select chunk vectors for %s: %w", documentID, err)
+	}
+
+	out := make(map[string][]float32, len(rows))
+	for i, row := range rows {
+		hash, err := extractString(row, colChunkHash)
+		if err != nil {
+			return nil, fmt.Errorf("lancedb: row %d: %w", i, err)
+		}
+		vec, err := extractFloat32Slice(row, colVector)
+		if err != nil {
+			return nil, fmt.Errorf("lancedb: row %d: %w", i, err)
+		}
+		out[hash] = vec
+	}
+	return out, nil
+}
+
+// ListChunkIDsByDocument narrow-projects (id only) every chunk ID for a document — read before a reingest starts.
+func (l *VectorDb) ListChunkIDsByDocument(ctx context.Context, tableName, documentID string) ([]string, error) {
+	tbl, err := l.conn.OpenTable(ctx, tableName)
+	if err != nil {
+		return nil, fmt.Errorf("lancedb: open table %s: %w", tableName, err)
+	}
+	defer tbl.Close()
+
+	rows, err := tbl.Select(ctx, contracts.QueryConfig{
+		Where:   fmt.Sprintf("document_id = '%s'", documentID),
+		Columns: []string{colID},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("lancedb: list chunk ids for %s: %w", documentID, err)
+	}
+	ids := make([]string, len(rows))
+	for i, row := range rows {
+		id, err := extractString(row, colID)
+		if err != nil {
+			return nil, fmt.Errorf("lancedb: row %d: %w", i, err)
+		}
+		ids[i] = id
+	}
+	return ids, nil
 }
 
 const maxOptimizeRetries = 5

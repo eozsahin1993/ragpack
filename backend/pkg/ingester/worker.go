@@ -2,19 +2,14 @@ package ingester
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"runtime/debug"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-
 	chunkerpkg "ragpack/pkg/chunker"
-	"ragpack/pkg/db"
-	"ragpack/pkg/embedder"
 	"ragpack/pkg/fetcher"
 	"ragpack/pkg/meta"
 	parserpkg "ragpack/pkg/parser"
@@ -50,16 +45,13 @@ func (wp *WorkerPool) processJob(ctx context.Context, item queueItem) error {
 
 	var docID string
 	if existing != nil {
-		if job.Intent == meta.JobIntentIngest && !job.Force {
-			if existing.Status == meta.DocumentStatusComplete {
-				// Already ingested — skip.
-				return wp.metaStore.UpdateJobStatus(ctx, jobID, meta.JobStatusComplete, nil)
-			}
-			if existing.Status == meta.DocumentStatusIngesting {
-				return wp.failJob(ctx, jobID, fmt.Errorf("document is already being ingested"))
-			}
+		if existing.Status == meta.DocumentStatusIngesting {
+			return wp.failJob(ctx, jobID, meta.ErrDocumentAlreadyIngesting) // fast path — ResetDocument enforces this atomically too
 		}
-		// Reuse existing document — reset status and bind to new job.
+		if job.Intent == meta.JobIntentIngest && !job.Force && existing.Status == meta.DocumentStatusComplete {
+			return wp.metaStore.UpdateJobStatus(ctx, jobID, meta.JobStatusComplete, nil) // already ingested — skip
+		}
+		// Reuse existing document — ResetDocument's conditional UPDATE is what actually closes a race against another job.
 		doc, err := wp.metaStore.ResetDocument(ctx, existing.ID, jobID)
 		if err != nil {
 			return wp.failJob(ctx, jobID, err)
@@ -79,13 +71,19 @@ func (wp *WorkerPool) processJob(ctx context.Context, item queueItem) error {
 	wp.recordIngestion(job, docID, collection, chunkCount, processErr, time.Since(processStart).Milliseconds(), stats)
 	if processErr != nil {
 		errStr := processErr.Error()
-		if err := wp.metaStore.UpdateDocumentStatus(ctx, docID, meta.DocumentStatusFailed, 0, &errStr); err != nil {
+		failedStatus := meta.DocumentStatusFailed
+		zero := 0
+		failPatch := meta.DocumentPatch{Status: &failedStatus, ChunkCount: &zero, Error: &errStr}
+		if err := wp.metaStore.UpdateDocument(ctx, docID, failPatch); err != nil {
 			log.Printf("ingester: job %s: failed to mark document failed: %v", jobID, err)
 		}
 		return wp.failJob(ctx, jobID, processErr)
 	}
 
-	if err := wp.metaStore.UpdateDocumentStatus(ctx, docID, meta.DocumentStatusComplete, chunkCount, nil); err != nil {
+	// item.etag is non-nil only for an auto-refresh job that found a new ETag.
+	completeStatus := meta.DocumentStatusComplete
+	completePatch := meta.DocumentPatch{Status: &completeStatus, ChunkCount: &chunkCount, ClearError: true, LastETag: item.etag}
+	if err := wp.metaStore.UpdateDocument(ctx, docID, completePatch); err != nil {
 		log.Printf("ingester: job %s: failed to mark document complete: %v", jobID, err)
 		return wp.failJob(ctx, jobID, err)
 	}
@@ -93,9 +91,7 @@ func (wp *WorkerPool) processJob(ctx context.Context, item queueItem) error {
 	return wp.metaStore.UpdateJobStatus(ctx, jobID, meta.JobStatusComplete, nil)
 }
 
-// safeProcess runs process with a panic guard: a bad document (malformed input,
-// an edge case in a parser/chunker) must fail that one document, not take down
-// the whole server — the worker goroutine has no other recover point above it.
+// safeProcess guards process against panics — a bad document must fail that document, not take down the server.
 func (wp *WorkerPool) safeProcess(ctx context.Context, item queueItem, documentID string, collection meta.Collection, stats *ingestStats) (count int, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -106,51 +102,28 @@ func (wp *WorkerPool) safeProcess(ctx context.Context, item queueItem, documentI
 	return wp.process(ctx, item, documentID, collection, stats)
 }
 
+// process fetches, chunks, embeds (reusing vectors where possible), and inserts one document.
 func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID string, collection meta.Collection, stats *ingestStats) (int, error) {
 	job := item.job
 
-	sourceName := util.NameFromURI(job.FileUri)
-
-	reader := item.reader
-	if reader == nil {
-		if strings.HasPrefix(job.FileUri, "upload://") {
-			return 0, fmt.Errorf("uploaded file is no longer available; please re-submit the file")
-		}
-		fetchStart := time.Now()
-		src, err := fetcher.New(ctx, job.FileUri)
-		if err != nil {
-			return 0, fmt.Errorf("build fetcher: %w", err)
-		}
-		reader, err = src.Fetch(ctx, job.FileUri)
-		stats.fetchMs = time.Since(fetchStart).Milliseconds()
-		if err != nil {
-			return 0, fmt.Errorf("fetch: %w", err)
-		}
+	reader, err := wp.fetchReader(ctx, item, stats)
+	if err != nil {
+		return 0, err
 	}
 	// reader is closed by the parser inside Parse() — no defer here.
 
-	// Delete any stale chunks before re-embedding (handles retries and refresh).
-	if err := wp.vectorDb.DeleteChunksByDocument(ctx, collection.TableName, documentID); err != nil {
-		return 0, fmt.Errorf("delete stale chunks: %w", err)
+	staleIDs, err := wp.vectorDb.ListChunkIDsByDocument(ctx, collection.TableName, documentID)
+	if err != nil {
+		return 0, fmt.Errorf("list existing chunks: %w", err)
 	}
+	previousChunkCount := len(staleIDs)
 
 	parser, err := parserpkg.New(job.MimeType, job.FileUri)
 	if err != nil {
 		return 0, fmt.Errorf("build parser: %w", err)
 	}
 
-	// Resolve chunk config: collection overrides take precedence over server defaults.
-	chunkCfg := wp.chunkCfg
-	if collection.ChunkStrategy != nil {
-		chunkCfg.Strategy = *collection.ChunkStrategy
-	}
-	if collection.ChunkSize != nil {
-		chunkCfg.ChunkSize = *collection.ChunkSize
-	}
-	if collection.ChunkOverlap != nil {
-		chunkCfg.Overlap = *collection.ChunkOverlap
-	}
-
+	chunkCfg := resolveChunkConfig(wp.chunkCfg, collection)
 	chunker, err := chunkerpkg.New(job.MimeType, chunkCfg)
 	if err != nil {
 		return 0, fmt.Errorf("build chunker: %w", err)
@@ -161,110 +134,58 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 		return 0, fmt.Errorf("embedder: %w", err)
 	}
 
-	// Look up metadata field mapping once — avoids redundant SQLite reads per batch.
-	var metaStr [20]*string
-	var metaNum [10]*float64
-	var metaBool [10]*bool
-	var metaDate [10]*int64
-	var metaArr [10][]string
-	if job.Metadata != nil {
-		metaFields, err := wp.metaStore.ListMetadataFields(ctx, collection.ID)
-		if err != nil {
-			return 0, fmt.Errorf("list metadata fields: %w", err)
-		}
-		if len(metaFields) > 0 {
-			fieldMap := make(map[string]meta.MetadataField, len(metaFields))
-			for _, f := range metaFields {
-				fieldMap[f.Name] = f
-			}
-			var rawMeta map[string]interface{}
-			if jsonErr := json.Unmarshal([]byte(*job.Metadata), &rawMeta); jsonErr == nil {
-				metaStr, metaNum, metaBool, metaDate, metaArr = routeMetadataSlots(rawMeta, fieldMap, job.ID)
-			}
-		}
+	metaSlots, err := wp.resolveMetadataSlots(ctx, job, collection)
+	if err != nil {
+		return 0, err
 	}
 
-	now := time.Now().UTC()
-	chunkCount := 0
+	flusher := &batchFlusher{
+		wp:         wp,
+		documentID: documentID,
+		collection: collection,
+		job:        job,
+		sourceName: util.NameFromURI(job.FileUri),
+		chunkCfg:   chunkCfg,
+		emb:        emb,
+		meta:       metaSlots,
+		stats:      stats,
+		now:        time.Now().UTC(),
+	}
 
-	// Stream: parser → chunker → embed in batches → insert.
+	// Stream: parser → chunker → flush (embed-or-reuse in batches) → insert.
 	// Only batchSize chunks are in memory at once.
-	var batch []chunkerpkg.Chunk
-	flush := func() error {
-		if len(batch) == 0 {
-			return nil
-		}
-		texts := make([]string, len(batch))
-		for i, ch := range batch {
-			if ch.Header != nil {
-				texts[i] = *ch.Header + "\n" + ch.Text
-			} else {
-				texts[i] = ch.Text
-			}
-		}
-		waitStart := time.Now()
-		if err := wp.limiter.Wait(ctx); err != nil {
-			return fmt.Errorf("rate limiter: %w", err)
-		}
-		stats.waitMs += time.Since(waitStart).Milliseconds()
-
-		embedStart := time.Now()
-		vectors, usage, err := emb.Embed(ctx, texts)
-		stats.embedMs += time.Since(embedStart).Milliseconds()
-		if err != nil {
-			return fmt.Errorf("embed batch at chunk %d: %w", chunkCount, err)
-		}
-		stats.embedTokens += usage.TotalTokens
-		records := make([]db.ChunkDbRecord, len(batch))
-		for i, ch := range batch {
-			hash := fmt.Sprintf("%x", sha256.Sum256([]byte(ch.Text)))
-			records[i] = db.ChunkDbRecord{
-				ID:           uuid.NewString(),
-				DocumentID:   documentID,
-				ChunkHash:    hash,
-				ChunkIndex:   ch.Index,
-				Vector:       embedder.Normalize(vectors[i]),
-				CreatedAt:    now,
-				UpdatedAt:    now,
-				MimeType:     job.MimeType,
-				FileUri:      job.FileUri,
-				SourceName:   sourceName,
-				ChunkText:    &ch.Text,
-				ChunkHeader:  ch.Header,
-				ExtraJSON:    job.ExtraJSON,
-				MetadataStr:  metaStr,
-				MetadataNum:  metaNum,
-				MetadataBool: metaBool,
-				MetadataDate: metaDate,
-				MetadataArr:  metaArr,
-			}
-		}
-		insertStart := time.Now()
-		if err := wp.vectorDb.InsertBatch(ctx, collection.TableName, records); err != nil {
-			return fmt.Errorf("insert batch at chunk %d: %w", chunkCount, err)
-		}
-		stats.insertMs += time.Since(insertStart).Milliseconds()
-		chunkCount += len(batch)
-		batch = batch[:0]
-		return nil
-	}
-
 	loopStart := time.Now()
+	var batch []chunkerpkg.Chunk
 	for chunk, err := range chunker.Chunk(parser.Parse(ctx, reader)) {
 		if err != nil {
 			return 0, fmt.Errorf("chunk: %w", err)
 		}
 		batch = append(batch, chunk)
 		if len(batch) >= batchSize {
-			if err := flush(); err != nil {
+			if err := flusher.flush(ctx, batch); err != nil {
 				return 0, err
 			}
+			batch = batch[:0]
 		}
 	}
-	if err := flush(); err != nil {
+	if err := flusher.flush(ctx, batch); err != nil {
 		return 0, err
 	}
 	stats.loopMs = time.Since(loopStart).Milliseconds()
+
+	// Every new/reused row is inserted now, so staleIDs (read up front) is exactly what predates this reingest.
+	if err := wp.vectorDb.DeleteChunksByIDs(ctx, collection.TableName, documentID, staleIDs); err != nil {
+		return 0, fmt.Errorf("delete stale chunks: %w", err)
+	}
+
+	// Clamped at 0: a duplicate paragraph matching the same old hash twice isn't "removal."
+	stats.staleChunks = previousChunkCount - stats.reusedChunks
+	if stats.staleChunks < 0 {
+		stats.staleChunks = 0
+	}
+	if stats.reusedChunks > 0 || stats.staleChunks > 0 {
+		log.Printf("ingester: job %s: reused %d/%d chunks, dropped %d stale", job.ID, stats.reusedChunks, flusher.chunkCount, stats.staleChunks)
+	}
 
 	// Fold any new chunks into existing metadata indexes so queries stay fast.
 	optimizeStart := time.Now()
@@ -273,6 +194,50 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 	}
 	stats.optimizeMs = time.Since(optimizeStart).Milliseconds()
 
+	wp.saveDocumentName(ctx, documentID, job, parser)
+
+	return flusher.chunkCount, nil
+}
+
+// fetchReader returns the direct-upload reader already provided, or fetches one from the source URI.
+func (wp *WorkerPool) fetchReader(ctx context.Context, item queueItem, stats *ingestStats) (io.ReadCloser, error) {
+	if item.reader != nil {
+		return item.reader, nil
+	}
+	job := item.job
+	if strings.HasPrefix(job.FileUri, "upload://") {
+		return nil, fmt.Errorf("uploaded file is no longer available; please re-submit the file")
+	}
+	fetchStart := time.Now()
+	src, err := fetcher.New(ctx, job.FileUri)
+	if err != nil {
+		return nil, fmt.Errorf("build fetcher: %w", err)
+	}
+	reader, err := src.Fetch(ctx, job.FileUri)
+	stats.fetchMs = time.Since(fetchStart).Milliseconds()
+	if err != nil {
+		return nil, fmt.Errorf("fetch: %w", err)
+	}
+	return reader, nil
+}
+
+// resolveChunkConfig applies collection-level overrides on top of the server default.
+func resolveChunkConfig(base chunkerpkg.Config, collection meta.Collection) chunkerpkg.Config {
+	cfg := base
+	if collection.ChunkStrategy != nil {
+		cfg.Strategy = *collection.ChunkStrategy
+	}
+	if collection.ChunkSize != nil {
+		cfg.ChunkSize = *collection.ChunkSize
+	}
+	if collection.ChunkOverlap != nil {
+		cfg.Overlap = *collection.ChunkOverlap
+	}
+	return cfg
+}
+
+// saveDocumentName is best-effort — a failure here doesn't affect ingestion's success/failure.
+func (wp *WorkerPool) saveDocumentName(ctx context.Context, documentID string, job meta.Job, parser parserpkg.Parser) {
 	name := ""
 	if title := parser.Title(); title != nil {
 		name = *title
@@ -280,11 +245,10 @@ func (wp *WorkerPool) process(ctx context.Context, item queueItem, documentID st
 	if name == "" {
 		name = util.NameFromURI(job.FileUri)
 	}
-	if name != "" {
-		if err := wp.metaStore.UpdateDocument(ctx, documentID, meta.DocumentPatch{Name: &name}); err != nil {
-			log.Printf("ingester: job %s: failed to save document name: %v", job.ID, err)
-		}
+	if name == "" {
+		return
 	}
-
-	return chunkCount, nil
+	if err := wp.metaStore.UpdateDocument(ctx, documentID, meta.DocumentPatch{Name: &name}); err != nil {
+		log.Printf("ingester: job %s: failed to save document name: %v", job.ID, err)
+	}
 }

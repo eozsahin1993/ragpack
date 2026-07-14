@@ -107,7 +107,9 @@ func TestConcurrentWritesAcrossTablesDontError(t *testing.T) {
 				errs <- err
 				return
 			}
-			if err := ms.UpdateDocumentStatus(ctx, doc.ID, meta.DocumentStatusComplete, 3, nil); err != nil {
+			completeStatus := meta.DocumentStatusComplete
+			three := 3
+			if err := ms.UpdateDocument(ctx, doc.ID, meta.DocumentPatch{Status: &completeStatus, ChunkCount: &three}); err != nil {
 				errs <- err
 				return
 			}

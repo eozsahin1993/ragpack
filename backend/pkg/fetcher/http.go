@@ -47,3 +47,37 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, uri string) (io.ReadCloser, err
 
 	return resp.Body, nil
 }
+
+// FetchConditional sends If-None-Match/If-Modified-Since (whichever the
+// caller has) and reports NotModified on a 304 instead of fetching the body.
+func (f *HTTPFetcher) FetchConditional(ctx context.Context, uri, etag, lastModified string) (*FetchResult, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
+	if err != nil {
+		return nil, fmt.Errorf("http fetcher: build request: %w", err)
+	}
+	SetRequestHeaders(req)
+	if etag != "" {
+		req.Header.Set("If-None-Match", etag)
+	}
+	if lastModified != "" {
+		req.Header.Set("If-Modified-Since", lastModified)
+	}
+
+	resp, err := f.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("http fetcher: request failed: %w", err)
+	}
+	if resp.StatusCode == http.StatusNotModified {
+		resp.Body.Close()
+		return &FetchResult{NotModified: true}, nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("http fetcher: unexpected status %d for %q", resp.StatusCode, uri)
+	}
+	return &FetchResult{
+		Body:         resp.Body,
+		ETag:         resp.Header.Get("ETag"),
+		LastModified: resp.Header.Get("Last-Modified"),
+	}, nil
+}

@@ -21,7 +21,10 @@ type CreateRequest struct {
 }
 
 type PatchRequest struct {
-	Name string `json:"name" validate:"required,min=1,max=100"`
+	Name           *string `json:"name"                      validate:"omitempty,min=1,max=100"`
+	RefreshEnabled *bool   `json:"refresh_enabled"`
+	// Real minimum is config-driven, enforced in the handler (Handler.minRefreshSeconds), not here.
+	RefreshIntervalSeconds *int `json:"refresh_interval_seconds" validate:"omitempty,min=0"`
 }
 
 // — Response types —
@@ -30,12 +33,16 @@ type CollectionResponse struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Slug string `json:"slug"`
-	// Internal LanceDB table name; only populated on the admin surface.
-	TableName   string               `json:"table_name,omitempty"`
-	EmbedModel  string               `json:"embed_model"`
-	VectorDim   int                  `json:"vector_dim"`
-	CreatedAt   time.Time            `json:"created_at"`
-	ChunkConfig *ChunkConfigResponse `json:"chunk_config,omitempty"`
+	// TableName, RefreshEnabled, RefreshIntervalSeconds, LastAutoRefreshAt:
+	// internal operational config, only populated on the admin surface.
+	TableName              string               `json:"table_name,omitempty"`
+	EmbedModel             string               `json:"embed_model"`
+	VectorDim              int                  `json:"vector_dim"`
+	CreatedAt              time.Time            `json:"created_at"`
+	ChunkConfig            *ChunkConfigResponse `json:"chunk_config,omitempty"`
+	RefreshEnabled         bool                 `json:"refresh_enabled,omitempty"`
+	RefreshIntervalSeconds *int                 `json:"refresh_interval_seconds,omitempty"`
+	LastAutoRefreshAt      *time.Time           `json:"last_auto_refresh_at,omitempty"`
 }
 
 type ChunkConfigResponse struct {
@@ -55,6 +62,9 @@ func toResponse(c meta.Collection, includeInternal bool) CollectionResponse {
 	}
 	if includeInternal {
 		r.TableName = c.TableName
+		r.RefreshEnabled = c.RefreshEnabled
+		r.RefreshIntervalSeconds = c.RefreshIntervalSeconds
+		r.LastAutoRefreshAt = c.LastAutoRefreshAt
 	}
 	if c.ChunkStrategy != nil || c.ChunkSize != nil || c.ChunkOverlap != nil {
 		r.ChunkConfig = &ChunkConfigResponse{

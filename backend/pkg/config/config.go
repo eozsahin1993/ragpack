@@ -29,6 +29,13 @@ type Config struct {
 	Telemetry         TelemetryConfig
 	DefaultPromptSlug string
 	MaxUploadSizeMB   int
+
+	// MinCollectionRefreshSeconds is the shortest allowed auto-refresh
+	// interval a collection can be configured with (validate.PatchRequest).
+	MinCollectionRefreshSeconds int
+	// DefaultCollectionRefreshSeconds is a suggested starting value for
+	// web-admin's refresh-interval UI — not read or enforced server-side.
+	DefaultCollectionRefreshSeconds int
 }
 
 type TelemetryConfig struct {
@@ -128,6 +135,9 @@ func Load() Config {
 
 		DefaultPromptSlug: getEnv("DEFAULT_PROMPT_SLUG", DefaultPromptSlug),
 		MaxUploadSizeMB:   getEnvInt("MAX_UPLOAD_SIZE_MB", DefaultMaxUploadSize),
+
+		MinCollectionRefreshSeconds:     getEnvInt("MIN_COLLECTION_REFRESH", DefaultMinCollectionRefreshSeconds),
+		DefaultCollectionRefreshSeconds: getEnvInt("DEFAULT_COLLECTION_REFRESH", DefaultDefaultCollectionRefreshSeconds),
 
 		Ingester: IngesterConfig{
 			WorkerCount:    getEnvInt("WORKER_COUNT", DefaultWorkerCount),

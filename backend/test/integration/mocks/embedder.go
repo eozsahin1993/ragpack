@@ -7,6 +7,7 @@ import (
 	"context"
 	"hash/fnv"
 	"strings"
+	"sync/atomic"
 
 	"ragpack/pkg/embedder"
 )
@@ -17,9 +18,12 @@ import (
 type Embedder struct {
 	Dim       int
 	ModelName string
+
+	calls atomic.Int64 // ingestion runs across concurrent workers
 }
 
 func (e *Embedder) Embed(_ context.Context, texts []string) ([][]float32, embedder.Usage, error) {
+	e.calls.Add(1)
 	vecs := make([][]float32, len(texts))
 	for i, t := range texts {
 		v := make([]float32, e.Dim)
@@ -32,6 +36,9 @@ func (e *Embedder) Embed(_ context.Context, texts []string) ([][]float32, embedd
 	}
 	return vecs, embedder.Usage{}, nil
 }
+
+// CallCount returns how many times Embed has been called (batches, not texts).
+func (e *Embedder) CallCount() int64 { return e.calls.Load() }
 
 func (e *Embedder) Dimensions() (int, error) { return e.Dim, nil }
 func (e *Embedder) Model() string            { return e.ModelName }

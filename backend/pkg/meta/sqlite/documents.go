@@ -46,7 +46,7 @@ func (s *MetaStore) CreateDocument(ctx context.Context, collectionID, jobID, fil
 	// Re-fetch to get the canonical row (may have been the existing record).
 	var existing meta.Document
 	if err := s.db.GetContext(ctx, &existing, `
-		SELECT id, collection_id, job_id, file_uri, mime_type, name, external_id, extra_json, chunk_count, status, error, created_at, updated_at
+		SELECT id, collection_id, job_id, file_uri, mime_type, name, external_id, extra_json, chunk_count, status, error, created_at, updated_at, last_etag
 		FROM documents WHERE job_id = ?
 	`, jobID); err != nil {
 		return meta.Document{}, fmt.Errorf("sqlite: fetch document after upsert: %w", err)
@@ -57,7 +57,7 @@ func (s *MetaStore) CreateDocument(ctx context.Context, collectionID, jobID, fil
 func (s *MetaStore) FindDocumentByFileUri(ctx context.Context, collectionID, fileUri string) (*meta.Document, error) {
 	var d meta.Document
 	err := s.db.GetContext(ctx, &d, `
-		SELECT id, collection_id, job_id, file_uri, mime_type, name, external_id, extra_json, chunk_count, status, error, created_at, updated_at
+		SELECT id, collection_id, job_id, file_uri, mime_type, name, external_id, extra_json, chunk_count, status, error, created_at, updated_at, last_etag
 		FROM documents
 		WHERE collection_id = ? AND file_uri = ?
 		ORDER BY created_at DESC
@@ -72,14 +72,22 @@ func (s *MetaStore) FindDocumentByFileUri(ctx context.Context, collectionID, fil
 	return &d, nil
 }
 
+// ResetDocument flips a document to "ingesting" for a new job — conditional so two racing jobs can't both proceed; see meta.ErrDocumentAlreadyIngesting.
 func (s *MetaStore) ResetDocument(ctx context.Context, docID, newJobID string) (meta.Document, error) {
-	_, err := s.db.ExecContext(ctx, `
+	result, err := s.db.ExecContext(ctx, `
 		UPDATE documents
 		SET job_id = ?, status = 'ingesting', chunk_count = 0, error = NULL, updated_at = ?
-		WHERE id = ?
+		WHERE id = ? AND status != 'ingesting'
 	`, newJobID, time.Now().UTC(), docID)
 	if err != nil {
 		return meta.Document{}, fmt.Errorf("sqlite: reset document %q for job %q: %w", docID, newJobID, err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return meta.Document{}, fmt.Errorf("sqlite: reset document %q for job %q: %w", docID, newJobID, err)
+	}
+	if rows == 0 {
+		return meta.Document{}, meta.ErrDocumentAlreadyIngesting
 	}
 	return s.GetDocument(ctx, docID)
 }
@@ -87,7 +95,7 @@ func (s *MetaStore) ResetDocument(ctx context.Context, docID, newJobID string) (
 func (s *MetaStore) GetDocument(ctx context.Context, id string) (meta.Document, error) {
 	var d meta.Document
 	err := s.db.GetContext(ctx, &d, `
-		SELECT id, collection_id, job_id, file_uri, mime_type, name, external_id, extra_json, chunk_count, status, error, created_at, updated_at
+		SELECT id, collection_id, job_id, file_uri, mime_type, name, external_id, extra_json, chunk_count, status, error, created_at, updated_at, last_etag
 		FROM documents
 		WHERE id = ?
 	`, id)
@@ -112,7 +120,7 @@ func documentOrderBy(sort meta.DocumentSort) string {
 func (s *MetaStore) ListDocuments(ctx context.Context, filter meta.DocumentFilter, sort meta.DocumentSort, limit, offset int) ([]meta.Document, error) {
 	where, args := documentWhere(filter)
 	query := `
-		SELECT id, collection_id, job_id, file_uri, mime_type, name, external_id, extra_json, chunk_count, status, error, created_at, updated_at
+		SELECT id, collection_id, job_id, file_uri, mime_type, name, external_id, extra_json, chunk_count, status, error, created_at, updated_at, last_etag
 		FROM documents
 	` + where + documentOrderBy(sort) + " LIMIT ? OFFSET ?"
 	args = append(args, limit, offset)
@@ -162,6 +170,24 @@ func (s *MetaStore) UpdateDocument(ctx context.Context, id string, patch meta.Do
 		clauses = append(clauses, "extra_json = ?")
 		args = append(args, *patch.ExtraJSON)
 	}
+	if patch.Status != nil {
+		clauses = append(clauses, "status = ?")
+		args = append(args, *patch.Status)
+	}
+	if patch.ChunkCount != nil {
+		clauses = append(clauses, "chunk_count = ?")
+		args = append(args, *patch.ChunkCount)
+	}
+	if patch.Error != nil {
+		clauses = append(clauses, "error = ?")
+		args = append(args, *patch.Error)
+	} else if patch.ClearError {
+		clauses = append(clauses, "error = NULL")
+	}
+	if patch.LastETag != nil {
+		clauses = append(clauses, "last_etag = ?")
+		args = append(args, *patch.LastETag)
+	}
 	if len(clauses) == 0 {
 		return nil
 	}
@@ -172,18 +198,6 @@ func (s *MetaStore) UpdateDocument(ctx context.Context, id string, patch meta.Do
 	_, err := s.db.ExecContext(ctx, "UPDATE documents SET "+strings.Join(clauses, ", ")+" WHERE id = ?", args...)
 	if err != nil {
 		return fmt.Errorf("sqlite: update document %q: %w", id, err)
-	}
-	return nil
-}
-
-func (s *MetaStore) UpdateDocumentStatus(ctx context.Context, id string, status meta.DocumentStatus, chunkCount int, docError *string) error {
-	_, err := s.db.ExecContext(ctx, `
-		UPDATE documents
-		SET status = ?, chunk_count = ?, error = ?, updated_at = ?
-		WHERE id = ?
-	`, status, chunkCount, docError, time.Now().UTC(), id)
-	if err != nil {
-		return fmt.Errorf("sqlite: update document %q status: %w", id, err)
 	}
 	return nil
 }

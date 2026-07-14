@@ -17,8 +17,9 @@ const (
 type JobIntent string
 
 const (
-	JobIntentIngest  JobIntent = "ingest"
-	JobIntentRefresh JobIntent = "refresh"
+	JobIntentIngest      JobIntent = "ingest"
+	JobIntentRefresh     JobIntent = "refresh"      // manually triggered (POST .../ingest?refresh=true)
+	JobIntentAutoRefresh JobIntent = "auto_refresh" // scheduler-triggered — see pkg/ingester/refresh_scheduler.go
 )
 
 type Job struct {
