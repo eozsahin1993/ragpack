@@ -25,3 +25,10 @@ web-admin/blob-report/
 # macOS
 .DS_Store
 backend/tmp/
+
+# Eval harness
+eval/.venv/
+eval/__pycache__/
+eval/.cache/
+eval/results/*.json
+!eval/results/baseline.json

@@ -1,0 +1,10 @@
+requests
+ragas
+datasets
+openai
+langchain_openai
+python-dotenv
+# ragas 0.4.x unconditionally imports a langchain-community submodule that
+# 0.4.x releases of langchain-community itself dropped during their sunset
+# cleanup - pin below that to keep `import ragas` from breaking.
+langchain-community<0.4
