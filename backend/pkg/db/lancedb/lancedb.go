@@ -3,6 +3,10 @@ package lancedb
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/eozsahin1993/lancedb-go/pkg/contracts"
 	sdk "github.com/eozsahin1993/lancedb-go/pkg/lancedb"
@@ -14,10 +18,30 @@ import (
 
 type VectorDb struct {
 	conn contracts.IConnection
+
+	locksMu       sync.Mutex
+	optimizeLocks map[string]*sync.Mutex
 }
 
 func New() *VectorDb {
-	return &VectorDb{}
+	return &VectorDb{optimizeLocks: make(map[string]*sync.Mutex)}
+}
+
+// tableOptimizeLock serializes compaction per table (in-process): a bulk
+// re-ingest can put every ingester worker through Delete+Compact on the
+// same collection table at once, and retry alone doesn't survive N workers
+// all retrying into each other. Only one worker compacting a table at a
+// time makes the "Retryable commit conflict" structurally impossible
+// (from this process) rather than something to hope retries outlast.
+func (l *VectorDb) tableOptimizeLock(tableName string) *sync.Mutex {
+	l.locksMu.Lock()
+	defer l.locksMu.Unlock()
+	m, ok := l.optimizeLocks[tableName]
+	if !ok {
+		m = &sync.Mutex{}
+		l.optimizeLocks[tableName] = m
+	}
+	return m
 }
 
 func (l *VectorDb) Connect(ctx context.Context, connectionUrl string) error {
@@ -100,16 +124,58 @@ func (l *VectorDb) DeleteChunksByDocument(ctx context.Context, tableName, docume
 	}
 	defer tbl.Close()
 
+	lock := l.tableOptimizeLock(tableName)
+	lock.Lock()
+	defer lock.Unlock()
+
 	if err := tbl.Delete(ctx, fmt.Sprintf("document_id = '%s'", documentID)); err != nil {
 		return fmt.Errorf("lancedb: delete chunks for document %s: %w", documentID, err)
 	}
 
-	// Physically remove tombstoned rows so they don't leak into subsequent
-	// SelectWithFilter or VectorSearch results.
-	if _, err := tbl.Optimize(ctx); err != nil {
+	// Compact-only (not OptimizeAll) + MaterializeDeletions: LanceDB soft-deletes, and a tombstoned row still surfaces in queries until compacted.
+	materialize := true
+	action := contracts.OptimizeAction{
+		Kind:       contracts.OptimizeCompact,
+		Compaction: contracts.CompactionParams{MaterializeDeletions: &materialize},
+	}
+	if err := optimizeWithRetry(ctx, tbl, action); err != nil {
 		return fmt.Errorf("lancedb: optimize after delete on %s: %w", tableName, err)
 	}
 	return nil
+}
+
+const maxOptimizeRetries = 5
+
+// optimizeWithRetry retries on LanceDB's "Retryable commit conflict" — concurrent workers optimizing the same table can race for the same base version.
+func optimizeWithRetry(ctx context.Context, tbl contracts.ITable, action contracts.OptimizeAction) error {
+	var err error
+	for attempt := 0; attempt < maxOptimizeRetries; attempt++ {
+		if _, err = tbl.OptimizeWithAction(ctx, action); err == nil {
+			return nil
+		}
+		if !isRetryableCommitConflict(err) {
+			return err
+		}
+		if sleepErr := sleepBackoff(ctx, attempt); sleepErr != nil {
+			return err
+		}
+	}
+	return err
+}
+
+func isRetryableCommitConflict(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "Retryable commit conflict")
+}
+
+// sleepBackoff returns ctx.Err() if the context is done before the delay elapses.
+func sleepBackoff(ctx context.Context, attempt int) error {
+	delay := time.Duration(50*(1<<attempt))*time.Millisecond + time.Duration(rand.Intn(50))*time.Millisecond
+	select {
+	case <-time.After(delay):
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // ListChunksByDocumentPage returns one page of chunks for a document plus the
@@ -240,7 +306,11 @@ func (l *VectorDb) OptimizeIndex(ctx context.Context, tableName string) error {
 	}
 	defer tbl.Close()
 
-	if _, err := tbl.OptimizeWithAction(ctx, contracts.OptimizeAction{Kind: contracts.OptimizeIndex}); err != nil {
+	lock := l.tableOptimizeLock(tableName)
+	lock.Lock()
+	defer lock.Unlock()
+
+	if err := optimizeWithRetry(ctx, tbl, contracts.OptimizeAction{Kind: contracts.OptimizeIndex}); err != nil {
 		return fmt.Errorf("lancedb: optimize index on %s: %w", tableName, err)
 	}
 	return nil
