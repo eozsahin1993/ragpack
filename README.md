@@ -6,9 +6,15 @@
   Open-source, self-hosted RAG infrastructure built for performance and low cost.
 </p>
 
-## Why RagPack?
+<p align="center">
+  <a href="https://www.npmjs.com/package/ragpack"><img src="https://img.shields.io/npm/v/ragpack.svg" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/ragpack"><img src="https://img.shields.io/npm/dm/ragpack.svg" alt="npm downloads" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/eozsahin1993/ragpack.svg" alt="License" /></a>
+</p>
 
-Want to add RAG to your app? Most stacks reach for LangChain and Pinecone — fast to get a demo running, but the catch is what they cost to run and maintain as you grow. A RAG solution shouldn't cost a fortune.
+## Why RagPack
+
+Want to add RAG to your app? Most stacks reach for LangChain and Pinecone, fast to get a demo running, but the catch is what they cost to run and maintain as you grow. A RAG solution shouldn't cost a fortune.
 
 RagPack is a single Go binary instead. Storage is embedded directly in the process, LanceDB for vectors and SQLite for metadata, so there's nothing else to run, and Go's efficiency at I/O and concurrent processing means it's light enough to run comfortably on something as small as an EC2 t3.micro instance instead of a costly managed vector DB.
 
