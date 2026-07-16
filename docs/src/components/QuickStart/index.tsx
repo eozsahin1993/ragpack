@@ -42,7 +42,7 @@ function StartServiceSection() {
           <div className={styles.label}>Step 1</div>
           <h2 className={styles.title}>Start the service</h2>
           <p className={styles.description}>
-            Install the Ragpack CLI and start the full stack with one command. Ollama is included — no API keys needed to get started.
+            Install the Ragpack CLI and start the full stack with one command. Ollama is included, so no API keys are needed to get started.
           </p>
         </div>
         <div className={styles.terminal}>

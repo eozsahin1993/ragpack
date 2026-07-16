@@ -24,6 +24,24 @@ const config: Config = {
     locales: ['en'],
   },
 
+  headTags: [
+    {
+      tagName: 'link',
+      attributes: { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+    },
+    {
+      tagName: 'link',
+      attributes: { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'anonymous' },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'stylesheet',
+        href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap',
+      },
+    },
+  ],
+
   presets: [
     [
       'classic',
@@ -47,14 +65,16 @@ const config: Config = {
   themeConfig: {
     image: 'img/social-card.png',
     metadata: [
+      { name: 'keywords', content: 'self-hosted RAG, open source RAG, semantic search API, hybrid search, vector database, bring your own embedding model, Ollama, retrieval augmented generation' },
       { name: 'twitter:card', content: 'summary_large_image' },
       { name: 'twitter:site', content: '@ragpackdev' },
       { property: 'og:type', content: 'website' },
       { property: 'og:site_name', content: 'RagPack' },
     ],
     colorMode: {
-      defaultMode: 'dark',
-      respectPrefersColorScheme: true,
+      defaultMode: 'light',
+      respectPrefersColorScheme: false,
+      disableSwitch: true,
     },
     navbar: {
       title: 'RagPack',
@@ -63,15 +83,18 @@ const config: Config = {
         src: 'img/logo.svg',
       },
       items: [
+        { href: '/#why', label: 'Why', position: 'right' },
+        { href: '/#features', label: 'Features', position: 'right' },
+        { href: '/#evals', label: 'Evals', position: 'right' },
+        { href: '/#formats', label: 'Formats', position: 'right' },
         {
           type: 'docSidebar',
           sidebarId: 'docs',
-          position: 'left',
+          position: 'right',
           label: 'Docs',
         },
         {
-          href: 'https://github.com/eozsahin1993/ragpack',
-          label: 'GitHub',
+          type: 'custom-githubStars',
           position: 'right',
         },
       ],

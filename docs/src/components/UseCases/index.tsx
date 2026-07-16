@@ -8,7 +8,7 @@ const items = [
   },
   {
     title: 'Knowledge base search',
-    description: 'Make internal wikis, SOPs, and runbooks searchable with natural language — not just keywords.',
+    description: 'Make internal wikis, SOPs, and runbooks searchable with natural language, not just keywords.',
     example: '"What\'s our refund policy for enterprise customers?"',
   },
   {

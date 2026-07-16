@@ -68,6 +68,7 @@
   color: #cdd6f4;
   margin: 0;
   padding: 24px;
+  font-family: var(--rp-font-mono);
   font-size: 0.82rem;
   line-height: 1.7;
   overflow-x: auto;

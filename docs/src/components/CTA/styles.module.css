@@ -23,9 +23,18 @@
   font-size: 1.05rem;
 }
 
+.actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 .btn {
   padding: 12px 28px;
   border-radius: 8px;
+  border: 1px solid transparent;
   background: var(--ifm-color-primary);
   color: white !important;
   font-weight: 600;
@@ -36,4 +45,27 @@
 
 .btn:hover {
   opacity: 0.85;
+}
+
+.copyChip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 28px;
+  border-radius: 8px;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-background-color);
+  color: var(--ifm-color-emphasis-700);
+  font-family: var(--rp-font-mono);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.copyChip:hover {
+  border-color: var(--ifm-color-primary);
+}
+
+.prompt {
+  color: var(--ifm-color-primary);
 }

@@ -1,0 +1,76 @@
+.wrapper {
+  padding: 80px 24px;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.inner h2 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  color: var(--ifm-color-emphasis-700);
+  font-size: 1.05rem;
+  margin-bottom: 32px;
+}
+
+.embedWrap {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  box-shadow:
+    0 30px 70px -20px rgba(99, 102, 241, 0.35),
+    0 25px 50px -18px rgba(0, 0, 0, 0.35);
+}
+
+.frame {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: none;
+  background: #0f0f13;
+}
+
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--ifm-color-emphasis-100),
+    var(--ifm-color-emphasis-100) 12px,
+    var(--ifm-color-emphasis-200) 12px,
+    var(--ifm-color-emphasis-200) 24px
+  );
+  color: var(--ifm-color-emphasis-600);
+}
+
+.playButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--ifm-color-primary);
+  color: white;
+}
+
+.placeholder p {
+  margin: 0;
+  font-family: var(--rp-font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}

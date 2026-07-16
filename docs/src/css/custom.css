@@ -8,6 +8,7 @@
   --ifm-color-primary-lightest: #c7d2fe;
   --ifm-code-font-size: 95%;
   --ifm-font-family-base: 'Inter', system-ui, -apple-system, sans-serif;
+  --rp-font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
 }
 
