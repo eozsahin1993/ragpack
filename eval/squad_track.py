@@ -121,6 +121,9 @@ def run(client, args, track_config):
         for i, question in enumerate(questions):
             per_query.append({
                 "question": question,
+                "answer": answers[i],
+                "ground_truth": ground_truths[i],
+                "contexts": contexts_list[i],
                 "faithfulness": float(scores.loc[i, "faithfulness"]),
                 "answer_relevancy": float(scores.loc[i, "answer_relevancy"]),
                 "context_precision": float(scores.loc[i, "context_precision"]),
