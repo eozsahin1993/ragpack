@@ -3,22 +3,50 @@
 </p>
 
 <p align="center">
-  Open-source, self-hosted RAG infrastructure built for early-stage startups. High performance, low cost, and simple to run.
+  Open-source, self-hosted RAG infrastructure built for performance and low cost.
 </p>
 
-## What it does
+## Why RagPack?
 
-- Ingest documents from URLs, file uploads, or S3. RagPack handles fetching, parsing, chunking, and embedding automatically
-- **Semantic search**: query a collection with natural language and get back ranked, scored chunks ready to use in any LLM prompt
-- **RAG**: send a question with a prompt template and a model. RagPack retrieves the relevant chunks and returns a grounded answer
-- Bring your own embedding model. Ollama or TEI for fully local inference, or any OpenAI-compatible provider
-- Manage everything via REST API or the built-in admin UI
+Want to add RAG to your app? Most stacks reach for LangChain and Pinecone — fast to get a demo running, but the catch is what they cost to run and maintain as you grow. A RAG solution shouldn't cost a fortune.
+
+RagPack is a single Go binary instead. Storage is embedded directly in the process, LanceDB for vectors and SQLite for metadata, so there's nothing else to run, and Go's efficiency at I/O and concurrent processing means it's light enough to run comfortably on something as small as an EC2 t3.micro instance instead of a costly managed vector DB.
+
+## Features
+
+- Semantic search and RAG endpoints with prompts baked in
+- Hybrid retrieval: BM25 keyword search + vector search, merged with Reciprocal Rank Fusion (RRF) using customizable weights
+- Bring your own embedding model, Ollama or TEI for fully local inference, or any OpenAI-compatible provider
+- Ingest documents from URLs, file uploads, or S3
+- Client SDKs (JS/TS) for dropping into an existing app
+- Mongo-style filters on custom document properties
+  - i.e: `{"$and": [{"category": {"$in": ["research", "legal"]}}, {"score": {"$gt": 0.8}}]}`
+- Chunking strategy picked per file type:
+  - Context aware: preserves headers as breadcrumbs
+  - Paragraph: splits on paragraph boundaries
+  - Sliding window: fixed-size windows with overlap (2000 chars, 200 char overlap)
+  - Row group: keeps row headers attached to every row, for CSV/XLS
+  - Auto: picks the right strategy from the file's mime type
+- Smart refresh on a timer, only re-embeds and re-inserts chunks that actually changed
+- Admin dashboard for managing collections, documents, and queries
+- Built-in analytics for embedding/LLM costs, usage metrics, and query evaluations
 
 Supported formats: `.txt`, `.md`, `.html`, `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.csv`, `.json`, `.xml`
 
-## Who it's for
+## RAGAS evaluations
 
-Developers who want to add semantic search or RAG to an existing app without building and maintaining the infrastructure themselves. Designed to run on minimal infrastructure. Spin it up with `npx ragpack start`, then use the TypeScript SDK or REST API. No pipeline code, no boilerplate, no cloud bill.
+Scored against [SQuAD 2.0](https://rajpurkar.github.io/SQuAD-explorer/) (30 questions, real questions and answers, not RagPack's own docs) through the actual `/rag` endpoint, judged by `gpt-4o-mini`:
+
+| Metric | Score |
+|---|---|
+| Faithfulness | 0.94 |
+| Answer relevancy | 0.81 |
+| Context precision | 0.97 |
+| Context recall | 1.00 |
+
+Retrieval quality is also checked separately against [BEIR](https://github.com/beir-cellar/beir)'s SciFact benchmark: `nDCG@10` 0.87, `Recall@100` 1.00.
+
+Reproducible with the eval harness in [`eval/`](eval/): `python3 eval/run_eval.py --api-key <key> --model gpt-4o-mini`.
 
 ## Quick start
 
