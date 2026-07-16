@@ -44,6 +44,7 @@ const config: Config = {
       tagName: 'script',
       attributes: { type: 'text/javascript' },
       innerHTML: `(function(c,l,a,r,i,t,y){
+        if (/^(localhost|127\\.0\\.0\\.1|\\[::1\\])$/.test(location.hostname)) return;
         c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
         t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
