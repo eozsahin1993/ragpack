@@ -64,6 +64,7 @@ def run(client, args, track_config):
         from ragas.embeddings import LangchainEmbeddingsWrapper
         from ragas.llms import LangchainLLMWrapper
         from ragas.metrics import answer_relevancy, context_precision, context_recall, faithfulness
+        from ragas.run_config import RunConfig
     except ImportError:
         sys.exit("error: the squad track needs `pip install -r eval/requirements.txt`")
 
@@ -114,6 +115,7 @@ def run(client, args, track_config):
             llm=judge_llm,
             embeddings=judge_embeddings,
             token_usage_parser=get_token_usage_for_openai,
+            run_config=RunConfig(max_workers=args.ragas_max_workers, timeout=120),
         )
         scores = result.to_pandas()
 

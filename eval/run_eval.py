@@ -43,6 +43,7 @@ def build_arg_parser():
     p.add_argument("--model", default=None, help="LLM model passed to /rag (required for --track squad/both)")
     p.add_argument("--rag-top-k", type=int, default=5)
     p.add_argument("--judge-model", default="gpt-4o-mini", help="OpenAI model RAGAS uses as its judge/embedder")
+    p.add_argument("--ragas-max-workers", type=int, default=6, help="RAGAS judge concurrency - lower if you hit rate-limit timeouts")
 
     p.add_argument("--save-baseline", action="store_true")
     p.add_argument("--keep-collections", action="store_true", help="skip deleting eval collections after the run")
